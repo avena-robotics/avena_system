@@ -23,9 +23,9 @@ if __name__ == '__main__':
     print('Serving real on ports 8767 and 8768')
 
     d1_blender = multiprocessing.Process(target=run_detectron_server,
-                                         args=(8767, '/opt/avena/detect_server/ml_vision_input_blender',))
+                                         args=(8767, '/home/avena/ros2_ws/src/avena_system/vision/detect_weights',))
     d2_blender = multiprocessing.Process(target=run_detectron_server,
-                                         args=(8768, '/opt/avena/detect_server/ml_vision_input_blender',))
+                                         args=(8768, '/home/avena/ros2_ws/src/avena_system/vision/detect_weights',))
     d1_blender.start()
     d2_blender.start()
 
