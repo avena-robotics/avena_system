@@ -1,1 +1,0 @@
-##  AVENA VISION SYSTEM - detectron2 server
