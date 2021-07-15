@@ -3,7 +3,7 @@ import asyncio
 import numpy as np
 import cv2
 import orjson
-from DetectronInference import DetectronInference
+from .DetectronInference import DetectronInference
 import time
 import multiprocessing
 import os
