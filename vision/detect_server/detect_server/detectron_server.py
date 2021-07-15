@@ -2,11 +2,9 @@ import multiprocessing
 import os
 from .functions import run_detectron_server
 
-if __name__ == '__main__':
 
+def main():
     multiprocessing.set_start_method('spawn')
-
-    ML_MODEL_VAR = os.getenv('ML_MODEL')
     # if ML_MODEL_VAR == 'virtual':
     #     print('Running Detectron server with virtual model')
     #     print('Serving virtual on ports 8765 and 8766')
@@ -18,7 +16,7 @@ if __name__ == '__main__':
     #     d2.start()
 
     # elif ML_MODEL_VAR == 'real':
-    
+
     print('Running Detectron server with real model')
     print('Serving real on ports 8767 and 8768')
 
@@ -48,3 +46,7 @@ if __name__ == '__main__':
     #     d2.start()
     #     d1_blender.start()
     #     d2_blender.start()
+
+
+if __name__ == '__main__':
+    main()
