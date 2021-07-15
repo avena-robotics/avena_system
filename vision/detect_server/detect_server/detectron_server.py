@@ -1,6 +1,6 @@
 import multiprocessing
 import os
-from functions import run_detectron_server
+from .functions import run_detectron_server
 
 if __name__ == '__main__':
 
