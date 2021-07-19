@@ -1,5 +1,5 @@
-#ifndef _LOGIC_BT_HPP
-#define LOGIC_BT_HPP
+#ifndef SECURITY_RGB_HPP
+#define SECURITY_RGB_HPP
 #include <rclcpp/rclcpp.hpp>
 #include <chrono>
 #include <tuple>
