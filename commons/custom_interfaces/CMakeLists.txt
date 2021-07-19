@@ -68,6 +68,7 @@ set(srv_files
   "srv/GetArmState.srv"
   "srv/ChangeTool.srv"
   "srv/ControlCommand.srv"
+  "srv/SetTrajectory.srv"
   "srv/GUIPopUp.srv"
 )
 
