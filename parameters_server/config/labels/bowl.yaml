@@ -1,0 +1,21 @@
+fit_method: "bowl"
+fit_method_parameters: null
+item: true
+element: true
+components: null
+is_container: true
+item_description:
+  z_axis_offset: 0.0435 #height/2 for dishes 
+  lower_angle: 0.295
+  higher_angle: 0.1
+  lower_disc_height: 0
+  lower_disc_radius: 0.0546 #b2 0.05 #B3   0.07 # b1 0.0546
+  middle_disc_height: 0.025
+  middle_disc_radius: 0.06874
+  upper_disc_height:  0.0784 #b2 0.128 #B3 0.094 #b1  0.0784
+  upper_disc_radius: 0.087 #b2 0.14 # B3 0.15 #b1 0.087
+  base_height: 0.01
+  # bigger_radius: 0.087 ??
+  # smaller_radius: 0.0546 ??
+  # height: 0.0784 ??
+

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="hand">
+  <!-- safety_distance: Minimum safety distance in [m] by which the collision volumes are expanded and which is enforced during robot motions -->
+  <xacro:macro name="hand" params="connected_to:=''  description_pkg:='avena_bringup' arm_id:='panda' ns:='' rpy:='0 0 0' xyz:='0 0 0' safety_distance:=0">
+    <xacro:unless value="${connected_to == ''}">
+     
+      <joint name="${arm_id}_hand_joint" type="fixed">
+        <parent link="${connected_to}"/>
+        <child link="${arm_id}_gripper"/>
+        <origin xyz="${xyz}" rpy="0 0 -0.785"/>
+      </joint>
+
+    </xacro:unless>
+    <link name="${arm_id}_gripper">
+      <visual>
+        <geometry>
+          <mesh filename="package://${description_pkg}/urdf/meshes/visual/hand.dae"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0.04" rpy="0 ${pi/2} ${pi/2}"/>
+        <geometry>
+          <cylinder radius="${0.04+safety_distance}" length="0.1" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 -0.05 0.04" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${0.04+safety_distance}"  />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0.05 0.04" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${0.04+safety_distance}"  />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0 0.1" rpy="0 ${pi/2} ${pi/2}"/>
+        <geometry>
+          <cylinder radius="${0.02+safety_distance}" length="0.1" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 -0.05 0.1" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${0.02+safety_distance}"  />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0.05 0.1" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${0.02+safety_distance}"  />
+        </geometry>
+      </collision>
+    </link>
+    <link name="${arm_id}_gripper_left_finger">
+      <visual>
+        <geometry>
+          <mesh filename="package://${description_pkg}/urdf/meshes/visual/finger.dae"/>
+        </geometry>
+      </visual>
+    </link>
+    <link name="${arm_id}_gripper_right_finger">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
+        <geometry>
+          <mesh filename="package://${description_pkg}/urdf/meshes/visual/finger.dae"/>
+        </geometry>
+      </visual>
+   </link>
+    <joint name="${arm_id}_gripper_joint_1" type="prismatic">
+      <parent link="${arm_id}_gripper"/>
+      <child link="${arm_id}_gripper_left_finger"/>
+      <origin xyz="0 0 0.0584" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit effort="20" lower="0.0" upper="0.04" velocity="0.2"/>
+    </joint>
+    <joint name="${arm_id}_gripper_joint_2" type="prismatic">
+      <parent link="${arm_id}_gripper"/>
+      <child link="${arm_id}_gripper_right_finger"/>
+      <origin xyz="0 0 0.0584" rpy="0 0 0"/>
+      <axis xyz="0 -1 0"/>
+      <limit effort="20" lower="0.0" upper="0.04" velocity="0.2"/>
+      <mimic joint="${arm_id}_gripper_joint_1" />
+    </joint>
+  </xacro:macro>
+</robot>

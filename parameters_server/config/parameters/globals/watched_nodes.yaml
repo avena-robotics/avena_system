@@ -1,0 +1,25 @@
+nodes:
+  - azure_driver
+  - ptcld_transformer
+  - robot_self_filter
+  - change_detect
+  - scene_publisher
+  - detect
+  - filter_detections
+  - select_new_masks
+  - compose_items
+  - estimate_shape
+  - merge_items
+  - octomap_filter
+  - spawn_collision_items
+  - get_occupancy_grid
+  - item_select
+  - place
+  - grasp
+  - change_gripper
+  - control_sim_ros2
+  - path_buffer
+  - generate_path
+  - generate_trajectory
+  - execute_move
+

@@ -1,0 +1,5 @@
+float32 item_width
+float32 grasp_width
+float32 squeeze_width
+geometry_msgs/Pose grasp_pose
+geometry_msgs/Pose pregrasp_pose

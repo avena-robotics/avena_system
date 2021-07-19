@@ -1,0 +1,16 @@
+min_exter: 
+  x: 0.0
+  y: -1.2
+  z: 0.0
+max_exter: 
+  x: 0.8
+  y: 1.2
+  z: 1.0
+min_inter: 
+  x: 0.1
+  y: -1.1
+  z: 0.0
+max_inter: 
+  x: 0.7
+  y: 1.1
+  z: 1.0

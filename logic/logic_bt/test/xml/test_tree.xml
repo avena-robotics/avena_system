@@ -1,0 +1,21 @@
+<root main_tree_to_execute = "CheckStatus">
+    <include path="/root/ros2_ws/src/avena_ros2/logic_bt/xml/subtrees/test_subtree.xml"/>
+    <BehaviorTree ID="CheckStatus">
+        <SequenceStar>
+            <Action ID="CalculateGoal1" target="target_position"/>
+            <Condition ID="GUIParamsWriter" what_to_pick="what_to_pick" where_to_put="where_to_put"/>
+            <Condition ID="SecurityIsTriggered"/>
+            <Condition ID="DangerToolInHand"/>
+            <Condition ID="SecurityPauseON"/>
+            <Condition ID="SecurityPauseOFF"/>
+            <Condition ID="GuiWarning"/>
+            <Fallback>
+                <Condition ID="GoalCondition" what_to_pick="{what_to_pick}" where_to_put="{where_to_put}"/>
+                <SequenceStar>
+                    <Action ID="PopUpMessage" what_to_pick="{what_to_pick}" where_to_put="{where_to_put}"/>
+                    <SubTree ID="MoveBaseActions" GoalPosition="target_position"/>
+                </SequenceStar>
+            </Fallback>
+        </SequenceStar>
+    </BehaviorTree>
+</root>

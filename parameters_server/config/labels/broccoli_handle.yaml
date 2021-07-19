@@ -1,0 +1,8 @@
+fit_method: cylinder
+is_container: false
+fit_method_parameters: 
+  radius_max: 0.04
+  radius_min: 0.01
+item: false
+element: true
+components: null

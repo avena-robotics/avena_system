@@ -1,0 +1,7 @@
+fit_method: "cylindersegments"
+fit_method_parameters: 
+  segment_len: 0.05
+item: true
+element: true
+components: null
+is_container: false

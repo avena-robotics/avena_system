@@ -1,0 +1,3 @@
+std_msgs/Int32[] item_parts
+---
+std_msgs/Int32 items_handle
