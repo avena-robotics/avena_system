@@ -23,7 +23,7 @@ find_package(qt_gui_cpp REQUIRED)
 find_package(rqt_gui_cpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(cv_bridge REQUIRED)
+# find_package(cv_bridge REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(custom_interfaces REQUIRED)
@@ -51,7 +51,7 @@ set(avena_view_INCLUDE_DIRECTORIES
   ${custom_interfaces_INCLUDE_DIRS}
   ${sensor_msgs_INCLUDE_DIRS}
   ${geometry_msgs_INCLUDE_DIRS}
-  ${cv_bridge_INCLUDE_DIRS}
+  # ${cv_bridge_INCLUDE_DIRS}
   ${Qt5Widgets_INCLUDE_DIRS}
 )
 

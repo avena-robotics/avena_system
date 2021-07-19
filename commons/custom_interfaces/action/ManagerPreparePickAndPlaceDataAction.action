@@ -1,0 +1,29 @@
+#Request
+string selected_item_label
+string selected_area_label
+string selected_area_operator
+string selected_policy
+string distance_parameter_min
+string distance_parameter_max
+string selected_area_label_place
+string selected_area_operator_place
+string search_shift
+string place_positions_required
+
+# pick and place parameters
+float32 constrain_value
+uint16 ik_trials_number
+uint16 max_final_states
+uint16 ompl_compare_trials
+uint16 min_path_points
+uint16 max_time
+uint16 max_simplification_time
+
+---
+#Results
+GraspData grasp_pose
+trajectory_msgs/JointTrajectory pick_to_place
+trajectory_msgs/JointTrajectory path_to_pick
+
+---
+# Feedback

@@ -5,12 +5,6 @@
 
 #include <ui_avena_view.h>
 
-#include <image_transport/image_transport.hpp>
-#include <image_transport/subscriber.hpp>
-
-#include <sensor_msgs/msg/image.hpp>
-#include <geometry_msgs/msg/point.hpp>
-
 // #include <opencv2/core/core.hpp>
 
 #include <QAction>
@@ -123,7 +117,10 @@ namespace avena_view
         virtual void pausePickPlace();
         virtual void runCalibration();
         virtual void showQuestionMessageBox(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
+        
         virtual void showSecurityRgbWarning();
+        virtual void hideSecurityRgbWarning();
+
         virtual void publishDangerToolStatus();
         virtual void changeDangerToolStatus();
         virtual void publishSetBackgroundSignal();
@@ -141,6 +138,7 @@ namespace avena_view
     signals:
         virtual void questionRecived(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
         virtual void securityWarningRecived();
+        virtual void securityWarningClosed();
         virtual void securityTriggerChanged(bool msg);
         virtual void securityPauseChanged(bool msg);
         virtual void dangerToolStatusChanged(bool msg);
@@ -182,6 +180,8 @@ namespace avena_view
 
         void setUpIdBasedOnSavedPid();
 
+        void setUpGuiWarningUi();
+
         void sendPickPlaceGoal(const std::string& command);
         void pickPlaceGoalResponseCallback(std::shared_future<GoalHandleBTPickAndPlaceAction::SharedPtr> future);
         void pickPlaceFeedbackCallback(
@@ -198,6 +198,7 @@ namespace avena_view
         QWidget* widget_;
         std::shared_ptr<QTimer> refreshing_node_list_timer_;
         std::shared_ptr<QTimer> publishing_danger_tool_status_timer_;
+        std::shared_ptr<QMessageBox> security_rgb_warning_;
 
         std::shared_ptr<QGraphicsScene> arm_control_graphics_scene_;
         std::shared_ptr<QGraphicsScene> pick_place_graphics_scene_;
@@ -213,6 +214,7 @@ namespace avena_view
         NodeListMap node_list_;
         bool refreshing_on_;
         bool danger_tool_status_;
+        bool previus_gui_warning_msg_;
 
         Status pick_place_status_;
 

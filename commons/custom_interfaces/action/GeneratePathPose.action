@@ -1,0 +1,7 @@
+# Request
+geometry_msgs/Pose end_effector_pose
+---
+# Result
+trajectory_msgs/JointTrajectory pick_to_place
+---
+# Feedback

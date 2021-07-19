@@ -1,0 +1,4 @@
+string what_to_pick
+string where_to_put
+---
+bool result

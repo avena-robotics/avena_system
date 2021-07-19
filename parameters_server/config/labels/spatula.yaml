@@ -1,0 +1,32 @@
+label: spatula
+fit_method: spatula
+fit_method_parameters: null
+item: true
+element: false
+is_container: false
+components: ["handle", "spatula_tool"]
+item_description:
+  offset_handle: 
+    x: 0
+    y: 0
+    z: -9.1637e-02
+  offset_connector: 
+    x: 0.0
+    y: 0.0
+    z:  5.22e-03
+  offset_spatula_tool: 
+    x: 0.0
+    y: 0.0
+    z:  9.69e-02
+  dimensions_handle: 
+    x: 0.0461677610874176
+    y: 0.047562628984451294
+    z: 0.09607085585594177
+  dimensions_connector: 
+    x: 1.5e-02 #5.33e-03 
+    y: 1.64e-02
+    z: 9.63e-02
+  dimensions_spatula_tool: 
+    x: 1.5e-02 #7.97e-03 to thin for octomap filter 
+    y: 3.9e-02 #3.57e-02
+    z: 8.74e-02

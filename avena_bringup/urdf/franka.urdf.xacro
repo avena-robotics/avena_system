@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="panda">
+  <xacro:include filename="$(find avena_bringup)/urdf/panda_arm.xacro"/>
+  <!-- <xacro:include filename="$(find avena_bringup)/urdf/hand.xacro"/> -->
+
+  <xacro:arg name="side" default="right" />
+  <xacro:arg name="description_pkg" default="avena_bringup" />
+  
+  <xacro:panda_arm arm_id="$(arg side)_franka" description_pkg="$(arg description_pkg)" safety_distance="0.03"/>
+  <!-- <xacro:hand arm_id="$(arg side)_franka" rpy="0 0 ${-pi/4}" connected_to="$(arg side)_franka_gripper_connection" safety_distance="0.03"/> -->
+</robot>

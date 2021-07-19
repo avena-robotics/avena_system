@@ -3,7 +3,6 @@
 
 namespace avena_view
 {
-
     AvenaView::AvenaView()
         : rqt_gui_cpp::Plugin(), widget_(0)
     {
@@ -14,6 +13,8 @@ namespace avena_view
 
     void AvenaView::initPlugin(qt_gui_cpp::PluginContext &context)
     {
+        // QApplication::setAttribute(Qt::AA_EnableHighDpiScaling); // DPI support
+        // QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
         widget_ = new QWidget();
         ui_.setupUi(widget_);
 
@@ -119,6 +120,10 @@ namespace avena_view
 
         connect(this, SIGNAL(logsAppeared(std_msgs::msg::String::SharedPtr)), this, SLOT(refreshLogConsole(std_msgs::msg::String::SharedPtr)));
         connect(this, SIGNAL(rosOutAppeared(rcl_interfaces::msg::Log::SharedPtr)), this, SLOT(refreshRosoutConsole(rcl_interfaces::msg::Log::SharedPtr)));
+
+        previus_gui_warning_msg_ = false;
+        setUpGuiWarningUi();
+        connect(this, SIGNAL(securityWarningClosed()), this, SLOT(hideSecurityRgbWarning()));
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
@@ -196,6 +201,13 @@ namespace avena_view
 #pragma endregion
 
 #pragma region UTILS
+
+    void AvenaView::setUpGuiWarningUi()
+    {
+        security_rgb_warning_ = std::make_shared<QMessageBox>();
+        security_rgb_warning_->setText("Security Area triggered. Waiting...");
+        security_rgb_warning_->setStandardButtons(nullptr);
+    }
 
     void AvenaView::writeTerminalAndUiLog(const char *msg, Status status, QTextBrowser *console)
     {
@@ -497,8 +509,8 @@ namespace avena_view
                 this->startNodes();
                 this->writeTerminalAndUiLog("Sucessfully started pick place system", Status::RUNNING, ui_.logConsole);
                 this->setUpStartedPickPlaceUi();
-                QTimer::singleShot(100, this, [this]()
-                                   { sendPickPlaceGoal("start"); });
+                // QTimer::singleShot(100, this, [this]()
+                //                    { sendPickPlaceGoal("start"); });
             };
             QTimer::singleShot(3000, this, post_start_action);
         }
@@ -770,8 +782,12 @@ namespace avena_view
 #pragma region CALLBACKS
     void AvenaView::guiWarningCallback(std_msgs::msg::Bool::SharedPtr msg)
     {
-        if (msg->data)
+        if (msg->data && !previus_gui_warning_msg_)
             emit securityWarningRecived();
+        else if(!msg->data && previus_gui_warning_msg_)
+            emit securityWarningClosed();
+            
+        previus_gui_warning_msg_ = msg->data;
     }
 
     void AvenaView::dangerToolStatusCallback(std_msgs::msg::Bool::SharedPtr msg)
@@ -962,7 +978,9 @@ namespace avena_view
 
     void AvenaView::showSecurityRgbWarning()
     {
-        writeLog( "Security RGB Warning" , ui_.logConsole); 
+        writeLog( "Security RGB Warning" , ui_.logConsole);
+        security_rgb_warning_->exec();
+
 
         // auto q_progress = std::make_shared<QProgressDialog>(
         //     "Securit4y area breached. Waiting 5s.", "Abort", 0, BT_WARNING_DURATION);
@@ -978,7 +996,14 @@ namespace avena_view
         //     q_progress->setValue(i);
         //     std::this_thread::sleep_for(std::chrono::seconds(1));
         // }
+        
+        
         // q_progress->setValue(BT_WARNING_DURATION);
+    }
+
+    void AvenaView::hideSecurityRgbWarning()
+    {
+        security_rgb_warning_->close();
     }
 
 #pragma endregion

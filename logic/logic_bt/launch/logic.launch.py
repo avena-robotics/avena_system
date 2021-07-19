@@ -6,7 +6,7 @@ def generate_launch_description():
         Node(
             package='logic_bt',
             namespace='',
-            executable='logic_bt'
+            executable='security_rgb'
             # prefix = ['xterm -e gdb -ex run --args']
         )])
 

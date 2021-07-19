@@ -1,0 +1,7 @@
+# Request
+string path_name
+trajectory_msgs/JointTrajectory generated_path
+---
+# Result
+---
+# Feedback
