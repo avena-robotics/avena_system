@@ -25,6 +25,24 @@ find_package(rclcpp_components REQUIRED)
 find_package(custom_interfaces REQUIRED)
 find_package(helpers_commons REQUIRED)
 
+find_package(Bullet REQUIRED PATHS /home/avena/repos/bullet3_install/lib/cmake/bullet NO_DEFAULT_PATH)
+
+message(${BULLET_ROOT_DIR})
+message(${BULLET_USE_FILE})
+message(${BULLET_INCLUDE_DIRS})
+message(${BULLET_LIBRARY_DIRS})
+
+set(BULLET_INCLUDE ${BULLET_ROOT_DIR} / ${BULLET_INCLUDE_DIRS})
+set(BULLET_LIBS ${BULLET_ROOT_DIR} / ${BULLET_LIBRARY_DIRS})
+
+message(${BULLET_INCLUDE})
+message(${BULLET_LIBS})
+
+include_directories(
+  include
+  ${BULLET_INCLUDE}
+)
+
 add_library(${PROJECT_NAME} SHARED 
   src/generate_path.cpp
 )
@@ -40,6 +58,9 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp_action
   rclcpp_components
   helpers_commons
+)
+target_link_libraries(${PROJECT_NAME}
+  ${BULLET_LIBS}/libBulletRobotics.so
 )
 rclcpp_components_register_nodes(${PROJECT_NAME} "generate_path::GeneratePath")
 install(

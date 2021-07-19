@@ -49,7 +49,9 @@ namespace generate_path
             std::bind(&GeneratePath::_handleGoalPose, this, std::placeholders::_1, std::placeholders::_2),
             std::bind(&GeneratePath::_handleCancelPose, this, std::placeholders::_1),
             std::bind(&GeneratePath::_handleAcceptedPose, this, std::placeholders::_1));
-
+        // _bullet_client = std::make_shared<b3RobotSimulatorClientAPI>();
+        // _bullet_client->connect(eCONNECT_SHARED_MEMORY);
+        // RCLCPP_INFO_STREAM(get_logger(), _bullet_client->getAPIVersion());
         return ReturnCode::SUCCESS;
     }
 

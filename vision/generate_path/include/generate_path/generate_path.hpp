@@ -1,6 +1,10 @@
 #ifndef GENERATE_PATH__GENERATE_PATH_HPP_
 #define GENERATE_PATH__GENERATE_PATH_HPP_
 
+// ___Bullet___
+// #include "/home/avena/repos/bullet3_install/include/bullet/RobotSimulator/b3RobotSimulatorClientAPI.h"
+// #include "/home/avena/repos/bullet3-3.17/examples/RobotSimulator/b3RobotSimulatorClientAPI.h"
+
 // ___ROS___
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
@@ -50,6 +54,7 @@ namespace generate_path
     rclcpp::Publisher<custom_interfaces::msg::GeneratedPath>::SharedPtr _generated_path_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _joint_state_sub;
     sensor_msgs::msg::JointState::SharedPtr _current_joint_states;
+    // std::shared_ptr<b3RobotSimulatorClientAPI> _bullet_client;
 
   };
 
