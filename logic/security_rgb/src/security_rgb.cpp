@@ -1,4 +1,4 @@
-#include "logic_bt/security_rgb.hpp"
+#include "security_rgb/security_rgb.hpp"
 
 std::tuple<bool, bool, size_t, size_t> truth_table(bool dt, bool st, size_t count1, size_t count2)
 {

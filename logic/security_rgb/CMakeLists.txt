@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(logic_bt)
+project(security_rgb)
 
 
 # Default to C++14

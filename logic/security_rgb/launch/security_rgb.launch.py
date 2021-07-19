@@ -4,7 +4,7 @@ from launch import LaunchDescription
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package='logic_bt',
+            package='security_rgb',
             namespace='',
             executable='security_rgb'
             # prefix = ['xterm -e gdb -ex run --args']
