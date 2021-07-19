@@ -25,5 +25,5 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
             'logic_bt'), 'launch', 'logic.launch.py'))
     )
-    
+
     return LaunchDescription([parameters_server, rgb_diff, logic_bt])

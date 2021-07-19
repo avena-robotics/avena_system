@@ -1,6 +1,5 @@
 #include "rgb_diff/rgb_diff_server.hpp"
 
-
 namespace rgb_diff_action_server
 {
     RgbDiffActionServer::RgbDiffActionServer(const rclcpp::NodeOptions &options)
@@ -14,129 +13,136 @@ namespace rgb_diff_action_server
 
         // SUBSCRIBERS
         _rgb_images_sub = create_subscription<custom_interfaces::msg::CamerasData>("cameras_data", qos_settings,
-                                                                                 [this](const custom_interfaces::msg::CamerasData::SharedPtr _rgb_images)
-                                                                                 {
-                                                                                    RCLCPP_DEBUG(this->get_logger(), "RGB images message received");
-                                                                                    _buffered_rgb_images = _rgb_images;
-                                                                                    //UNCOMMENT FOR TIMING
-                                                                                    // using clk = std::chrono::steady_clock;
-                                                                                    // auto start = clk::now();
-                                                                                    int dupa = 0;
-                                                                                    auto result = std::make_shared<RgbDiffAction::Result>();
+                                                                                   [this](const custom_interfaces::msg::CamerasData::SharedPtr _rgb_images)
+                                                                                   {
+                                                                                       RCLCPP_DEBUG(this->get_logger(), "RGB images message received");
+                                                                                       _buffered_rgb_images = _rgb_images;
+                                                                                       //UNCOMMENT FOR TIMING
+                                                                                       // using clk = std::chrono::steady_clock;
+                                                                                       // auto start = clk::now();
+                                                                                       int dupa = 0;
+                                                                                       auto result = std::make_shared<RgbDiffAction::Result>();
 
+                                                                                       if (_rgbdiff_background_cam1.empty() || _rgbdiff_background_cam2.empty())
+                                                                                       {
+                                                                                           this->_publisher_rgbdiff_result->publish(custom_interfaces::msg::RgbDiffResult());
+                                                                                           // to set background images as
+                                                                                           RCLCPP_ERROR(this->get_logger(), "Not performing diff operation - background images are not set");
+                                                                                           return;
+                                                                                       }
+                                                                                       else if (!_rgb_images || _rgb_images->header.stamp == builtin_interfaces::msg::Time())
+                                                                                       {
+                                                                                           this->_publisher_rgbdiff_result->publish(custom_interfaces::msg::RgbDiffResult());
+                                                                                           RCLCPP_ERROR(this->get_logger(), "Not performing diff operation - empty header in the RGB images message or no RGB images to process");
+                                                                                           return;
+                                                                                       }
+                                                                                       if (_last_processed_msg_timestamp == _rgb_images->header.stamp)
+                                                                                           RCLCPP_WARN(get_logger(), "New message has not arrived yet. Processing old message.");
+                                                                                       _last_processed_msg_timestamp = _rgb_images->header.stamp;
+                                                                                       // std::cout<<dupa++<<std::endl;
+                                                                                       //change ros images to cv::Mat
+                                                                                       // cv::Mat cam1_rgb, cam2_rgb, result_cam1, result_cam2;
+                                                                                       helpers::converters::rosImageToCV(_rgb_images->cam1_rgb, this->cam1_rgb);
+                                                                                       helpers::converters::rosImageToCV(_rgb_images->cam2_rgb, this->cam2_rgb);
 
-                                                                                    if(_rgbdiff_background_cam1.empty() || _rgbdiff_background_cam2.empty()){
-                                                                                        this->_publisher_rgbdiff_result->publish(custom_interfaces::msg::RgbDiffResult());
-                                                                                        // to set background images as 
-                                                                                        RCLCPP_ERROR(this->get_logger(), "Not performing diff operation - background images are not set");
-                                                                                        return;
-                                                                                    } else if (!_rgb_images || _rgb_images->header.stamp == builtin_interfaces::msg::Time()){
-                                                                                        this->_publisher_rgbdiff_result->publish(custom_interfaces::msg::RgbDiffResult());
-                                                                                        RCLCPP_ERROR(this->get_logger(), "Not performing diff operation - empty header in the RGB images message or no RGB images to process");
-                                                                                        return;
-                                                                                    }
-                                                                                    if (_last_processed_msg_timestamp == _rgb_images->header.stamp)
-                                                                                        RCLCPP_WARN(get_logger(), "New message has not arrived yet. Processing old message.");
-                                                                                    _last_processed_msg_timestamp = _rgb_images->header.stamp;
-                                                                                    // std::cout<<dupa++<<std::endl;
-                                                                                    //change ros images to cv::Mat
-                                                                                    // cv::Mat cam1_rgb, cam2_rgb, result_cam1, result_cam2;
-                                                                                    helpers::converters::rosImageToCV(_rgb_images->cam1_rgb, this->cam1_rgb);
-                                                                                    helpers::converters::rosImageToCV(_rgb_images->cam2_rgb, this->cam2_rgb);
-                 
+                                                                                       // cv::imshow("dupa2", this->cam2_rgb);
+                                                                                       // cv::waitKey(15);
+                                                                                       // std::cout<<dupa++<<std::endl;
 
-                                                                                    // cv::imshow("dupa2", this->cam2_rgb);
-                                                                                    // cv::waitKey(15);
-                                                                                    // std::cout<<dupa++<<std::endl;
+                                                                                       // perform background segmentation
+                                                                                       this->background_substractor(this->cam1_rgb, this->_rgbdiff_background_cam1, this->result_cam1);
+                                                                                       this->background_substractor(this->cam2_rgb, this->_rgbdiff_background_cam2, this->result_cam2);
+                                                                                       // cv::imshow("dupa", this->result_cam1);
+                                                                                       // cv::waitKey(25);
 
-                                                                                    // perform background segmentation
-                                                                                    this->background_substractor(this->cam1_rgb, this->_rgbdiff_background_cam1, this->result_cam1);
-                                                                                    this->background_substractor(this->cam2_rgb, this->_rgbdiff_background_cam2, this->result_cam2);
-                                                                                    // cv::imshow("dupa", this->result_cam1);
-                                                                                    // cv::waitKey(25);
+                                                                                       // apply security area masks
+                                                                                       cv::bitwise_and(this->result_cam1, this->_sec_area_cam1_mask, this->result_cam1);
+                                                                                       cv::bitwise_and(this->result_cam2, this->_sec_area_cam2_mask, this->result_cam2);
+                                                                                       // std::cout<<dupa++<<std::endl;
+                                                                                       std::cout << cv::countNonZero(this->result_cam2) << std::endl;
+                                                                                       std::cout << cv::countNonZero(this->result_cam1) << std::endl;
 
-                                                                                    // apply security area masks
-                                                                                    cv::bitwise_and(this->result_cam1, this->_sec_area_cam1_mask, this->result_cam1);
-                                                                                    cv::bitwise_and(this->result_cam2, this->_sec_area_cam2_mask, this->result_cam2);
-                                                                                    // std::cout<<dupa++<<std::endl;
-                                                                                    std::cout<<cv::countNonZero(this->result_cam2)<<std::endl;
-                                                                                    std::cout<<cv::countNonZero(this->result_cam1)<<std::endl;
+                                                                                       // std::cout<<cv::countNonZero(this->result_cam2)<<std::endl;
+                                                                                       // cv::imshow("dupa", this->result_cam1);
+                                                                                       // cv::imshow("dupa1", this->result_cam2);
 
-                                                                                    // std::cout<<cv::countNonZero(this->result_cam2)<<std::endl;
-                                                                                    // cv::imshow("dupa", this->result_cam1);
-                                                                                    // cv::imshow("dupa1", this->result_cam2);
+                                                                                       // cv::imshow("dupa", this->result_cam1);
 
-                                                                                    // cv::imshow("dupa", this->result_cam1);
+                                                                                       // cv::waitKey(15);
 
-                                                                                    // cv::waitKey(15);
-                 
-                                                                                    // std::cout<<cv::countNonZero(this->result_cam1)<<std::endl;
+                                                                                       // std::cout<<cv::countNonZero(this->result_cam1)<<std::endl;
 
-                                                                                    int change_sec_area = cv::countNonZero(this->result_cam1) + cv::countNonZero(this->result_cam2);
-                                                                                    // std::cout<<change_sec_area<<std::endl;
-                                                                                    // std::cout<<change_cam2<<std::endl;
+                                                                                       int change_sec_area = cv::countNonZero(this->result_cam1) + cv::countNonZero(this->result_cam2);
+                                                                                       // std::cout<<change_sec_area<<std::endl;
+                                                                                       // std::cout<<change_cam2<<std::endl;
 
-                                                                                    // cv::Mat result_cam1_rgb, result_cam2_rgb;
-                                                                                    // cv::cvtColor(this->result_cam1, this->result_cam1_rgb, cv::COLOR_GRAY2BGR);
-                                                                                    // cv::cvtColor(this->result_cam2, this->result_cam2_rgb, cv::COLOR_GRAY2BGR);
-                                                                                    // std::cout<<dupa++<<std::endl;
+                                                                                       // cv::Mat result_cam1_rgb, result_cam2_rgb;
+                                                                                       // cv::cvtColor(this->result_cam1, this->result_cam1_rgb, cv::COLOR_GRAY2BGR);
+                                                                                       // cv::cvtColor(this->result_cam2, this->result_cam2_rgb, cv::COLOR_GRAY2BGR);
+                                                                                       // std::cout<<dupa++<<std::endl;
 
-                                                                                    // sensor_msgs::msg::Image ros_mask_cam1, ros_mask_cam2;
-                                                                                    // helpers::converters::cvMatToRos(this->result_cam1_rgb, this->ros_mask_cam1);
-                                                                                    // helpers::converters::cvMatToRos(this->result_cam2_rgb, this->ros_mask_cam2);
-                                                                                    // std::cout<<dupa++<<std::endl;
+                                                                                       // sensor_msgs::msg::Image ros_mask_cam1, ros_mask_cam2;
+                                                                                       // helpers::converters::cvMatToRos(this->result_cam1_rgb, this->ros_mask_cam1);
+                                                                                       // helpers::converters::cvMatToRos(this->result_cam2_rgb, this->ros_mask_cam2);
+                                                                                       // std::cout<<dupa++<<std::endl;
 
+                                                                                       //publish diff masks
+                                                                                       // custom_interfaces::msg::RgbDiffResult::UniquePtr rgb_diff_msg(new custom_interfaces::msg::RgbDiffResult);
 
-                                                                                    //publish diff masks
-                                                                                    // custom_interfaces::msg::RgbDiffResult::UniquePtr rgb_diff_msg(new custom_interfaces::msg::RgbDiffResult);
+                                                                                       // rgb_diff_msg->cam1_change_mask = this->ros_mask_cam1;
+                                                                                       // rgb_diff_msg->cam2_change_mask = this->ros_mask_cam2;
 
-                                                                                    // rgb_diff_msg->cam1_change_mask = this->ros_mask_cam1;
-                                                                                    // rgb_diff_msg->cam2_change_mask = this->ros_mask_cam2;
-                                                                                    
-                                                                                    // rgb_diff_msg->cam1_change = change_cam1;
-                                                                                    // rgb_diff_msg->cam2_change = change_cam2;
-                                                                                    // std::cout<<dupa++<<std::endl;
+                                                                                       // rgb_diff_msg->cam1_change = change_cam1;
+                                                                                       // rgb_diff_msg->cam2_change = change_cam2;
+                                                                                       // std::cout<<dupa++<<std::endl;
 
-                                                                                    // UNCOMMENT ONE LINE BELOW TO PUBLISH DIFF MASKS
-                                                                                    // _publisher_rgbdiff_result->publish(std::move(rgb_diff_msg));
+                                                                                       // UNCOMMENT ONE LINE BELOW TO PUBLISH DIFF MASKS
+                                                                                       // _publisher_rgbdiff_result->publish(std::move(rgb_diff_msg));
 
-                                                                                    //PUBLISH BOOL FOR SECURTY AREA CHANGE
-                                                                                    std_msgs::msg::Bool::UniquePtr affirmative(new std_msgs::msg::Bool());
+                                                                                       //PUBLISH BOOL FOR SECURTY AREA CHANGE
+                                                                                       std_msgs::msg::Bool::UniquePtr affirmative(new std_msgs::msg::Bool());
 
-                                                                                    if (change_sec_area <= this->_rgbdiff_scene_change_threshold){
-                                                                                        affirmative->data = false;
-                                                                                        _publisher_security_area_changed->publish(std::move(affirmative));
-                                                                                    } else {
-                                                                                        affirmative->data = true;
-                                                                                        _publisher_security_area_changed->publish(std::move(affirmative));
-                                                                                    }
-                                                                                    
-                                                                                    // UNCOMMENT FOR TIMING
-                                                                                    // auto stop = clk::now();
-                                                                                    // auto duration = std::chrono::duration<double, std::milli>(stop - start);
-                                                                                    // RCLCPP_INFO(get_logger(), "[EXECUTION TIME]: " + std::to_string(duration.count()) + " ms");
-                                                                                 });
+                                                                                       if (change_sec_area <= this->_rgbdiff_scene_change_threshold)
+                                                                                       {
+                                                                                           affirmative->data = false;
+                                                                                           _publisher_security_area_changed->publish(std::move(affirmative));
+                                                                                       }
+                                                                                       else
+                                                                                       {
+                                                                                           affirmative->data = true;
+                                                                                           _publisher_security_area_changed->publish(std::move(affirmative));
+                                                                                       }
+
+                                                                                       // UNCOMMENT FOR TIMING
+                                                                                       // auto stop = clk::now();
+                                                                                       // auto duration = std::chrono::duration<double, std::milli>(stop - start);
+                                                                                       // RCLCPP_INFO(get_logger(), "[EXECUTION TIME]: " + std::to_string(duration.count()) + " ms");
+                                                                                   });
 
         _rgbdiff_set_background_sub = create_subscription<std_msgs::msg::Bool>("rgbdiff_set_background", qos_settings,
-                                                                                 [this](const std_msgs::msg::Bool::SharedPtr rgbdiff_background_trigger)
-                                                                                 {
-                                                                                    if (rgbdiff_background_trigger->data && _buffered_rgb_images != nullptr){
-                                                                                        if (_buffered_rgb_images){
+                                                                               [this](const std_msgs::msg::Bool::SharedPtr rgbdiff_background_trigger)
+                                                                               {
+                                                                                   if (rgbdiff_background_trigger->data && _buffered_rgb_images != nullptr)
+                                                                                   {
+                                                                                       if (_buffered_rgb_images)
+                                                                                       {
 
-                                                                                            RCLCPP_INFO(this->get_logger(), "Setting new background images");
-                                                                                            // read rgb from rgb topic and set as the new background
-                                                                                            
-                                                                                            helpers::converters::rosImageToCV(this->_buffered_rgb_images->cam1_rgb, this->_rgbdiff_background_cam1);
-                                                                                            helpers::converters::rosImageToCV(this->_buffered_rgb_images->cam2_rgb, this->_rgbdiff_background_cam2);
-                                                                                            // std::cout<<this->_rgbdiff_background_cam2.data<<std::endl;
+                                                                                           RCLCPP_INFO(this->get_logger(), "Setting new background images");
+                                                                                           // read rgb from rgb topic and set as the new background
 
-                                                                                            // cv::imwrite("cam1_rgb.png", this->_rgbdiff_background_cam1);
-                                                                                            // cv::imwrite("cam2_rgb.png", this->_rgbdiff_background_cam2);
-                                                                                        } else {
-                                                                                            RCLCPP_ERROR(this->get_logger(), "No RGB images recevied from RgbImages topic to set as background");
-                                                                                        }
-                                                                                    }  
-                                                                                 });
+                                                                                           helpers::converters::rosImageToCV(this->_buffered_rgb_images->cam1_rgb, this->_rgbdiff_background_cam1);
+                                                                                           helpers::converters::rosImageToCV(this->_buffered_rgb_images->cam2_rgb, this->_rgbdiff_background_cam2);
+                                                                                           // std::cout<<this->_rgbdiff_background_cam2.data<<std::endl;
+
+                                                                                           // cv::imwrite("cam1_rgb.png", this->_rgbdiff_background_cam1);
+                                                                                           // cv::imwrite("cam2_rgb.png", this->_rgbdiff_background_cam2);
+                                                                                       }
+                                                                                       else
+                                                                                       {
+                                                                                           RCLCPP_ERROR(this->get_logger(), "No RGB images recevied from RgbImages topic to set as background");
+                                                                                       }
+                                                                                   }
+                                                                               });
 
         _rgbdiff_pixel_threshold_sub = create_subscription<std_msgs::msg::Int32>("rgbdiff_pixel_threshold", qos_settings,
                                                                                  [this](const std_msgs::msg::Int32::SharedPtr rgbdiff_pixel_threshold)
@@ -146,11 +152,11 @@ namespace rgb_diff_action_server
                                                                                  });
 
         _rgbdiff_scene_change_threshold_sub = create_subscription<std_msgs::msg::Int32>("rgbdiff_scene_change_threshold", qos_settings,
-                                                                                 [this](const std_msgs::msg::Int32::SharedPtr rgbdiff_scene_change_threshold)
-                                                                                 {
-                                                                                     RCLCPP_DEBUG(this->get_logger(), "New RGB scene change threshold received");
-                                                                                     _rgbdiff_scene_change_threshold = rgbdiff_scene_change_threshold->data;
-                                                                                 });
+                                                                                        [this](const std_msgs::msg::Int32::SharedPtr rgbdiff_scene_change_threshold)
+                                                                                        {
+                                                                                            RCLCPP_DEBUG(this->get_logger(), "New RGB scene change threshold received");
+                                                                                            _rgbdiff_scene_change_threshold = rgbdiff_scene_change_threshold->data;
+                                                                                        });
 
         // PUBLISHERS
         _publisher_rgbdiff_result = create_publisher<custom_interfaces::msg::RgbDiffResult>("rgbdiff_result", qos_settings);
@@ -163,8 +169,7 @@ namespace rgb_diff_action_server
             std::bind(&RgbDiffActionServer::_handle_cancel, this, std::placeholders::_1),
             std::bind(&RgbDiffActionServer::_handle_accepted, this, std::placeholders::_1));
 
-
-        _watchdog = std::make_shared<helpers::Watchdog>(this, this,  "system_monitor");
+        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
         status = custom_interfaces::msg::Heartbeat::STOPPED;
     }
 
@@ -213,9 +218,11 @@ namespace rgb_diff_action_server
         std::thread{std::bind(&RgbDiffActionServer::_execute, this, std::placeholders::_1), goal_handle}.detach();
     }
 
-    std::shared_ptr<cv::Mat> RgbDiffActionServer::background_substractor(cv::Mat & target, cv::Mat &background, cv::Mat &result){
+    std::shared_ptr<cv::Mat> RgbDiffActionServer::background_substractor(cv::Mat &target, cv::Mat &background, cv::Mat &result)
+    {
         cvtColor(target, target, cv::COLOR_BGR2GRAY);
-        if (background.channels() != 1){
+        if (background.channels() != 1)
+        {
             cvtColor(background, background, cv::COLOR_BGR2GRAY);
         }
         result = cv::abs(background - target);
@@ -224,17 +231,17 @@ namespace rgb_diff_action_server
 
         return ret_mask;
     }
-    void RgbDiffActionServer::set_security_area_masks(){
+    void RgbDiffActionServer::set_security_area_masks()
+    {
 
         // UNCOMMENT WHEN MASKS READY
         this->_sec_area_cam1_mask = cv::imread("/root/ros2_ws/src/avena_ros2/rgb_diff/masks/cam1_mask.png", cv::IMREAD_GRAYSCALE);
 
         this->_sec_area_cam2_mask = cv::imread("/root/ros2_ws/src/avena_ros2/rgb_diff/masks/cam2_mask.png", cv::IMREAD_GRAYSCALE);
-
     }
     void RgbDiffActionServer::_execute(const std::shared_ptr<GoalHandleRgbDiffAction> goal_handle)
-    {   
-        if(status != custom_interfaces::msg::Heartbeat::RUNNING)
+    {
+        if (status != custom_interfaces::msg::Heartbeat::RUNNING)
         {
             RCLCPP_WARN(this->get_logger(), "Node isn't in RUNNING state");
             return;
