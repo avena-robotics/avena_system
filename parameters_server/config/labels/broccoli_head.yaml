@@ -1,0 +1,7 @@
+fit_method: octomap
+is_container: false
+fit_method_parameters: 
+  voxel_size: 0.005
+item: false
+element: true
+components: null

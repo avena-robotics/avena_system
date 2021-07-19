@@ -1,0 +1,10 @@
+<root main_tree_to_execute = "MoveBaseActions">
+    <BehaviorTree ID="MoveBaseActions">
+        <SequenceStar>
+            <Action ID="MoveBase1" goal="{GoalPosition}" />
+            <Action ID="MoveBase2" goal="{GoalPosition}" />
+            <Action ID="MoveBase3" goal="{GoalPosition}" />
+            <Action ID="MoveBase4" goal="{GoalPosition}" />
+        </SequenceStar>
+    </BehaviorTree>
+</root> 

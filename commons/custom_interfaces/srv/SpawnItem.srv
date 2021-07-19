@@ -1,0 +1,10 @@
+std_msgs/String type
+bool random_type
+geometry_msgs/Pose pose
+bool random_position
+bool random_orientation
+std_msgs/Int32 amount
+std_msgs/String area_name
+std_msgs/String point_name
+---
+bool success

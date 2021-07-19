@@ -1,0 +1,33 @@
+fit_method: plate
+fit_method_parameters: null
+item: true
+is_container: true
+element: true
+components: null
+item_description:
+  z_axis_offset: 0.0298 #dish height/2
+  lower_angle: 0.322
+  higher_angle: 0.2055
+  lower_disc_height: 0
+  lower_disc_radius : 0.06
+  middle_disc_height : 0.028
+  middle_disc_radius : 0.105
+  upper_disc_height : 0.0569
+  upper_disc_radius : 0.12609
+  base_height : 0.01
+
+
+
+
+
+
+
+  # lower_angle: 0.322
+  # higher_angle: 0.2055
+  # lower_disc_height: 0
+  # lower_disc_radius : 0.058 #p3 0.07 #P2 0.058 #0.06
+  # middle_disc_height : 0.028
+  # middle_disc_radius : 0.105
+  # upper_disc_height : 0.054 #p3 0.025 #P2 0.054 #0.0569
+  # upper_disc_radius : 0.11 #p3 0.094 #P2 0.11 #0.12609
+  # base_height : 0.01

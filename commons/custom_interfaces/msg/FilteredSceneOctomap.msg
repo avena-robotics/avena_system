@@ -1,0 +1,3 @@
+std_msgs/Header header
+
+sensor_msgs/PointCloud2 filtered_scene_octomap

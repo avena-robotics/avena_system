@@ -1,0 +1,7 @@
+# Request
+int32 selected_item_id
+---
+# Result
+GraspData[] grasp_poses
+---
+# Feedback

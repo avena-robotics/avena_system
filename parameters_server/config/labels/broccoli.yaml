@@ -1,0 +1,9 @@
+fit_method: broccoli
+is_container: false
+fit_method_parameters: 
+  radius_max: 0.04
+  radius_min: 0.01
+  voxel_size: 0.005
+item: true
+element: false
+components: ["broccoli_handle", "broccoli_head"]

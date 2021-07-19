@@ -1,0 +1,6 @@
+fit_method: octosphere
+fit_method_parameters: null
+item: true
+element: false
+is_container: false
+components: ["onion_root", "onion_chives"]

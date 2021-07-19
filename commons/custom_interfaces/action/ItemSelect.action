@@ -1,0 +1,11 @@
+# Request
+string selected_item_label
+string[] selected_area_label
+string selected_area_operator
+string selected_policy
+string distance_parameter_min
+string distance_parameter_max
+---
+int32[] selected_items_ids
+---
+# Feedback
