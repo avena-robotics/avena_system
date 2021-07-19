@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(generate_path)
+project(bullet_client)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -19,46 +19,39 @@ set(CMAKE_BUILD_TYPE RELEASE)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_action REQUIRED)
-find_package(rclcpp_components REQUIRED)
-find_package(custom_interfaces REQUIRED)
-find_package(helpers_commons REQUIRED)
-find_package(bullet_client REQUIRED)
+find_package(Bullet REQUIRED)
 
-add_library(${PROJECT_NAME} SHARED 
-  src/generate_path.cpp
+add_library(bullet_client SHARED
+  src/b3RobotSimulatorClientAPI.cpp
 )
-target_include_directories(${PROJECT_NAME} 
+target_include_directories(bullet_client 
   PUBLIC
+    ${BULLET_INCLUDE_DIRS}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_compile_definitions(${PROJECT_NAME} PRIVATE "GENERATE_PATH_BUILDING_LIBRARY")
-ament_target_dependencies(${PROJECT_NAME}
-  rclcpp
-  custom_interfaces
-  rclcpp_action
-  rclcpp_components
-  helpers_commons
-  bullet_client
+ament_target_dependencies(bullet_client 
+  Bullet
 )
-rclcpp_components_register_nodes(${PROJECT_NAME} "generate_path::GeneratePath")
+target_link_libraries(bullet_client
+  ${BULLET_LIBRARIES}
+  /usr/local/lib/libBulletRobotics.so
+)
+target_compile_definitions(bullet_client PRIVATE "BULLET_CLIENT_BUILDING_LIBRARY")
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(Bullet)
+
 install(
   DIRECTORY include/
   DESTINATION include
 )
 install(
-  TARGETS ${PROJECT_NAME}
+  TARGETS bullet_client
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
-)
-
-install(
-  DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}
+  INCLUDES DESTINATION include
 )
 
 # if(BUILD_TESTING)
@@ -72,14 +65,7 @@ install(
 #   ament_lint_auto_find_test_dependencies()
 # endif()
 
-ament_export_include_directories(
-  include
-)
-ament_export_libraries(
-  ${PROJECT_NAME}
-)
-ament_export_targets(
-  export_${PROJECT_NAME}
-)
+ament_export_include_directories(include)
+ament_export_libraries(bullet_client)
 
 ament_package()

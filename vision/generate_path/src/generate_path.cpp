@@ -9,6 +9,14 @@ namespace generate_path
         helpers::commons::setLoggerLevel(get_logger(), "debug");
         status = custom_interfaces::msg::Heartbeat::STOPPED;
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
+
+        RCLCPP_WARN(get_logger(), "Initializing bullet client...");
+        // TODO: Remove it
+        _bullet_client = std::make_shared<b3RobotSimulatorClientAPI>();
+        RCLCPP_WARN(get_logger(), "...done initializing bullet client");
+        RCLCPP_WARN_STREAM(get_logger(), _bullet_client->getAPIVersion());
+        
+        RCLCPP_WARN_STREAM(get_logger(), "DONE");
     }
 
     GeneratePath::~GeneratePath()
