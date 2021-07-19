@@ -1,0 +1,6 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b avena_view provides a GUI plugin for displaying detailed information about avena's robotic system.
+*/

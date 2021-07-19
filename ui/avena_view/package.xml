@@ -1,0 +1,62 @@
+<package format="2">
+  <name>avena_view</name>
+  <version>1.1.1</version>
+  <description>avena_view provides a GUI plugin for displaying images using image_transport.</description>
+  <maintainer email="mabel@openrobotics.org">Mabel Zhang</maintainer>
+
+  <license>BSD</license>
+
+  <author email="dthomas@osrfoundation.org">Dirk Thomas</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>cv_bridge</depend>
+  <depend>geometry_msgs</depend>
+  <depend>custom_interfaces</depend>
+  <depend>qtbase5-dev</depend>
+  <depend>rqt_gui</depend>
+  <depend>rqt_gui_cpp</depend>
+  <depend>qt_gui_cpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>yaml-cpp</depend>
+  <depend>parameters_server</depend>
+  <depend>avena_bringup</depend>
+  <!-- <depend>compose_items</depend>
+  <depend>select_new_masks</depend>
+  <depend>ptcld_transformer</depend> -->
+  <depend>logic_bt</depend>
+  <depend>rclcpp_action</depend>
+  <depend>rgb_diff</depend>
+
+  <!-- <build_depend>rclcpp</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>custom_interfaces</build_depend>
+  <build_depend>qtbase5-dev</build_depend>
+  <build_depend>rqt_gui</build_depend>
+  <build_depend>rqt_gui_cpp</build_depend>
+  <build_depend>qt_gui_cpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>yaml-cpp</build_depend>
+  <build_depend>compose_items</build_depend>
+  <build_depend>ptcld_transformer</build_depend>
+  <build_depend>avena_bringup</build_depend> -->
+
+  <!-- <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>rqt_gui</exec_depend>
+  <exec_depend>rqt_gui_cpp</exec_depend>
+  <exec_depend>qt_gui_cpp</exec_depend>
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>yaml-cpp</exec_depend>
+  <build_depend>compose_items</build_depend>
+  <build_depend>ptcld_transformer</build_depend>
+  <build_depend>avena_bringup</build_depend> -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+    <rqt_gui plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>
