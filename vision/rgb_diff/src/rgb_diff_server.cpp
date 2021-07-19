@@ -56,6 +56,9 @@ namespace rgb_diff_action_server
                                                                                        // cv::waitKey(25);
 
                                                                                        // apply security area masks
+                                                                                       std::cout<<"image input size"<< this->result_cam1.size()<<std::endl;
+                                                                                       std::cout<<"image security area size"<< this->_sec_area_cam1_mask.size()<<std::endl;
+
                                                                                        cv::bitwise_and(this->result_cam1, this->_sec_area_cam1_mask, this->result_cam1);
                                                                                        cv::bitwise_and(this->result_cam2, this->_sec_area_cam2_mask, this->result_cam2);
                                                                                        // std::cout<<dupa++<<std::endl;
@@ -235,9 +238,9 @@ namespace rgb_diff_action_server
     {
 
         // UNCOMMENT WHEN MASKS READY
-        this->_sec_area_cam1_mask = cv::imread("/root/ros2_ws/src/avena_ros2/rgb_diff/masks/cam1_mask.png", cv::IMREAD_GRAYSCALE);
+        this->_sec_area_cam1_mask = cv::imread("/home/robo/avena_ws/src/avena_system/vision/rgb_diff/masks/cam1_mask.png", cv::IMREAD_GRAYSCALE);
 
-        this->_sec_area_cam2_mask = cv::imread("/root/ros2_ws/src/avena_ros2/rgb_diff/masks/cam2_mask.png", cv::IMREAD_GRAYSCALE);
+        this->_sec_area_cam2_mask = cv::imread("/home/robo/avena_ws/src/avena_system/vision/rgb_diff/masks/cam2_mask.png", cv::IMREAD_GRAYSCALE);
     }
     void RgbDiffActionServer::_execute(const std::shared_ptr<GoalHandleRgbDiffAction> goal_handle)
     {

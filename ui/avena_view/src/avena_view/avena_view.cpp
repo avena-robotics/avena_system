@@ -206,7 +206,7 @@ namespace avena_view
     {
         security_rgb_warning_ = std::make_shared<QMessageBox>();
         security_rgb_warning_->setText("Security Area triggered. Waiting...");
-        security_rgb_warning_->setStandardButtons(nullptr);
+        // security_rgb_warning_->setStandardButtons(nullptr);
     }
 
     void AvenaView::writeTerminalAndUiLog(const char *msg, Status status, QTextBrowser *console)
