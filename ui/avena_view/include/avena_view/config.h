@@ -20,10 +20,11 @@
 #define PID_FILE_NAME "pid.dat"
 
 enum class ControlCommands{
-    START=1,
-    STOP=0,
+    INIT=0,
+    STOP=1,
     RESUME=2,
-    PAUSE=3
+    PAUSE=3,
+    EXECUTE=4
 };
 
 
