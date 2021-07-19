@@ -112,6 +112,7 @@ namespace avena_view
         virtual void stopArmController();
         virtual void resumeArmController();
         virtual void pauseArmController();
+        virtual void executeArmController();
         virtual void executePickPlace();
         virtual void cancelPickPlace();
         virtual void pausePickPlace();
