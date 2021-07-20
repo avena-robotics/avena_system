@@ -51,7 +51,7 @@ namespace generate_path
     rclcpp::Publisher<custom_interfaces::msg::GeneratedPath>::SharedPtr _generated_path_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _joint_state_sub;
     sensor_msgs::msg::JointState::SharedPtr _current_joint_states;
-    std::shared_ptr<b3RobotSimulatorClientAPI> _bullet_client;
+    std::shared_ptr<bullet_client::b3RobotSimulatorClientAPI> _bullet_client;
 
   };
 

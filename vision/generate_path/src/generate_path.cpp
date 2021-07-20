@@ -9,14 +9,6 @@ namespace generate_path
         helpers::commons::setLoggerLevel(get_logger(), "debug");
         status = custom_interfaces::msg::Heartbeat::STOPPED;
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
-
-        RCLCPP_WARN(get_logger(), "Initializing bullet client...");
-        // TODO: Remove it
-        _bullet_client = std::make_shared<b3RobotSimulatorClientAPI>();
-        RCLCPP_WARN(get_logger(), "...done initializing bullet client");
-        RCLCPP_WARN_STREAM(get_logger(), _bullet_client->getAPIVersion());
-        
-        RCLCPP_WARN_STREAM(get_logger(), "DONE");
     }
 
     GeneratePath::~GeneratePath()
@@ -57,9 +49,14 @@ namespace generate_path
             std::bind(&GeneratePath::_handleGoalPose, this, std::placeholders::_1, std::placeholders::_2),
             std::bind(&GeneratePath::_handleCancelPose, this, std::placeholders::_1),
             std::bind(&GeneratePath::_handleAcceptedPose, this, std::placeholders::_1));
-        // _bullet_client = std::make_shared<b3RobotSimulatorClientAPI>();
-        // _bullet_client->connect(eCONNECT_SHARED_MEMORY);
-        // RCLCPP_INFO_STREAM(get_logger(), _bullet_client->getAPIVersion());
+        _bullet_client = std::make_shared<bullet_client::b3RobotSimulatorClientAPI>();
+        bool connected = _bullet_client->connect(eCONNECT_SHARED_MEMORY);
+        if (!connected)
+        {
+            RCLCPP_WARN(get_logger(), "Cannot connect to physics server");
+            return ReturnCode::FAILURE;
+        }
+        RCLCPP_INFO_STREAM(get_logger(), "Connected to physics server successfully. API version: " << _bullet_client->getAPIVersion());
         return ReturnCode::SUCCESS;
     }
 
@@ -68,6 +65,8 @@ namespace generate_path
         _joint_state_sub.reset();
         _generated_path_pub.reset();
         _action_server_pose.reset();
+        if (_bullet_client->isConnected())
+            _bullet_client->disconnect();
         return ReturnCode::SUCCESS;
     }
 
