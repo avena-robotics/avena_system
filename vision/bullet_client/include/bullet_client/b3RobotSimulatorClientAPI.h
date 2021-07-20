@@ -2,6 +2,7 @@
 #define BULLET_CLIENT__B3_ROBOT_SIMULATOR_CLIENT_API_GUI_H
 
 #include <SharedMemory/b3RobotSimulatorClientAPI_NoGUI.h>
+#include <memory>
 
 namespace bullet_client
 {
@@ -11,6 +12,8 @@ namespace bullet_client
   class b3RobotSimulatorClientAPI : public b3RobotSimulatorClientAPI_NoGUI
   {
   public:
+    using SharedPtr = std::shared_ptr<b3RobotSimulatorClientAPI>;
+
     b3RobotSimulatorClientAPI();
 
     virtual ~b3RobotSimulatorClientAPI();

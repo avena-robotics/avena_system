@@ -15,14 +15,14 @@
 // ___Package___
 #include "generate_path/visibility_control.h"
 
-enum class ReturnCode
-{
-  SUCCESS = 0,
-  FAILURE
-};
-
 namespace generate_path
 {
+  enum class ReturnCode
+  {
+    SUCCESS = 0,
+    FAILURE
+  };
+
   class GeneratePath : public rclcpp::Node, public helpers::WatchdogInterface
   {
   public:
@@ -52,7 +52,6 @@ namespace generate_path
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _joint_state_sub;
     sensor_msgs::msg::JointState::SharedPtr _current_joint_states;
     std::shared_ptr<bullet_client::b3RobotSimulatorClientAPI> _bullet_client;
-
   };
 
 } // namespace generate_path
