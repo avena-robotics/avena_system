@@ -11,7 +11,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include "rclcpp_components/register_node_macro.hpp"
-
+#include <ament_index_cpp/get_package_prefix.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 // ___AVENA___
 // #include "detect_action_server/visibility_control.h"
 #include "custom_interfaces/action/simple_action.hpp"
@@ -36,14 +37,47 @@
 #include <nlohmann/json.hpp>
 #include <helpers_vision/helpers_vision.hpp>
 #include <helpers_commons/helpers_commons.hpp>
+#include "helpers_commons/structures.hpp"
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/video.hpp>
 #include <opencv2/bgsegm.hpp>
 
+//PCL
+#include <pcl/io/ply_io.h>
+#include <pcl/surface/concave_hull.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/filters/project_inliers.h>
+#include <robot_mask/robot_mask.hpp>
+
+#define WORLD "world"
+
+
 namespace rgb_diff_action_server
 {
+  struct AvenaMesh
+    {
+        AvenaMesh()
+            : cloud(new pcl::PointCloud<pcl::PointXYZ>)
+        {
+        }
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+        pcl::PolygonMesh mesh;
+    };
+
+  struct CameraParameters
+  {
+      float cx;
+      float cy;
+      float fx;
+      float fy;
+
+      size_t width;
+      size_t height;
+  };
+
+
   using json = nlohmann::json;
   class RgbDiffActionServer : public rclcpp::Node, public helpers::WatchdogInterface
   {
@@ -63,9 +97,13 @@ namespace rgb_diff_action_server
     std::string model;
     std::string detectron_error_body_key{"error_body"};
     int _rgbdiff_pixel_threshold =  70;
-    int _rgbdiff_scene_change_threshold = 500;
+    int _rgbdiff_scene_change_threshold = 50;
     std::shared_ptr<cv::Mat> background_substractor(cv::Mat &former, cv::Mat &latter, cv::Mat& target);
     void set_security_area_masks();
+
+
+    std::vector<std::string> _removeRobotPrefix(std::vector<std::string> link_names, std::string robot_prefix);
+
 
     //ROS
     rclcpp_action::Server<RgbDiffAction>::SharedPtr _action_server;
@@ -73,6 +111,8 @@ namespace rgb_diff_action_server
     rclcpp_action::CancelResponse _handle_cancel(const std::shared_ptr<GoalHandleRgbDiffAction> goal_handle);
     void _handle_accepted(const std::shared_ptr<GoalHandleRgbDiffAction> goal_handle);
     void _execute(const std::shared_ptr<GoalHandleRgbDiffAction> goal_handle);
+    std::unique_ptr<tf2_ros::TransformListener> _transform_listener;
+    std::unique_ptr<tf2_ros::Buffer> _transforms_buffer;
 
     // PUBLISHER
     rclcpp::Publisher<custom_interfaces::msg::RgbDiffResult>::SharedPtr _publisher_rgbdiff_result;
@@ -90,11 +130,20 @@ namespace rgb_diff_action_server
     cv::Mat cam1_rgb, cam2_rgb, result_cam1, result_cam2;
     cv::Mat result_cam1_rgb, result_cam2_rgb;
     cv::Mat _sec_area_cam1_mask, _sec_area_cam2_mask;
-    sensor_msgs::msg::Image ros_mask_cam1, ros_mask_cam2;
+    cv::Mat bckgrnd_robot_mask_cam1, bckgrnd_robot_mask_cam2;
 
+    sensor_msgs::msg::Image ros_mask_cam1, ros_mask_cam2;
+    std::map<std::string, AvenaMesh> _meshes;
+    std::vector<std::string> _robot_links_names;
+    helpers::commons::RobotInfo _robot_info;
     // custom_interfaces::msg::Cameras::SharedPtr _rgbdiff_threshold;
 
     builtin_interfaces::msg::Time _last_processed_msg_timestamp;
+
+
+robot_mask::RobotMask *_robot_mask_object;
+
+
   };
 
 } // namespace rgb_diff_action_server
