@@ -23,12 +23,12 @@ find_package(std_msgs REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(helpers_vision REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(robot_mask REQUIRED)
 
 
 include_directories(
   include
 )
-
 
 
 add_library(rgb_diff SHARED src/rgb_diff_server.cpp)
@@ -40,11 +40,10 @@ ament_target_dependencies(rgb_diff
   rclcpp_action
   rclcpp_components
   std_msgs
+  robot_mask
   )
 rclcpp_components_register_nodes(rgb_diff "rgb_diff_action_server::RgbDiffActionServer" EXECUTABLE rgb_diff)
 set(node_plugins "${node_plugins}rgb_diff_action_server::RgbDiffActionServer;$<TARGET_FILE:rgb_diff>\n")
-
-
 
 install(TARGETS
   rgb_diff
