@@ -16,45 +16,49 @@ SimpleController::~SimpleController()
 
 void SimpleController::loadFrictionChart(std::string path)
 {
-    std::string temp_s;
-    friction_comp temp_fc;
-    std::ifstream fs(path);
-    if (fs.good())
+    for (int jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        while (!fs.eof())
+        std::string temp_s;
+        friction_comp temp_fc;
+        RCLCPP_INFO_STREAM(_node->get_logger(), "Loading friction chart: "<<path+std::to_string(jnt_idx)+std::string(".txt"));
+        std::ifstream fs(path+std::to_string(jnt_idx)+std::string(".txt"));
+        if (fs.good())
         {
-            std::getline(fs, temp_s, ' ');
-            if (temp_s.empty())
+            while (!fs.eof())
             {
-                break;
+                std::getline(fs, temp_s, ' ');
+                if (temp_s.empty())
+                {
+                    break;
+                }
+                temp_fc.vel = std::stod(temp_s);
+                std::getline(fs, temp_s);
+                temp_fc.tq = std::stod(temp_s);
+                _friction_chart[jnt_idx].push_back(temp_fc);
             }
-            temp_fc.vel = std::stod(temp_s);
-            std::getline(fs, temp_s);
-            temp_fc.tq = std::stod(temp_s);
-            _friction_chart.push_back(temp_fc);
         }
-    }
-    fs.close();
-    for (size_t i = 0; i < _friction_chart.size(); i++)
-    {
-        std::cout << _friction_chart[i].vel << '\t' << _friction_chart[i].tq << std::endl;
+        fs.close();
+        for (size_t i = 0; i < _friction_chart[jnt_idx].size(); i++)
+        {
+            std::cout << _friction_chart[jnt_idx][i].vel << '\t' << _friction_chart[jnt_idx][i].tq << std::endl;
+        }
     }
 }
 
-double SimpleController::compensateFriction(double vel)
+double SimpleController::compensateFriction(double vel, int jnt_idx)
 {
-    if (_friction_chart.size() == 0)
+    if (_friction_chart[jnt_idx].size() == 0)
     {
         return 0;
     }
     int i = 0;
-    while (i < _friction_chart.size())
+    while (i < _friction_chart[jnt_idx].size())
     {
-        if (vel == _friction_chart[i].vel)
+        if (vel == _friction_chart[jnt_idx][i].vel)
         {
-            return _friction_chart[i].tq;
+            return _friction_chart[jnt_idx][i].tq;
         }
-        if (vel < _friction_chart[i].vel)
+        if (vel < _friction_chart[jnt_idx][i].vel)
         {
             break;
         }
@@ -62,16 +66,16 @@ double SimpleController::compensateFriction(double vel)
     }
     if (i == 0)
     {
-        return _friction_chart[i].tq;
+        return _friction_chart[jnt_idx][i].tq;
     }
-    if (i == _friction_chart.size())
+    if (i == _friction_chart[jnt_idx].size())
     {
-        return _friction_chart[i - 1].tq;
+        return _friction_chart[jnt_idx][i - 1].tq;
     }
     //linear interpolation
-    double v_diff = _friction_chart[i].vel - _friction_chart[i - 1].vel;
-    double tq_diff = _friction_chart[i].tq - _friction_chart[i - 1].tq;
-    return _friction_chart[i - 1].tq + ((tq_diff / v_diff) * (vel - _friction_chart[i - 1].vel));
+    double v_diff = _friction_chart[jnt_idx][i].vel - _friction_chart[jnt_idx][i - 1].vel;
+    double tq_diff = _friction_chart[jnt_idx][i].tq - _friction_chart[jnt_idx][i - 1].tq;
+    return _friction_chart[jnt_idx][i - 1].tq + ((tq_diff / v_diff) * (vel - _friction_chart[jnt_idx][i - 1].vel));
 }
 
 //only for debug purposes
@@ -258,6 +262,7 @@ void SimpleController::init()
     set_request->torques.resize(_joints_number);
     set_request->turn_motor.resize(_joints_number);
 
+    _friction_chart.resize(_joints_number);
     _Kp.resize(_joints_number);
     _Ki.resize(_joints_number);
     _Kd.resize(_joints_number);
@@ -286,6 +291,8 @@ void SimpleController::init()
     //parameters
     _node->declare_parameter<double>("error_margin", 0);
     _node->get_parameter("error_margin", _error_margin);
+    _node->declare_parameter<std::string>("config_path","");
+    _node->get_parameter("config_path", _config_path);
     for (int i = 0; i < _joints_number; i++)
     {
         //set defaults in case config file is not provided
@@ -320,7 +327,7 @@ void SimpleController::init()
     RCLCPP_INFO(_node->get_logger(), "dupa00");
     //load trajectory from txt (for testing purposes)
     loadTrajTxt("/home/avena/ros2_ws/src/avena_ros2_control/custom_controllers/zero_trajectory/");
-    loadFrictionChart("/home/avena/ros2_ws/src/avena_ros2_control/custom_controllers/config/f_chart_joint_0_f.txt");
+    loadFrictionChart(_config_path + std::string("/f_chart_joint_"));
     RCLCPP_INFO(_node->get_logger(), "dupa0");
     // for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     // {
@@ -368,7 +375,7 @@ void SimpleController::init()
         set_vel[jnt_idx] = -0.5;
         prev_pos[jnt_idx] = _get_result.get()->arm_current_positions[jnt_idx];
         //RCLCPP_INFO_STREAM(_node->get_logger(), "Chart file: " << (std::string("/root/temp/t_charts/chart_") + std::string("joint") + std::to_string(jnt_idx) + std::string("_") + std::to_string(dir) + std::string(".txt")));
-        chart[jnt_idx] = std::make_shared<std::ofstream>(std::string("/home/avena/ros2_ws/src/avena_ros2_control/custom_controllers/config/f_chart_") + std::string("joint_") + std::to_string(jnt_idx) + std::string(".txt"));
+        chart[jnt_idx] = std::make_shared<std::ofstream>(_config_path + std::string("/f_chart_") + std::string("joint_") + std::to_string(jnt_idx) + std::string(".txt"));
         // chart[jnt_idx] = std::make_shared<std::ofstream>(std::string("/home/avena/ros2_ws/src/avena_ros2_control/custom_controllers/config/f_chart_.txt"));
 
         for (int i = 0; i < n; i++)
@@ -458,7 +465,7 @@ void SimpleController::init()
             //calculate torques (PID+FF)
 
             _error = set_vel[jnt_idx] - v_avg[jnt_idx];
-            _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error) + compensateFriction(set_vel[jnt_idx]);
+            _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error) + compensateFriction(set_vel[jnt_idx],jnt_idx);
             //TODO: params
             if (std::abs(_error) < (0.009 + std::abs(set_vel[jnt_idx]) * 0.035))
             {
@@ -494,8 +501,8 @@ void SimpleController::init()
             _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
             //limit torque
             {
-                if (_set_torque_val * _torque_sign > 30)
-                    _set_torque_val = 30 * _torque_sign;
+                if (_set_torque_val * _torque_sign > 26)
+                    _set_torque_val = 26 * _torque_sign;
             }
             
 

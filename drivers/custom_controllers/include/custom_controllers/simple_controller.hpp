@@ -64,6 +64,7 @@ class SimpleController : public helpers::WatchdogInterface
         //parameters
         int _joints_number;
         double _error_margin;
+        std::string _config_path;
         std::vector<double> _Kp;
         std::vector<double> _Ki;
         std::vector<double> _Kd;
@@ -80,7 +81,7 @@ class SimpleController : public helpers::WatchdogInterface
         int _torque_sign, _vel_sign, _time, _remaining_time;
         int _controller_state;
 
-        std::vector<friction_comp> _friction_chart;
+        std::vector<std::vector<friction_comp>>_friction_chart;
         std::vector<std::vector<friction_comp>> measured_friction_comp;
 
         Eigen::VectorXd _q, _qd, _qdd, _tau;
@@ -117,7 +118,7 @@ class SimpleController : public helpers::WatchdogInterface
         void loadFrictionChart(std::string path);
         void updateParams(PID &pid, int joint_index);
         void loadTrajTxt(std::string path);
-        double compensateFriction(double vel);
+        double compensateFriction(double vel,int jnt_idx);
         void setCommand();
         void setTrajectory(const std::shared_ptr<custom_interfaces::srv::SetTrajectory::Request> request,
             std::shared_ptr<custom_interfaces::srv::SetTrajectory::Response>      response);

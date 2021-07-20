@@ -1,3 +1,4 @@
 /config/*.txt
 /trajectory/
 /zero_trajectory/
+/config/save/**

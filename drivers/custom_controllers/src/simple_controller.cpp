@@ -8,7 +8,7 @@ SimpleController::SimpleController(int argc, char **argv)
     rclcpp::init(argc, argv);
     _node = rclcpp::Node::make_shared("simple_controller");
     _watchdog = std::make_shared<helpers::Watchdog>(_node.get(), this, "system_monitor");
-    status=custom_interfaces::msg::Heartbeat::STOPPED;
+    status = custom_interfaces::msg::Heartbeat::STOPPED;
     _command_service = _node->create_service<custom_interfaces::srv::ControlCommand>("/arm_controller/commands", std::bind(&SimpleController::setState, this, std::placeholders::_1, std::placeholders::_2));
 }
 
@@ -16,49 +16,51 @@ SimpleController::~SimpleController()
 {
 }
 
-
 //TODO: chart for every joint + temp
 void SimpleController::loadFrictionChart(std::string path)
 {
-    std::string temp_s;
-    friction_comp temp_fc;
-    std::ifstream fs(path);
-    if (fs.good())
+    for (int jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        while (!fs.eof())
+        std::string temp_s;
+        friction_comp temp_fc;
+        std::ifstream fs(path+std::to_string(jnt_idx)+std::string(".txt"));
+        if (fs.good())
         {
-            std::getline(fs, temp_s, ' ');
-            if (temp_s.empty())
+            while (!fs.eof())
             {
-                break;
+                std::getline(fs, temp_s, ' ');
+                if (temp_s.empty())
+                {
+                    break;
+                }
+                temp_fc.vel = std::stod(temp_s);
+                std::getline(fs, temp_s);
+                temp_fc.tq = std::stod(temp_s);
+                _friction_chart[jnt_idx].push_back(temp_fc);
             }
-            temp_fc.vel = std::stod(temp_s);
-            std::getline(fs, temp_s);
-            temp_fc.tq = std::stod(temp_s);
-            _friction_chart.push_back(temp_fc);
         }
-    }
-    fs.close();
-    for (size_t i = 0; i < _friction_chart.size(); i++)
-    {
-        std::cout << _friction_chart[i].vel << '\t' << _friction_chart[i].tq << std::endl;
+        fs.close();
+        for (size_t i = 0; i < _friction_chart[jnt_idx].size(); i++)
+        {
+            std::cout << _friction_chart[jnt_idx][i].vel << '\t' << _friction_chart[jnt_idx][i].tq << std::endl;
+        }
     }
 }
 
-double SimpleController::compensateFriction(double vel)
+double SimpleController::compensateFriction(double vel, int jnt_idx)
 {
-    if (_friction_chart.size() == 0)
+    if (_friction_chart[jnt_idx].size() == 0)
     {
         return 0;
     }
     int i = 0;
-    while (i < _friction_chart.size())
+    while (i < _friction_chart[jnt_idx].size())
     {
-        if (vel == _friction_chart[i].vel)
+        if (vel == _friction_chart[jnt_idx][i].vel)
         {
-            return _friction_chart[i].tq;
+            return _friction_chart[jnt_idx][i].tq;
         }
-        if (vel < _friction_chart[i].vel)
+        if (vel < _friction_chart[jnt_idx][i].vel)
         {
             break;
         }
@@ -66,16 +68,16 @@ double SimpleController::compensateFriction(double vel)
     }
     if (i == 0)
     {
-        return _friction_chart[i].tq;
+        return _friction_chart[jnt_idx][i].tq;
     }
-    if (i == _friction_chart.size())
+    if (i == _friction_chart[jnt_idx].size())
     {
-        return _friction_chart[i - 1].tq;
+        return _friction_chart[jnt_idx][i - 1].tq;
     }
     //linear interpolation
-    double v_diff = _friction_chart[i].vel - _friction_chart[i - 1].vel;
-    double tq_diff = _friction_chart[i].tq - _friction_chart[i - 1].tq;
-    return _friction_chart[i - 1].tq + ((tq_diff / v_diff) * (vel - _friction_chart[i - 1].vel));
+    double v_diff = _friction_chart[jnt_idx][i].vel - _friction_chart[jnt_idx][i - 1].vel;
+    double tq_diff = _friction_chart[jnt_idx][i].tq - _friction_chart[jnt_idx][i - 1].tq;
+    return _friction_chart[jnt_idx][i - 1].tq + ((tq_diff / v_diff) * (vel - _friction_chart[jnt_idx][i - 1].vel));
 }
 
 //only for debug purposes
@@ -174,6 +176,7 @@ void SimpleController::setState(const std::shared_ptr<custom_interfaces::srv::Co
         RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received initialization command.");
         // _controller_state = 0; //stops control loop
         //engage brakes
+        response->feedback = "Received initialization command.";
         break;
 
     //stop
@@ -182,6 +185,7 @@ void SimpleController::setState(const std::shared_ptr<custom_interfaces::srv::Co
         // _controller_state = 1;
         // _t_stop = std::chrono::steady_clock::now();
         //starts init and control loop with 0 vel,acc - holds position
+        response->feedback = "Received stop command.";
         break;
     //resume
     case 2:
@@ -190,12 +194,15 @@ void SimpleController::setState(const std::shared_ptr<custom_interfaces::srv::Co
         {
             _controller_state = 2;
             _t_stop = std::chrono::steady_clock::now();
+            response->feedback = "Received resume command.";
         }
         else
         {
             RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Controller needs to be paused before resuming.");
+            response->feedback = "Controller needs to be paused before resuming.";
         }
         //(smoothly?) resumes previous trajectory
+
         break;
     //pause
     case 3:
@@ -205,10 +212,12 @@ void SimpleController::setState(const std::shared_ptr<custom_interfaces::srv::Co
             _controller_state = 3;
             _t_stop = std::chrono::steady_clock::now();
             _prev_time_factor = _time_factor;
+            response->feedback = "Received pause command.";
         }
         else
         {
             RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Controller needs to be running before pausing.");
+            response->feedback = "Controller needs to be running before pausing.";
         }
         //(smoothly?) pauses current trajectory
         //saves current trajectory progress
@@ -219,9 +228,11 @@ void SimpleController::setState(const std::shared_ptr<custom_interfaces::srv::Co
         RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received execute command.");
         _controller_state = 4;
         //starts executing current trajectory
+        response->feedback = "Received execute command.";
         break;
     default:
         RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received unknown command.");
+        response->feedback = "Received unknown command.";
         break;
     }
 
@@ -286,6 +297,7 @@ void SimpleController::init()
     set_request->torques.resize(_joints_number);
     set_request->turn_motor.resize(_joints_number);
 
+    _friction_chart.resize(_joints_number);
     _Kp.resize(_joints_number);
     _Ki.resize(_joints_number);
     _Kd.resize(_joints_number);
@@ -312,6 +324,8 @@ void SimpleController::init()
 
     //parameters
     _node->declare_parameter<double>("error_margin", 0);
+    _node->declare_parameter<std::string>("config_path", "");
+    _node->get_parameter("config_path", _config_path);
     _node->get_parameter("error_margin", _error_margin);
     for (int i = 0; i < _joints_number; i++)
     {
@@ -349,7 +363,7 @@ void SimpleController::init()
     _controller_state = 4;
     loadTrajTxt("/home/avena/ros2_ws/src/avena_ros2_control/custom_controllers/trajectory/");
     RCLCPP_INFO(_node->get_logger(), "Loaded test trajectory");
-    loadFrictionChart("/home/avena/ros2_ws/src/avena_ros2_control/custom_controllers/config/f_chart_joint_0_f.txt");
+    loadFrictionChart(_config_path + "/f_chart_joint_");
     RCLCPP_INFO(_node->get_logger(), "Loaded friction chart");
     // for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     // {
@@ -476,10 +490,7 @@ void SimpleController::init()
 
             // _set_torque_val += _c_friction_comp;
 
-            _set_torque_val += compensateFriction(_trajectory.points[_trajectory_index].velocities[jnt_idx]);
-
-
-
+            _set_torque_val += compensateFriction(_trajectory.points[_trajectory_index].velocities[jnt_idx],jnt_idx);
 
             //limit torque
             if (model.effortLimit[jnt_idx] != 0)
