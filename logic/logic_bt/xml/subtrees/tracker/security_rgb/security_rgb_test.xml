@@ -1,0 +1,108 @@
+<root main_tree_to_execute="SecurityRgb">
+    <!-- ////////// -->
+    <BehaviorTree ID="SecurityRgb">
+        <Fallback name="SecurityAreaIsTriggered Behaviour">
+            <Fallback>
+                <Sequence>
+                    <Inverter>
+                        <Condition ID="SecurityIsTriggered" node="{node}"/>
+                    </Inverter>
+                    <Condition ID="ReadTimer5Seconds" node="{node}"/>
+                    <Action ID="ResetTimer" node="{node}"/>
+                    <Action ID="SecurityPauseOff" node="{node}"/>
+                </Sequence>
+                <Condition ID="ReadTimerBetween5Seconds" node="{node}"/>
+            </Fallback>
+            <Sequence>
+                <Inverter>
+                    <Condition ID="DangerToolInHand" node="{node}"/>
+                </Inverter>
+                <Fallback>
+                    <Condition ID="ReadTimerBetween5Seconds" node="{node}"/>
+                    <Condition ID="SecurityIsTriggered" node="{node}"/>
+                </Fallback>
+                <Sequence>
+                    <Action ID="SecurityPauseOn" node="{node}"/>
+                    <Action ID="StartTimer" node="{node}"/>
+                    <Action ID="GuiWarning" node="{node}"/>
+                </Sequence>
+                <Sequence>
+                    <Condition ID="ReadTimer5Seconds" node="{node}"/>
+                    <Condition ID="SecurityPauseIsOn" node="{node}"/>
+                    <Action ID="SecurityPauseOff" node="{node}"/>
+                    <Action ID="StopTimer" node="{node}"/>
+                </Sequence>
+            </Sequence>
+            <Sequence>
+                <Condition ID="DangerToolInHand" node="{node}"/>
+                <Fallback>
+                    <Condition ID="ReadTimer5Seconds" node="{node}"/>
+                    <Sequence>
+                        <Action ID="SecurityPauseOn" node="{node}"/>
+                        <Action ID="StartTimer" node="{node}"/>
+                        <Action ID="GuiWarning" node="{node}"/>
+                    </Sequence>
+                </Fallback>
+                <Sequence>
+                    <Condition ID="ReadTimer5Seconds" node="{node}"/>
+                    <Fallback>
+                        <Sequence>
+                            <Condition ID="SecurityIsTriggered" node="{node}"/>
+                            <Inverter>
+                                <Condition ID="SecurityPauseIsOn" node="{node}"/>
+                            </Inverter>
+                            <Action ID="SecurityPauseOn" node="{node}"/>
+                            <Action ID="GuiWarning" node="{node}"/>
+                        </Sequence>
+                        <Sequence>
+                            <Inverter>
+                                <Condition ID="SecurityIsTriggered" node="{node}"/>
+                            </Inverter>
+                            <Action ID="SecurityPauseOff" node="{node}"/>
+                            <Action ID="StopTimer" node="{node}"/>
+                        </Sequence>
+                    </Fallback>
+                </Sequence>
+            </Sequence>
+        </Fallback>
+    </BehaviorTree>
+    <!-- ////////// -->
+    <TreeNodesModel>
+        <Condition ID="DangerToolInHand">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Condition>
+        <Action ID="GuiWarning">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Action>
+        <Condition ID="ReadTimer5Seconds">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Condition>
+        <Condition ID="ReadTimerBetween5Seconds">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Condition>
+        <Action ID="ResetTimer">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Action>
+        <Condition ID="SecurityIsTriggered">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Condition>
+        <Condition ID="SecurityPauseIsOn">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Condition>
+        <Action ID="SecurityPauseOff">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Action>
+        <Action ID="SecurityPauseOn">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Action>
+        <Action ID="StartTimer">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Action>
+        <Action ID="StopTimer">
+            <input_port name="node" type="std::shared_ptr&lt;rclcpp::Node>"/>
+        </Action>
+        <SubTree ID="SubTree"/>
+    </TreeNodesModel>
+    <!-- ////////// -->
+</root>
+

@@ -1,0 +1,8 @@
+max_grasp_width: 0.08
+finger_width: 0.018
+finger_length: 0.039
+finger_depth: 0.025
+hand_width: 0.2
+hand_length: 0.065
+hand_depth: 0.035
+

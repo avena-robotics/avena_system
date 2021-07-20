@@ -1,0 +1,84 @@
+<root main_tree_to_execute="SecurityRgb">
+    <!-- ////////// -->
+    <BehaviorTree ID="SecurityRgb">
+        <Fallback name="SecurityAreaIsTriggered Behaviour">
+            <Fallback>
+                <Sequence>
+                    <Inverter>
+                        <Condition ID="SecurityIsTriggered"  node="{node}"/>
+                    </Inverter>
+                    <Action ID="ResetTimer" node="{node}"/>
+                    <Action ID="SecurityPauseOff" node="{node}"/>
+                    <!-- <Action ID="StartTimer"/>                 -->
+            </Sequence>
+                <Condition ID="ReadTimerBetween5Seconds" node="{node}"/>
+            </Fallback>
+            <Sequence>
+                <Inverter>
+                    <Condition ID="DangerToolInHand" node="{node}"/>
+                </Inverter>
+                <Fallback>
+                    <Condition ID="ReadTimer5Seconds" node="{node}"/>
+                    <Sequence>
+                        <Action ID="SecurityPauseOn"  node="{node}"/>
+                        <Action ID="StartTimer" node="{node}"/>
+                        <Action ID="GuiWarning" node="{node}"/>
+                    </Sequence>
+                </Fallback>
+                <Sequence>
+                    <Condition ID="ReadTimer5Seconds" node="{node}"/>
+                    <Condition ID="SecurityPauseIsOn" node="{node}"/>
+                    <Action ID="SecurityPauseOff" node="{node}"/>
+                    <Action ID="StopTimer" node="{node}"/>
+                    <!-- <Action ID="ResetTimer"/> -->
+                </Sequence>
+            </Sequence>
+            <Sequence>
+                <Condition ID="DangerToolInHand" node="{node}"/>
+                <Fallback>
+                    <Condition ID="ReadTimer5Seconds" node="{node}"/>
+                    <Sequence>
+                        <Action ID="SecurityPauseOn"  node="{node}"/>
+                        <!-- <Action ID="ResetTimer"/> -->
+                        <Action ID="StartTimer" node="{node}"/>
+                        <Action ID="GuiWarning" node="{node}"/>
+                    </Sequence>
+                </Fallback>
+                <Sequence>
+                    <Condition ID="ReadTimer5Seconds" node="{node}"/>
+                    <Fallback>
+                        <Sequence>
+                            <Condition ID="SecurityIsTriggered" node="{node}"/>
+                            <Inverter>
+                            <Condition ID="SecurityPauseIsOn" node="{node}"/>
+                        </Inverter>
+                            <Action ID="SecurityPauseOn"  node="{node}"/>
+                            <Action ID="GuiWarning" node="{node}"/>
+                        </Sequence>
+                        <Sequence>
+                            <Inverter>
+                                <Condition ID="SecurityIsTriggered" node="{node}"/>
+                            </Inverter>
+                            <Action ID="SecurityPauseOff" node="{node}"/>
+                            <Action ID="StopTimer" node="{node}"/>
+                            <!-- <Action ID="ResetTimer"/> -->
+                        </Sequence>
+                    </Fallback>
+                </Sequence>
+            </Sequence>
+        </Fallback>
+    </BehaviorTree>
+    <!-- ////////// -->
+    <TreeNodesModel>
+        <Condition ID="DangerToolInHand" node="{node}"/>
+        <Action ID="GuiWarning" node="{node}"/>
+        <Condition ID="ReadTimer5Seconds" node="{node}"/>
+        <Action ID="ResetTimer" node="{node}"/>
+        <Condition ID="SecurityIsTriggered" node="{node}"/>
+        <Action ID="SecurityPauseOff" node="{node}"/>
+        <Action ID="SecurityPauseOn"  node="{node}"/>
+        <Action ID="StartTimer" node="{node}"/>
+        <Action ID="StopTimer" node="{node}"/>
+    </TreeNodesModel>
+    <!-- ////////// -->
+</root>

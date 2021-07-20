@@ -1,0 +1,13 @@
+# Request
+string[] selected_area_label
+string selected_area_operator
+string search_shift
+string place_positions_required
+int32 selected_item_id
+
+GraspData grasp_pose
+---
+#result
+PlaceData[] place_poses
+---
+# Feedback

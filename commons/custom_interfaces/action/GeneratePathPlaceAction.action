@@ -1,0 +1,16 @@
+# Request
+int32 selected_item_id
+GraspData grasp_pose
+PlaceData[] place_poses
+float32 constrain_value
+uint16 ik_trials_number
+uint16 max_final_states
+uint16 ompl_compare_trials
+uint16 min_path_points
+uint16 max_time
+uint16 max_simplification_time
+---
+# Result
+trajectory_msgs/JointTrajectory pick_to_place
+---
+# Feedback

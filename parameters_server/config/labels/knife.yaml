@@ -1,0 +1,24 @@
+fit_method: knife
+fit_method_parameters: null
+item: true
+element: false
+is_container: false
+components: ["handle", "blade"]
+item_description:
+  offset_handle: 
+    x: 0
+    y: 0
+    z: -1.0382e-01
+  offset_blade: 
+    x: 0.0
+    y: 0.0
+    z:  5.22e-02
+  dimensions_handle: 
+    x: 0.04482609033584595
+    y: 0.048599809408187866
+    z: 0.1045243963599205
+  dimensions_blade: 
+    x: 0.05
+    y: 0.015
+    z: 0.2051
+ 

@@ -1,0 +1,4 @@
+int32 item_id
+---
+std_msgs/String coppelia_name
+int32 coppelia_handle

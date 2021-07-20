@@ -1,0 +1,5 @@
+<launch>
+   <node pkg="custom_controllers" exec="friction_calibration" name="simple_controller" output="screen">
+      <param from="/home/avena/avena_system/src/avena_system/drivers/custom_controllers/config/simple_controller_friction.yaml"/>
+   </node>
+</launch>
