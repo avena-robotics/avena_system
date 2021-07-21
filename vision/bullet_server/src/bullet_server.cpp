@@ -46,7 +46,7 @@ namespace bullet_server
 
                                          delete example;
                                      });
-        _loading_scene_timer = create_wall_timer(std::chrono::milliseconds(2000), std::bind(&BulletServer::_createWorld, this));
+        _loading_scene_timer = create_wall_timer(std::chrono::milliseconds(500), std::bind(&BulletServer::_createWorld, this));
     }
 
     BulletServer::~BulletServer()
@@ -97,7 +97,6 @@ namespace bullet_server
         }
 
         //! robot params
-        std::string AVENA_ARM_URDF_PATH = "/home/avena/software/ros2_ws/franka2.urdf";
         b3RobotSimulatorLoadUrdfFileArgs URDF_LOAD_PARAMS;
 
         const double TABLE_HEIGHT = 0.545;
@@ -137,17 +136,23 @@ namespace bullet_server
 
         sim->setGravity(btVector3(0, 0, -9.81));
 
-        RCLCPP_INFO(get_logger(), "Spawning plane");
-        sim->loadURDF("/home/avena/repos/bullet3-3.17/data/plane.urdf");
+        // RCLCPP_INFO(get_logger(), "Spawning plane");
+        // sim->loadURDF("/home/avena/repos/bullet3-3.17/data/plane.urdf");
 
         //! LOAD AVENA ARM FROM URDF
-
         URDF_LOAD_PARAMS.m_forceOverrideFixedBase = true;
         URDF_LOAD_PARAMS.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
         URDF_LOAD_PARAMS.m_startPosition = btVector3(0.18, -0.35, TABLE_HEIGHT + 0.05);
         URDF_LOAD_PARAMS.m_startOrientation = sim->getQuaternionFromEuler(btVector3(0, 0, 0));
-        int robot_arm = sim->loadURDF(AVENA_ARM_URDF_PATH, URDF_LOAD_PARAMS);
 
+        const std::string robot_urdf = helpers::commons::getRobotDescription();
+        const std::string AVENA_ARM_URDF_PATH = "robot_description.urdf";
+        std::ofstream f(AVENA_ARM_URDF_PATH);
+        f << robot_urdf;
+        f.close();
+        sim->loadURDF(AVENA_ARM_URDF_PATH, URDF_LOAD_PARAMS);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! LOAD THE SCENE
         TABLE_COLLISION_ARGS.m_halfExtents = btVector3(TABLE_WIDTH_HALF, TABLE_LENGTH_HALF, TABLE_HEIGHT / 2.0);
         int table_collision = sim->createCollisionShape(GEOM_BOX, TABLE_COLLISION_ARGS);
@@ -232,47 +237,48 @@ namespace bullet_server
         sim->changeVisualShape(visual_);
         visual_.m_linkIndex = 7;
         sim->changeVisualShape(visual_);
+        ////////////////////////////////////////////////////////////////////////////////////////////
 
-        // Calibration mat params
-        CAL_MAT_COLLISION_ARGS.m_halfExtents = btVector3(0.21 / 2.0, 0.17 / 2.0, 0.02306 / 2.0);
-        int cal_mat_col = sim->createCollisionShape(GEOM_BOX, CAL_MAT_COLLISION_ARGS);
-        CAL_MAT_VISUAL_ARGS.m_halfExtents = btVector3(0.21 / 2.0, 0.17 / 2.0, 0.02306 / 2.0);
-        int cal_mat_vis = sim->createVisualShape(GEOM_BOX, CAL_MAT_VISUAL_ARGS);
-        CAL_MAT_BODY_ARGS.m_baseVisualShapeIndex = cal_mat_vis;
-        CAL_MAT_BODY_ARGS.m_baseCollisionShapeIndex = cal_mat_col;
-        CAL_MAT_BODY_ARGS.m_baseMass = 0.01;
-        CAL_MAT_BODY_ARGS.m_basePosition = btVector3(0, 0, 2);
+        // // Calibration mat params
+        // CAL_MAT_COLLISION_ARGS.m_halfExtents = btVector3(0.21 / 2.0, 0.17 / 2.0, 0.02306 / 2.0);
+        // int cal_mat_col = sim->createCollisionShape(GEOM_BOX, CAL_MAT_COLLISION_ARGS);
+        // CAL_MAT_VISUAL_ARGS.m_halfExtents = btVector3(0.21 / 2.0, 0.17 / 2.0, 0.02306 / 2.0);
+        // int cal_mat_vis = sim->createVisualShape(GEOM_BOX, CAL_MAT_VISUAL_ARGS);
+        // CAL_MAT_BODY_ARGS.m_baseVisualShapeIndex = cal_mat_vis;
+        // CAL_MAT_BODY_ARGS.m_baseCollisionShapeIndex = cal_mat_col;
+        // CAL_MAT_BODY_ARGS.m_baseMass = 0.01;
+        // CAL_MAT_BODY_ARGS.m_basePosition = btVector3(0, 0, 2);
 
-        int cal_mat_id = sim->createMultiBody(CAL_MAT_BODY_ARGS);
+        // int cal_mat_id = sim->createMultiBody(CAL_MAT_BODY_ARGS);
 
-        b3JointInfo joint_info;
-        joint_info.m_jointType = JointType::eFixedType;
+        // b3JointInfo joint_info;
+        // joint_info.m_jointType = JointType::eFixedType;
 
-        joint_info.m_jointAxis[0] = 0;
-        joint_info.m_jointAxis[1] = 0;
-        joint_info.m_jointAxis[2] = 0;
+        // joint_info.m_jointAxis[0] = 0;
+        // joint_info.m_jointAxis[1] = 0;
+        // joint_info.m_jointAxis[2] = 0;
 
-        btVector3 orient(0, 0, 3.14 / 4.0);
-        btQuaternion orient_ = sim->getQuaternionFromEuler(orient);
+        // btVector3 orient(0, 0, 3.14 / 4.0);
+        // btQuaternion orient_ = sim->getQuaternionFromEuler(orient);
 
-        joint_info.m_parentFrame[0] = 0;
-        joint_info.m_parentFrame[1] = 0;
-        joint_info.m_parentFrame[2] = 0.11;
-        joint_info.m_parentFrame[3] = orient_[0];
-        joint_info.m_parentFrame[4] = orient_[1];
-        joint_info.m_parentFrame[5] = orient_[2];
-        joint_info.m_parentFrame[6] = orient_[3];
+        // joint_info.m_parentFrame[0] = 0;
+        // joint_info.m_parentFrame[1] = 0;
+        // joint_info.m_parentFrame[2] = 0.11;
+        // joint_info.m_parentFrame[3] = orient_[0];
+        // joint_info.m_parentFrame[4] = orient_[1];
+        // joint_info.m_parentFrame[5] = orient_[2];
+        // joint_info.m_parentFrame[6] = orient_[3];
 
-        // b3LinkState state;
-        // sim->getLinkState(robot_arm, 7, 0, 0, &state);
-        // std::cout<<"x:"<<state.m_worldPosition[0]<<"   y:"<<state.m_worldPosition[1]<<"   z:"<<state.m_worldPosition[2]<<std::endl;
-        joint_info.m_childFrame[0] = 0;
-        joint_info.m_childFrame[1] = 0;
-        joint_info.m_childFrame[2] = 0;
-        joint_info.m_childFrame[3] = 0;
-        joint_info.m_childFrame[4] = 0;
-        joint_info.m_childFrame[5] = 0;
-        joint_info.m_childFrame[6] = 1;
+        // // b3LinkState state;
+        // // sim->getLinkState(robot_arm, 7, 0, 0, &state);
+        // // std::cout<<"x:"<<state.m_worldPosition[0]<<"   y:"<<state.m_worldPosition[1]<<"   z:"<<state.m_worldPosition[2]<<std::endl;
+        // joint_info.m_childFrame[0] = 0;
+        // joint_info.m_childFrame[1] = 0;
+        // joint_info.m_childFrame[2] = 0;
+        // joint_info.m_childFrame[3] = 0;
+        // joint_info.m_childFrame[4] = 0;
+        // joint_info.m_childFrame[5] = 0;
+        // joint_info.m_childFrame[6] = 1;
 
         // //! Add axes visualization to the end efector
         // constexpr int END_EFECTOR_LINK_INDEX = 6; // TODO: Should be more dynamic
@@ -299,8 +305,8 @@ namespace bullet_server
 
         // sim->resetJointState(robot_arm, 5, 2);
         //! Constrained body is not a part of the robot itself
-        std::cout << std::endl
-                  << "Constraints creator returned: " << sim->createConstraint(robot_arm, 6, cal_mat_id, -1, &joint_info) << std::endl;
+        // std::cout << std::endl
+        //           << "Constraints creator returned: " << sim->createConstraint(robot_arm, 6, cal_mat_id, -1, &joint_info) << std::endl;
 
         sim->disconnect();
         RCLCPP_INFO(get_logger(), "World created successfully");

@@ -18,7 +18,7 @@ namespace helpers
      * @param node 
      * @return std::string 
      */
-    std::string getRobotDescription(rclcpp::Node *node);
+    std::string getRobotDescription();
 
     /**
      * @brief Get the Robot Links Names object
@@ -26,15 +26,7 @@ namespace helpers
      * @param node 
      * @return std::vector<std::string> 
      */
-    std::vector<std::string> getRobotLinksNames(rclcpp::Node *node);
-
-    /**
-     * @brief Get the Robot Links Names object
-     * 
-     * @param node 
-     * @return std::vector<std::string> 
-     */
-    std::vector<std::string> getRobotLinksNames(rclcpp::Node::SharedPtr node);
+    std::vector<std::string> getRobotLinksNames();
 
     /**
      * @brief Get the Robot Info with basic information about robot e.g. prefix name, list of joints, list of links

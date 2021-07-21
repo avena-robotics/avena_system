@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="panda">
-  <xacro:include filename="$(find avena_bringup)/urdf/panda_arm.xacro"/>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="franka">
+  <xacro:include filename="$(find avena_bringup)/urdf/franka_arm.xacro"/>
   <xacro:include filename="$(find avena_bringup)/urdf/calibration_mat.xacro"/>
 
   <xacro:arg name="side" default="right" />
   <xacro:arg name="description_pkg" default="avena_bringup" />
 
-  <xacro:panda_arm arm_id="$(arg side)_franka" description_pkg="$(arg description_pkg)" safety_distance="0.03"/>
+  <xacro:franka_arm arm_id="$(arg side)_franka" description_pkg="$(arg description_pkg)" safety_distance="0.03"/>
 
   <!-- Calibration mat offsets -->
   <xacro:property name="grid_size" value="0.04025" />

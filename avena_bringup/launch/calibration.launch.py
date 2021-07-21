@@ -39,24 +39,12 @@ def launch_setup(context, *args, **kwargs):
         ),
         # IncludeLaunchDescription(
         #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-        #         'avena_bringup'), 'launch', 'data_streams.launch.py')),
+        #         'generate_trajectory'), 'launch', 'generate_trajectory.launch.py'))
         # ),
         # IncludeLaunchDescription(
         #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-        #         'scene_publisher'), 'launch', 'scene_publisher.launch.py'))
+        #         'path_buffer'), 'launch', 'path_buffer.launch.py'))
         # ),
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-        #         'octomap_filter'), 'launch', 'octomap_filter.launch.py'))
-        # ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-                'generate_trajectory'), 'launch', 'generate_trajectory.launch.py'))
-        ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-                'path_buffer'), 'launch', 'path_buffer.launch.py'))
-        ),
     ]
 
 

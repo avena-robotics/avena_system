@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="calibration_mat">
   <!-- safety_distance: Minimum safety distance in [m] by which the collision volumes are expanded and which is enforced during robot motions -->
   <xacro:macro name="calibration_mat" 
-               params="connected_to:='' grid_size:='1' description_pkg:='avena_bringup' arm_id:='panda' ns:='' rpy:='0 0 0' xyz:='0 0 0' safety_distance:=0">
+               params="connected_to:='' grid_size:='1' description_pkg:='avena_bringup' arm_id:='franka' ns:='' rpy:='0 0 0' xyz:='0 0 0' safety_distance:=0">
     
     <!-- ********************************************* -->
     <!-- Parameters -->

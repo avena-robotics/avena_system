@@ -338,7 +338,7 @@
       effort="0"
       velocity="0" />
   </joint>
-    <link name="Panda_gripper">
+    <link name="franka_gripper">
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
@@ -367,7 +367,7 @@
     <joint name="left_joint_7" type="fixed">
       <origin rpy="-0.985 -1.57 2.55" xyz="0 -0.027 0"/>
       <parent link="left_link_6"/>
-      <child link="Panda_gripper"/>
+      <child link="franka_gripper"/>
     </joint> -->
 
 </robot>

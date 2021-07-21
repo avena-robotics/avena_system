@@ -4,9 +4,10 @@ namespace helpers
 {
     namespace commons
     {
-        std::string getRobotDescription(rclcpp::Node *node)
+        std::string getRobotDescription()
         {
-            auto parameters_client = std::make_shared<rclcpp::SyncParametersClient>(node, "robot_state_publisher");
+            rclcpp::Node::SharedPtr temp_node = rclcpp::Node::make_shared("reading_robot_description_node", rclcpp::NodeOptions().enable_rosout(false).use_global_arguments(false));
+            auto parameters_client = std::make_shared<rclcpp::SyncParametersClient>(temp_node, "robot_state_publisher");
             while (!parameters_client->wait_for_service(std::chrono::seconds(1)))
             {
                 if (!rclcpp::ok())
@@ -21,9 +22,9 @@ namespace helpers
             return robot_urdf;
         }
 
-        std::vector<std::string> getRobotLinksNames(rclcpp::Node *node)
+        std::vector<std::string> getRobotLinksNames()
         {
-            std::string robot_urdf = getRobotDescription(node);
+            std::string robot_urdf = getRobotDescription();
             urdf::ModelInterfaceSharedPtr model = urdf::parseURDF(robot_urdf);
             std::vector<std::string> link_names;
             for (auto &[link_name, link_info] : model->links_)
@@ -32,11 +33,6 @@ namespace helpers
                     link_names.push_back(link_name);
             }
             return link_names;
-        }
-
-        std::vector<std::string> getRobotLinksNames(rclcpp::Node::SharedPtr node)
-        {
-            return getRobotLinksNames(node.get());
         }
 
         RobotInfo getRobotInfo(const std::string &side)

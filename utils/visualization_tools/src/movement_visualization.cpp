@@ -8,7 +8,7 @@ namespace visualization_tools
         helpers::commons::setLoggerLevel(get_logger(), "debug");
         _getParametersFromServer();
 
-        const std::string urdf_xml = helpers::commons::getRobotDescription(this);
+        const std::string urdf_xml = helpers::commons::getRobotDescription();
         _joint_state_to_tf.initModel(urdf_xml);
 
         if (auto world_to_base_link_tf = _getWorldToBaseLinkTf())

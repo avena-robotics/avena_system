@@ -75,26 +75,26 @@ ament_export_targets(
 )
 
 ###############################################################
-# Bullet server with shared memory with GUI
-add_executable(bullet_server_shared_memory_gui
-  src/main_opengl_single_example.cpp
-)
-target_include_directories(bullet_server_shared_memory_gui 
-  PUBLIC
-    ${BULLET_INCLUDE_DIRS}
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-ament_target_dependencies(bullet_server_shared_memory_gui 
-  bullet_client
-  Bullet
-)
-target_link_libraries(bullet_server_shared_memory_gui
-  ${BULLET_LIBRARIES}
-  /usr/local/lib/libBulletRoboticsGUI.so
-  /usr/local/lib/libBulletExampleBrowserLib.so
-  /usr/local/lib/libOpenGLWindow.so
-)
+# # Bullet server with shared memory with GUI
+# add_executable(bullet_server_shared_memory_gui
+#   src/main_opengl_single_example.cpp
+# )
+# target_include_directories(bullet_server_shared_memory_gui 
+#   PUBLIC
+#     ${BULLET_INCLUDE_DIRS}
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>
+# )
+# ament_target_dependencies(bullet_server_shared_memory_gui 
+#   bullet_client
+#   Bullet
+# )
+# target_link_libraries(bullet_server_shared_memory_gui
+#   ${BULLET_LIBRARIES}
+#   /usr/local/lib/libBulletRoboticsGUI.so
+#   /usr/local/lib/libBulletExampleBrowserLib.so
+#   /usr/local/lib/libOpenGLWindow.so
+# )
 
 # libBullet2FileLoader.so -> libBullet2FileLoader.so.3.17
 # libBullet2FileLoader.so.3.17
