@@ -267,6 +267,7 @@ namespace generate_path
 
     int _table_idx;
     int _robot_idx;
+    int _end_effector_idx;
   };
 
 } // namespace generate_path

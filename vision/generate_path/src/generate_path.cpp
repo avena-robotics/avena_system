@@ -112,12 +112,6 @@ namespace generate_path
 
         auto end_effector_pose = goal_handle.get()->get_goal()->end_effector_pose;
         auto goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose, _current_joint_states);
-        // if (!_generatePath(Job::POSE))
-        // {
-        //     RCLCPP_ERROR(get_logger(), "Generate path to pose aborted.");
-        //     goal_handle->abort(result);
-        //     return;
-        // }
 
         std::vector<float> joint_states(_current_joint_states->position.begin(), _current_joint_states->position.end());
         // std::vector<float> goal_states = {0, 0, 0, 0, 0, 2, 0};
@@ -154,27 +148,27 @@ namespace generate_path
 
     ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &joint_states)
     {
-        b3RobotSimulatorInverseKinematicArgs IK_ARGS;
+        b3RobotSimulatorInverseKinematicArgs ik_args;
         b3RobotSimulatorInverseKinematicsResults ik_results;
-        IK_ARGS.m_bodyUniqueId = _robot_idx;
-        IK_ARGS.m_endEffectorLinkIndex = _robot_info.nr_joints + 1;
-        IK_ARGS.m_endEffectorTargetPosition[0] = end_effector_pose.position.x;
-        IK_ARGS.m_endEffectorTargetPosition[1] = end_effector_pose.position.y;
-        IK_ARGS.m_endEffectorTargetPosition[2] = end_effector_pose.position.z + 0.545; // FIXME: Change the scene
-        IK_ARGS.m_endEffectorTargetOrientation[0] = end_effector_pose.orientation.x;
-        IK_ARGS.m_endEffectorTargetOrientation[1] = end_effector_pose.orientation.y;
-        IK_ARGS.m_endEffectorTargetOrientation[2] = end_effector_pose.orientation.z;
-        IK_ARGS.m_endEffectorTargetOrientation[3] = end_effector_pose.orientation.w;
-        IK_ARGS.m_numDegreeOfFreedom = _robot_info.nr_joints;
-        // IK_ARGS.m_currentJointPositions.resize(_robot_info.nr_joints);
+        ik_args.m_bodyUniqueId = _robot_idx;
+        ik_args.m_endEffectorLinkIndex = _end_effector_idx;
+        ik_args.m_endEffectorTargetPosition[0] = end_effector_pose.position.x;
+        ik_args.m_endEffectorTargetPosition[1] = end_effector_pose.position.y;
+        ik_args.m_endEffectorTargetPosition[2] = end_effector_pose.position.z + 0.545; // FIXME: Change the scene
+        ik_args.m_endEffectorTargetOrientation[0] = end_effector_pose.orientation.x;
+        ik_args.m_endEffectorTargetOrientation[1] = end_effector_pose.orientation.y;
+        ik_args.m_endEffectorTargetOrientation[2] = end_effector_pose.orientation.z;
+        ik_args.m_endEffectorTargetOrientation[3] = end_effector_pose.orientation.w;
+        ik_args.m_numDegreeOfFreedom = _robot_info.nr_joints;
+        // ik_args.m_currentJointPositions.resize(_robot_info.nr_joints);
         // for (size_t i = 0; i < _robot_info.nr_joints; ++i)
-        //     IK_ARGS.m_currentJointPositions[i] = joint_states->position[i];
+        //     ik_args.m_currentJointPositions[i] = joint_states->position[i];
 
-        IK_ARGS.m_flags = B3_HAS_IK_TARGET_ORIENTATION;// | B3_HAS_CURRENT_POSITIONS;
+        // ik_args.m_flags = B3_HAS_IK_TARGET_ORIENTATION;// | B3_HAS_CURRENT_POSITIONS;
 
-        RCLCPP_ERROR_STREAM(get_logger(), "IK_ARGS.m_flags: " << IK_ARGS.m_flags);
+        RCLCPP_ERROR_STREAM(get_logger(), "ik_args.m_flags: " << ik_args.m_flags);
 
-        _bullet_client->calculateInverseKinematics(IK_ARGS, ik_results);
+        _bullet_client->calculateInverseKinematics(ik_args, ik_results);
         ArmConfiguration goal_configuration(_robot_info.nr_joints);
         for (size_t i = 0; i < goal_configuration.size(); i++)
         {
@@ -209,6 +203,12 @@ namespace generate_path
                 {
                     b3JointInfo joint_info;
                     _bullet_client->getJointInfo(body_unique_id, joint_idx, &joint_info);
+
+                    // RCLCPP_WARN_STREAM(get_logger(), joint_info.m_jointName << ", " << joint_info.m_linkName);
+
+                    if (std::strcmp(joint_info.m_linkName, _robot_info.connection.c_str()) == 0)
+                        _end_effector_idx = joint_idx;
+
                     if (joint_info.m_jointType != JointType::eFixedType)
                     {
                         auto joint_name_it = std::find(joint_states->name.begin(), joint_states->name.end(), std::string(joint_info.m_jointName));
@@ -223,6 +223,9 @@ namespace generate_path
                 _table_idx = body_unique_id;
             }
         }
+
+        RCLCPP_INFO_STREAM(get_logger(), "End effector ID: " << _end_effector_idx);
+
         return ReturnCode::SUCCESS;
     }
 
