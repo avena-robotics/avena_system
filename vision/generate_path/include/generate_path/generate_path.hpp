@@ -229,13 +229,13 @@ namespace generate_path
     FAILURE
   };
 
+  using GeneratePathPose = custom_interfaces::action::GeneratePathPose;
+  using GoalHandleGeneratePathPose = rclcpp_action::ServerGoalHandle<GeneratePathPose>;
+  using ArmConfiguration = std::vector<float>;
+
   class GeneratePath : public rclcpp::Node, public helpers::WatchdogInterface
   {
   public:
-    using GeneratePathPose = custom_interfaces::action::GeneratePathPose;
-    using GoalHandleGeneratePathPose = rclcpp_action::ServerGoalHandle<GeneratePathPose>;
-    using ArmConfiguration = std::vector<float>;
-
     explicit GeneratePath(const rclcpp::NodeOptions &options);
     virtual ~GeneratePath();
     virtual void initNode() override;
@@ -253,6 +253,7 @@ namespace generate_path
     ReturnCode _setCurrentJointStatesOnPhysicsServer(const sensor_msgs::msg::JointState::SharedPtr &joint_states);
     ReturnCode _getParametersFromServer();
     void _convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment);
+    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose);
 
     // ___Attributes___
     helpers::Watchdog::SharedPtr _watchdog;

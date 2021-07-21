@@ -110,6 +110,8 @@ namespace generate_path
 
         _setCurrentJointStatesOnPhysicsServer(_current_joint_states);
 
+        auto end_effector_pose = goal_handle.get()->get_goal()->end_effector_pose;
+        auto goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
         // if (!_generatePath(Job::POSE))
         // {
         //     RCLCPP_ERROR(get_logger(), "Generate path to pose aborted.");
@@ -118,14 +120,14 @@ namespace generate_path
         // }
 
         std::vector<float> joint_states(_current_joint_states->position.begin(), _current_joint_states->position.end());
-        std::vector<float> goal_states = {0, 0, 0, 0, 0, 2, 0};
+        // std::vector<float> goal_states = {0, 0, 0, 0, 0, 2, 0};
         const float safety_range = 0.003;
         const int threshold = 1;
         std::vector<int> obstacles = {_table_idx};
         std::vector<int> robot = {_robot_idx};
-        auto path = rrt(joint_states, goal_states, 10000, 0.1, 0.01, _bullet_client.get(), safety_range, obstacles, robot, threshold);
+        auto path = rrt(joint_states, goal_state, 10000, 0.1, 0.01, _bullet_client.get(), safety_range, obstacles, robot, threshold);
         std::cout << path.size() << std::endl;
-        
+
         custom_interfaces::msg::GeneratedPath generated_path;
         generated_path.header.stamp = now();
         generated_path.path_segments.resize(1);
@@ -140,6 +142,37 @@ namespace generate_path
             RCLCPP_INFO(get_logger(), "Goal to pose succeeded");
         }
         RCLCPP_INFO(get_logger(), "Generate to pose finished");
+    }
+
+    ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose)
+    {
+        b3RobotSimulatorInverseKinematicArgs IK_ARGS;
+        b3RobotSimulatorInverseKinematicsResults ik_results;
+        IK_ARGS.m_bodyUniqueId = _robot_idx;
+        IK_ARGS.m_endEffectorLinkIndex = _robot_info.nr_joints;
+        IK_ARGS.m_endEffectorTargetPosition[0] = end_effector_pose.position.x;
+        IK_ARGS.m_endEffectorTargetPosition[1] = end_effector_pose.position.y;
+        IK_ARGS.m_endEffectorTargetPosition[2] = end_effector_pose.position.z + 0.545;
+        IK_ARGS.m_endEffectorTargetOrientation[0] = end_effector_pose.orientation.x;
+        IK_ARGS.m_endEffectorTargetOrientation[1] = end_effector_pose.orientation.y;
+        IK_ARGS.m_endEffectorTargetOrientation[2] = end_effector_pose.orientation.z;
+        IK_ARGS.m_endEffectorTargetOrientation[3] = end_effector_pose.orientation.w;
+        // IK_ARGS.m_s
+
+        _bullet_client->calculateInverseKinematics(IK_ARGS, ik_results);
+        ArmConfiguration goal_configuration(_robot_info.nr_joints);
+        for (size_t i = 0; i < goal_configuration.size(); i++)
+        {
+            std::cout << "Joint " << i << " calculated pose: " << ik_results.m_calculatedJointPositions[i] << std::endl;
+            goal_configuration[i] = ik_results.m_calculatedJointPositions[i];
+        }
+
+        int t0 = 0;
+        int t1 = 1;
+        t1 = t0++;
+        std::cout << t0 << ", " << t1 << std::endl;
+
+        return goal_configuration;
     }
 
     ReturnCode GeneratePath::_setCurrentJointStatesOnPhysicsServer(const sensor_msgs::msg::JointState::SharedPtr &joint_states)
