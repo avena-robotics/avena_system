@@ -590,8 +590,8 @@ namespace avena_view
         if (waiting_counter < 3)
         {
             auto result = arm_command_client_->async_send_request(request);
-
-            if (rclcpp::spin_until_future_complete(node_, result) == rclcpp::FutureReturnCode::SUCCESS)
+            std::future_status status = result.wait_for(std::chrono::seconds(1));
+            if (status == std::future_status::ready)
             {
                 RCLCPP_INFO_STREAM(node_->get_logger(), "ArmController response: " << result.get()->error);
                 writeLog("ArmController response: " + QString(result.get()->error.c_str()), ui_.logConsoleArmControl);
@@ -613,7 +613,7 @@ namespace avena_view
     void AvenaView::startArmController()
     {
         RCLCPP_INFO(node_->get_logger(), "Starting arm controller");
-        sendArmCommand(ControlCommands::START);
+        sendArmCommand(ControlCommands::INIT);
     }
     void AvenaView::stopArmController()
     {
@@ -632,6 +632,12 @@ namespace avena_view
         RCLCPP_INFO(node_->get_logger(), "Pause arm controller");
 
         sendArmCommand(ControlCommands::PAUSE);
+    }
+    void AvenaView::executeArmController()
+    {
+        RCLCPP_INFO(node_->get_logger(), "Execute arm controller trajectory");
+
+        sendArmCommand(ControlCommands::EXECUTE);
     }
 
 #pragma endregion

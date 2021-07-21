@@ -1,17 +1,25 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>rgb_diff</name>
+  <name>custom_controllers</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="g.a.pogorzelski@gmail.com">root</maintainer>
+  <maintainer email="arkadiusz.ziehm@pomagier.info">root</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <depend>avena_bringup</depend>
-  <depend>helpers_vision</depend>
-  <depend>custom_interfaces</depend>
-  <depend>robot_mask</depend>
+
+  <depend>launch</depend>
+  <depend>helpers_commons</depend>
+
+  <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>rclcpp</build_depend>
+
+  <exec_depend>custom_interfaces</exec_depend>
+  <exec_depend>std_msgs</exec_depend> 
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>rclcpp</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

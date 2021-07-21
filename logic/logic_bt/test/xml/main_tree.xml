@@ -1,0 +1,117 @@
+<root main_tree_to_execute="BehaviorTree">
+    <!-- ////////// -->
+    <BehaviorTree ID="BehaviorTree">
+        <ReactiveSequence name="SquenceManager">
+            <Fallback>
+                <Condition ID="ItemFound" item_id="&quot;&quot;"/>
+                <Action item_label="&quot;&quot;" ID="FindItem" item_id="&quot;&quot;" item_pose="&quot;&quot;"/>
+                <ReactiveSequence>
+                    <Action item_label="&quot;&quot;" ID="AskUserForItem"/>
+                    <Action item_label="&quot;&quot;" ID="FindItem" item_id="&quot;&quot;" item_pose="&quot;&quot;"/>
+                </ReactiveSequence>
+            </Fallback>
+            <Fallback>
+                <Condition ID="SelectedItemInPlaceLocation" item_id="&quot;&quot;" place_location_label="&quot;&quot;" item_pose="&quot;&quot;"/>
+                <ReactiveSequence name="MoveSelectedItemToPlace">
+                    <Fallback>
+                        <Condition ID="SelectedItemInHand" item_id="&quot;&quot;" item_pose="&quot;&quot;"/>
+                        <ReactiveSequence name="PickItem">
+                            <Fallback>
+                                <ReactiveSequence>
+                                    <Condition ID="GraspIsCalculated" grasp=""/>
+                                    <Condition ID="ItemPoseIsFixed" item_id="" item_pose=""/>
+                                </ReactiveSequence>
+                                <Action item_label="" scene_octamap="" ID="CalculateGrasp" item_id="" grasp="" item_pose=""/>
+                                <ReactiveSequence>
+                                    <Action ID="AskUserToCleanScene"/>
+                                    <Action item_label="" scene_octamap="" ID="CalculateGrasp" item_id="" grasp="" item_pose=""/>
+                                </ReactiveSequence>
+                            </Fallback>
+                            <Fallback>
+                                <Condition trajectory_result="" ID="ExecutePathPickIsSucceeded"/>
+                                <RetryUntilSuccesful num_attempts="2">
+                                    <Action scene_octomap="" trajectory_result="" ID="ExecutePathPick" robot_state="" grasp=""/>
+                                </RetryUntilSuccesful>
+                                <ReactiveSequence>
+                                    <Action ID="AskUserToCleanScene"/>
+                                    <Action scene_octomap="" trajectory_result="" ID="ExecutePathPick" robot_state="" grasp=""/>
+                                </ReactiveSequence>
+                            </Fallback>
+                            <Fallback>
+                                <ReactiveSequence>
+                                    <Condition ID="CheckGripperClosed" close_gripper_result=""/>
+                                </ReactiveSequence>
+                                <Action ID="CloseGripper" close_gripper_result="" grasp_force="" grasp_width=""/>
+                            </Fallback>
+                        </ReactiveSequence>
+                    </Fallback>
+                </ReactiveSequence>
+            </Fallback>
+        </ReactiveSequence>
+    </BehaviorTree>
+    <!-- ////////// -->
+    <TreeNodesModel>
+        <Action ID="AskUserForItem">
+            <input_port name="item_label">item label to provide by the user</input_port>
+        </Action>
+        <Action ID="AskUserToCleanScene"/>
+        <Action ID="CalculateGrasp">
+            <output_port name="grasp">grasp for the item</output_port>
+            <input_port name="item_id">item to check grasp</input_port>
+            <input_port name="item_label">item type</input_port>
+            <input_port name="item_pose">item pose in world</input_port>
+            <input_port name="scene_octamap">octomap of the scene to check collisions</input_port>
+        </Action>
+        <Condition ID="CheckGripperClosed">
+            <input_port name="close_gripper_result"/>
+        </Condition>
+        <Action ID="CloseGripper">
+            <output_port name="close_gripper_result"/>
+            <input_port name="grasp_force"/>
+            <input_port name="grasp_width"/>
+        </Action>
+        <Action ID="ExecutePathPick">
+            <input_port name="grasp">goal pose for pick</input_port>
+            <input_port name="robot_state">robot start configuration</input_port>
+            <input_port name="scene_octomap">the scene to check collisions</input_port>
+            <output_port name="trajectory_result">result of pick path execution</output_port>
+        </Action>
+        <Condition ID="ExecutePathPickIsSucceeded">
+            <input_port name="trajectory_result">trajectory result for pick</input_port>
+        </Condition>
+        <Action ID="FindItem">
+            <output_port name="item_id">id for found item</output_port>
+            <input_port name="item_label">item label to search for</input_port>
+            <output_port name="item_pose">pose for found item</output_port>
+        </Action>
+        <Condition ID="GraspIsCalculated">
+            <input_port name="grasp">grasp message calculated</input_port>
+        </Condition>
+        <Condition ID="ItemFound">
+            <input_port name="item_id">to check if we found item id</input_port>
+        </Condition>
+        <Condition ID="ItemPoseIsFixed">
+            <input_port name="item_id"/>
+            <input_port name="item_pose"/>
+        </Condition>
+        <Condition ID="SelectedItemInHand">
+            <input_port name="item_id">item to check in robot hand</input_port>
+            <input_port name="item_pose">item pose to check if in hand</input_port>
+        </Condition>
+        <Condition ID="SelectedItemInPickLocation">
+            <input_port name="item_label" default="&quot;&quot;">item to search for to pick</input_port>
+            <input_port name="item_pose" default="&quot;&quot;">pose of the selected item</input_port>
+            <input_port name="pick_location_label" default="&quot;&quot;">area or container where to search for item</input_port>
+        </Condition>
+        <Condition ID="SelectedItemInPlaceLocation">
+            <input_port name="item_id">item to search for in the scene</input_port>
+            <input_port name="item_pose">pose of item to check against</input_port>
+            <input_port name="place_location_label">area or container where item is placed</input_port>
+        </Condition>
+        <Condition ID="SelectedItemLocationIsFixed">
+            <input_port name="item_id">item to check its location</input_port>
+        </Condition>
+    </TreeNodesModel>
+    <!-- ////////// -->
+</root>
+
