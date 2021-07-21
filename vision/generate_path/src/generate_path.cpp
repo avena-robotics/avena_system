@@ -43,7 +43,7 @@ namespace generate_path
         _joint_state_sub = create_subscription<sensor_msgs::msg::JointState>("joint_states", 10,
                                                                              [this](const sensor_msgs::msg::JointState::SharedPtr joint_states_msg)
                                                                              {
-                                                                                 RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received joint states [message throttles with 0.1 sec]");
+                                                                                //  RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received joint states [message throttles with 0.1 sec]");
                                                                                  _current_joint_states = joint_states_msg;
                                                                              });
         _generated_path_pub = create_publisher<custom_interfaces::msg::GeneratedPath>("generated_path", latching_qos);
@@ -111,7 +111,7 @@ namespace generate_path
         _setCurrentJointStatesOnPhysicsServer(_current_joint_states);
 
         auto end_effector_pose = goal_handle.get()->get_goal()->end_effector_pose;
-        auto goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
+        auto goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose, _current_joint_states);
         // if (!_generatePath(Job::POSE))
         // {
         //     RCLCPP_ERROR(get_logger(), "Generate path to pose aborted.");
@@ -126,7 +126,15 @@ namespace generate_path
         std::vector<int> obstacles = {_table_idx};
         std::vector<int> robot = {_robot_idx};
         auto path = rrt(joint_states, goal_state, 10000, 0.1, 0.01, _bullet_client.get(), safety_range, obstacles, robot, threshold);
-        std::cout << path.size() << std::endl;
+        RCLCPP_INFO_STREAM(get_logger(), "Length of generated path: " << path.size());
+
+        if (path.size() == 0)
+        {
+            RCLCPP_ERROR(get_logger(), "Planner was not able to generate path. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
 
         custom_interfaces::msg::GeneratedPath generated_path;
         generated_path.header.stamp = now();
@@ -144,20 +152,27 @@ namespace generate_path
         RCLCPP_INFO(get_logger(), "Generate to pose finished");
     }
 
-    ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose)
+    ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &joint_states)
     {
         b3RobotSimulatorInverseKinematicArgs IK_ARGS;
         b3RobotSimulatorInverseKinematicsResults ik_results;
         IK_ARGS.m_bodyUniqueId = _robot_idx;
-        IK_ARGS.m_endEffectorLinkIndex = _robot_info.nr_joints;
+        IK_ARGS.m_endEffectorLinkIndex = _robot_info.nr_joints + 1;
         IK_ARGS.m_endEffectorTargetPosition[0] = end_effector_pose.position.x;
         IK_ARGS.m_endEffectorTargetPosition[1] = end_effector_pose.position.y;
-        IK_ARGS.m_endEffectorTargetPosition[2] = end_effector_pose.position.z + 0.545;
+        IK_ARGS.m_endEffectorTargetPosition[2] = end_effector_pose.position.z + 0.545; // FIXME: Change the scene
         IK_ARGS.m_endEffectorTargetOrientation[0] = end_effector_pose.orientation.x;
         IK_ARGS.m_endEffectorTargetOrientation[1] = end_effector_pose.orientation.y;
         IK_ARGS.m_endEffectorTargetOrientation[2] = end_effector_pose.orientation.z;
         IK_ARGS.m_endEffectorTargetOrientation[3] = end_effector_pose.orientation.w;
-        // IK_ARGS.m_s
+        IK_ARGS.m_numDegreeOfFreedom = _robot_info.nr_joints;
+        // IK_ARGS.m_currentJointPositions.resize(_robot_info.nr_joints);
+        // for (size_t i = 0; i < _robot_info.nr_joints; ++i)
+        //     IK_ARGS.m_currentJointPositions[i] = joint_states->position[i];
+
+        IK_ARGS.m_flags = B3_HAS_IK_TARGET_ORIENTATION;// | B3_HAS_CURRENT_POSITIONS;
+
+        RCLCPP_ERROR_STREAM(get_logger(), "IK_ARGS.m_flags: " << IK_ARGS.m_flags);
 
         _bullet_client->calculateInverseKinematics(IK_ARGS, ik_results);
         ArmConfiguration goal_configuration(_robot_info.nr_joints);
@@ -166,11 +181,6 @@ namespace generate_path
             std::cout << "Joint " << i << " calculated pose: " << ik_results.m_calculatedJointPositions[i] << std::endl;
             goal_configuration[i] = ik_results.m_calculatedJointPositions[i];
         }
-
-        int t0 = 0;
-        int t1 = 1;
-        t1 = t0++;
-        std::cout << t0 << ", " << t1 << std::endl;
 
         return goal_configuration;
     }
@@ -184,7 +194,7 @@ namespace generate_path
             b3BodyInfo body_info;
             _bullet_client->getBodyInfo(body_unique_id, &body_info);
 
-            std::cout << "m_baseName: " << body_info.m_baseName << ", m_bodyName: " << body_info.m_bodyName << std::endl;
+            // std::cout << "m_baseName: " << body_info.m_baseName << ", m_bodyName: " << body_info.m_bodyName << std::endl;
 
             if (std::strcmp(body_info.m_bodyName, _robot_info.robot_name.c_str()) == 0)
             {
@@ -215,6 +225,12 @@ namespace generate_path
         }
         return ReturnCode::SUCCESS;
     }
+
+    // ReturnCode GeneratePath::_readSceneInfo()
+    // {
+
+    //     return ReturnCode::FAILURE;
+    // }
 
     ReturnCode GeneratePath::_getParametersFromServer()
     {

@@ -253,7 +253,8 @@ namespace generate_path
     ReturnCode _setCurrentJointStatesOnPhysicsServer(const sensor_msgs::msg::JointState::SharedPtr &joint_states);
     ReturnCode _getParametersFromServer();
     void _convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment);
-    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose);
+    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &joint_states);
+    // ReturnCode _readSceneInfo();
 
     // ___Attributes___
     helpers::Watchdog::SharedPtr _watchdog;
