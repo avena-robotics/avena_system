@@ -21,7 +21,6 @@
 #include <QTreeWidget>
 #include <QMessageBox>
 #include <QMetaType>
-
 #include <vector>
 #include <chrono>
 #include <custom_interfaces/msg/heartbeat.hpp>
@@ -43,6 +42,8 @@
 #include <QScrollBar>
 #include <QProgressDialog>
 #include <QDebug>
+#include "utils.h"
+#include "avena_view/detectron_runner.h"
 
 Q_DECLARE_METATYPE(custom_interfaces::msg::GuiBtMessage::SharedPtr);
 Q_DECLARE_METATYPE(custom_interfaces::msg::Heartbeat::SharedPtr);
@@ -72,8 +73,6 @@ namespace avena_view
         ::std::sort(b.begin(), b.end());
         return (a == b);
     }
-
-    std::string exec(const char *cmd);
 
     bool isItem(const std::string& path);
     bool isContrainer(const std::string& path);
@@ -136,15 +135,15 @@ namespace avena_view
         virtual void refreshRosoutConsole(rcl_interfaces::msg::Log::SharedPtr msg);
 
     signals:
-        virtual void questionRecived(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
-        virtual void securityWarningRecived();
-        virtual void securityWarningClosed();
-        virtual void securityTriggerChanged(bool msg);
-        virtual void securityPauseChanged(bool msg);
-        virtual void dangerToolStatusChanged(bool msg);
-        virtual void nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr msg);
-        virtual void logsAppeared(std_msgs::msg::String::SharedPtr msg);
-        virtual void rosOutAppeared(rcl_interfaces::msg::Log::SharedPtr msg);
+        void questionRecived(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
+        void securityWarningRecived();
+        void securityWarningClosed();
+        void securityTriggerChanged(bool msg);
+        void securityPauseChanged(bool msg);
+        void dangerToolStatusChanged(bool msg);
+        void nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr msg);
+        void logsAppeared(std_msgs::msg::String::SharedPtr msg);
+        void rosOutAppeared(rcl_interfaces::msg::Log::SharedPtr msg);
 
     private:
         void heartBeatCallback(custom_interfaces::msg::Heartbeat::SharedPtr msg);
@@ -236,6 +235,8 @@ namespace avena_view
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr security_trigger_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr security_pause_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr danger_tool_in_hand_sub_;
+
+        std::shared_ptr<DetectronRunner> detectron_runner_;
     };
 }
 

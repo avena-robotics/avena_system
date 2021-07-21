@@ -124,6 +124,9 @@ namespace avena_view
         previus_gui_warning_msg_ = false;
         setUpGuiWarningUi();
         connect(this, SIGNAL(securityWarningClosed()), this, SLOT(hideSecurityRgbWarning()));
+
+        detectron_runner_ = std::make_shared<DetectronRunner>(&ui_);
+        connect(ui_.detectronStartButton, SIGNAL(clicked(bool)), detectron_runner_.get(), SLOT(startDetectron()));
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
@@ -247,29 +250,6 @@ namespace avena_view
             return file["is_container"].as<bool>();
         }
         return false;
-    }
-
-    std::string exec(const char *cmd)
-    {
-        char buffer[128];
-        std::string result = "";
-        FILE *pipe = popen(cmd, "r");
-        if (!pipe)
-            throw std::runtime_error("popen() failed!");
-        try
-        {
-            while (fgets(buffer, sizeof buffer, pipe) != NULL)
-            {
-                result += buffer;
-            }
-        }
-        catch (...)
-        {
-            pclose(pipe);
-            throw;
-        }
-        pclose(pipe);
-        return result;
     }
 
     std::chrono::nanoseconds AvenaView::rosTime2Chrono(builtin_interfaces::msg::Time &stamp)
