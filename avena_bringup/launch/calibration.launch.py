@@ -37,10 +37,10 @@ def launch_setup(context, *args, **kwargs):
             PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
                 'camera_extrinsics_calibration'), 'launch', 'calibrate.launch.py')),
         ),
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-        #         'generate_trajectory'), 'launch', 'generate_trajectory.launch.py'))
-        # ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+                'generate_trajectory'), 'launch', 'generate_trajectory.launch.py'))
+        ),
         # IncludeLaunchDescription(
         #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
         #         'path_buffer'), 'launch', 'path_buffer.launch.py'))

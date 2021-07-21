@@ -131,7 +131,9 @@ namespace generate_path
         generated_path.path_segments.resize(1);
         _convertPathSegmentToTrajectoryMsg(path, generated_path.path_segments[0]);
 
+        RCLCPP_INFO(get_logger(), "Publishing generated path...");
         _generated_path_pub->publish(generated_path);
+        RCLCPP_INFO(get_logger(), "...done");
         if (rclcpp::ok())
         {
             goal_handle->succeed(result);

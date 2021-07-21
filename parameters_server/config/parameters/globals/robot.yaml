@@ -5,3 +5,4 @@ calibration_mat:
     x: 0.17 
     y: 0.02306 
     z: 0.21 
+controller_frequency: 30

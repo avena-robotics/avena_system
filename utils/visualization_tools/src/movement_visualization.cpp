@@ -24,10 +24,8 @@ namespace visualization_tools
 
         auto qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
         _nav_path_pub = create_publisher<nav_msgs::msg::Path>("nav_path", qos_settings);
-        _generated_path_sub = create_subscription<trajectory_msgs::msg::JointTrajectory>(
-            "generated_path", qos_settings, std::bind(&MovementVisualization::_callbackGeneratedPath, this, std::placeholders::_1));
-        _trajectory_sub = create_subscription<trajectory_msgs::msg::JointTrajectory>(
-            "trajectory", qos_settings, std::bind(&MovementVisualization::_callbackTrajectory, this, std::placeholders::_1));
+        _generated_path_sub = create_subscription<GeneratedPath>("generated_path", qos_settings, std::bind(&MovementVisualization::_callbackGeneratedPath, this, std::placeholders::_1));
+        _trajectory_sub = create_subscription<trajectory_msgs::msg::JointTrajectory>("trajectory", qos_settings, std::bind(&MovementVisualization::_callbackTrajectory, this, std::placeholders::_1));
 
         _tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(this);
         _static_tf_broadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
@@ -53,12 +51,18 @@ namespace visualization_tools
         return 0;
     }
 
-    void MovementVisualization::_callbackGeneratedPath(const trajectory_msgs::msg::JointTrajectory::SharedPtr generated_path)
+    void MovementVisualization::_callbackGeneratedPath(const GeneratedPath::SharedPtr generated_path)
     {
         helpers::Timer timer(__func__, get_logger());
         RCLCPP_INFO(get_logger(), "Received generated path as trajectory positions");
 
-        const std::vector<std::string> joint_names = generated_path->joint_names;
+        if (generated_path->path_segments.size() == 0)
+        {
+            RCLCPP_WARN(get_logger(), "There is no path segments in received message.");
+            return;
+        }
+
+        const std::vector<std::string> joint_names = generated_path->path_segments.front().joint_names;
         std_msgs::msg::Header out_header;
         out_header.frame_id = "world";
         out_header.stamp = generated_path->header.stamp;
@@ -66,33 +70,10 @@ namespace visualization_tools
         nav_msgs::msg::Path::UniquePtr end_effector_path(new nav_msgs::msg::Path);
         end_effector_path->header = out_header;
 
-        for (size_t i = 0; i < generated_path->points.size(); ++i)
+        for (auto &path_segment : generated_path->path_segments)
         {
-            auto &generated_path_point = generated_path->points[i];
-            std::map<std::string, double> joint_positions;
-            for (size_t i = 0; i < joint_names.size(); i++)
-            {
-                joint_positions.insert(std::make_pair(joint_names[i], generated_path_point.positions[i]));
-            }
-
-            auto moving_transforms = _joint_state_to_tf.getMovingTransforms(joint_positions, out_header.stamp);
-            auto fixed_transforms = _joint_state_to_tf.getFixedTransforms();
-            fixed_transforms.push_back(_world_to_base_link_tf);
-
-            // End effector pose in "world" frame
-            auto end_effector_transform = _getEndEffectorTransform(fixed_transforms, moving_transforms);
-            geometry_msgs::msg::PoseStamped end_effector_pose;
-            end_effector_pose.header = end_effector_transform.header;
-            end_effector_pose.pose.position.x = end_effector_transform.transform.translation.x;
-            end_effector_pose.pose.position.y = end_effector_transform.transform.translation.y;
-            end_effector_pose.pose.position.z = end_effector_transform.transform.translation.z;
-
-            end_effector_pose.pose.orientation.x = end_effector_transform.transform.rotation.x;
-            end_effector_pose.pose.orientation.y = end_effector_transform.transform.rotation.y;
-            end_effector_pose.pose.orientation.z = end_effector_transform.transform.rotation.z;
-            end_effector_pose.pose.orientation.w = end_effector_transform.transform.rotation.w;
-
-            end_effector_path->poses.push_back(end_effector_pose);
+            auto end_effector_path_segment = _getEndEffectorPathForPathSegment(path_segment, out_header.stamp);
+            end_effector_path->poses.insert(end_effector_path->poses.end(), end_effector_path_segment->poses.begin(), end_effector_path_segment->poses.end());
         }
 
         _nav_path_pub->publish(std::move(end_effector_path));
@@ -155,6 +136,40 @@ namespace visualization_tools
             _tf_broadcaster->sendTransform(moving_transforms);
             _static_tf_broadcaster->sendTransform(fixed_transforms);
         }
+    }
+
+    nav_msgs::msg::Path::UniquePtr MovementVisualization::_getEndEffectorPathForPathSegment(const trajectory_msgs::msg::JointTrajectory &path_segment, const builtin_interfaces::msg::Time &timestamp)
+    {
+        nav_msgs::msg::Path::UniquePtr out_end_effector_path_segment(new nav_msgs::msg::Path);
+        for (size_t i = 0; i < path_segment.points.size(); ++i)
+        {
+            auto &generated_path_point = path_segment.points[i];
+            std::map<std::string, double> joint_positions;
+            for (size_t i = 0; i < path_segment.joint_names.size(); i++)
+            {
+                joint_positions.insert(std::make_pair(path_segment.joint_names[i], generated_path_point.positions[i]));
+            }
+
+            auto moving_transforms = _joint_state_to_tf.getMovingTransforms(joint_positions, timestamp);
+            auto fixed_transforms = _joint_state_to_tf.getFixedTransforms();
+            fixed_transforms.push_back(_world_to_base_link_tf);
+
+            // End effector pose in "world" frame
+            auto end_effector_transform = _getEndEffectorTransform(fixed_transforms, moving_transforms);
+            geometry_msgs::msg::PoseStamped end_effector_pose;
+            end_effector_pose.header = end_effector_transform.header;
+            end_effector_pose.pose.position.x = end_effector_transform.transform.translation.x;
+            end_effector_pose.pose.position.y = end_effector_transform.transform.translation.y;
+            end_effector_pose.pose.position.z = end_effector_transform.transform.translation.z;
+
+            end_effector_pose.pose.orientation.x = end_effector_transform.transform.rotation.x;
+            end_effector_pose.pose.orientation.y = end_effector_transform.transform.rotation.y;
+            end_effector_pose.pose.orientation.z = end_effector_transform.transform.rotation.z;
+            end_effector_pose.pose.orientation.w = end_effector_transform.transform.rotation.w;
+
+            out_end_effector_path_segment->poses.push_back(end_effector_pose);
+        }
+        return out_end_effector_path_segment;
     }
 
     std::optional<geometry_msgs::msg::TransformStamped> MovementVisualization::_getWorldToBaseLinkTf()

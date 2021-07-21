@@ -23,6 +23,7 @@
 // ___Avena___
 #include <helpers_commons/helpers_commons.hpp>
 #include <helpers_vision/helpers_vision.hpp>
+#include <custom_interfaces/msg/generated_path.hpp>
 
 // ___Package___
 #include "visualization_tools/joint_state_to_transform.hpp"
@@ -33,16 +34,19 @@ namespace visualization_tools
   class MovementVisualization : public rclcpp::Node
   {
   public:
+    using GeneratedPath = custom_interfaces::msg::GeneratedPath;
+
     explicit MovementVisualization(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
 
   private:
-    void _callbackGeneratedPath(const trajectory_msgs::msg::JointTrajectory::SharedPtr trajectory);
+    void _callbackGeneratedPath(const GeneratedPath::SharedPtr generated_path);
     void _callbackTrajectory(const trajectory_msgs::msg::JointTrajectory::SharedPtr trajectory);
     geometry_msgs::msg::TransformStamped _getEndEffectorTransform(const std::vector<geometry_msgs::msg::TransformStamped> &fixed_transforms, const std::vector<geometry_msgs::msg::TransformStamped> &moving_transforms);
     int _getParametersFromServer();
     std::optional<geometry_msgs::msg::TransformStamped> _getWorldToBaseLinkTf();
+    nav_msgs::msg::Path::UniquePtr _getEndEffectorPathForPathSegment(const trajectory_msgs::msg::JointTrajectory &path_segment, const builtin_interfaces::msg::Time &timestamp);
 
-    rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr _generated_path_sub;
+    rclcpp::Subscription<GeneratedPath>::SharedPtr _generated_path_sub;
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr _trajectory_sub;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr _nav_path_pub;
 
