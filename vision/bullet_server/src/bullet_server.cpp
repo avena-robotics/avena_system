@@ -6,53 +6,53 @@ namespace bullet_server
     BulletServer::BulletServer(const rclcpp::NodeOptions &options)
         : Node("bullet_server", options)
     {
-// Right now I do not know why Bullet needs this but for now keep it here
-#ifndef _WIN32
-        struct sigaction action;
-        memset(&action, 0x0, sizeof(action));
-        action.sa_handler = cleanup;
-        static const int signos[] = {SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGSEGV, SIGPIPE, SIGTERM};
-        for (size_t ii(0); ii < sizeof(signos) / sizeof(*signos); ++ii)
-        {
-            if (0 != sigaction(signos[ii], &action, NULL))
-            {
-                err(EXIT_FAILURE, "signal %d", signos[ii]);
-            }
-        }
-#endif
+// // Right now I do not know why Bullet needs this but for now keep it here
+// #ifndef _WIN32
+//         struct sigaction action;
+//         memset(&action, 0x0, sizeof(action));
+//         action.sa_handler = cleanup;
+//         static const int signos[] = {SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGSEGV, SIGPIPE, SIGTERM};
+//         for (size_t ii(0); ii < sizeof(signos) / sizeof(*signos); ++ii)
+//         {
+//             if (0 != sigaction(signos[ii], &action, NULL))
+//             {
+//                 err(EXIT_FAILURE, "signal %d", signos[ii]);
+//             }
+//         }
+// #endif
 
-        _server_thread = std::thread([]()
-                                     {
-                                         DummyGUIHelper noGfx;
+//         _server_thread = std::thread([]()
+//                                      {
+//                                          DummyGUIHelper noGfx;
 
-                                         CommonExampleOptions commons_example_options(&noGfx);
+//                                          CommonExampleOptions commons_example_options(&noGfx);
 
-                                         // args.GetCmdLineArgument("shared_memory_key", gSharedMemoryKey);
-                                         // args.GetCmdLineArgument("sharedMemoryKey", gSharedMemoryKey);
+//                                          // args.GetCmdLineArgument("shared_memory_key", gSharedMemoryKey);
+//                                          // args.GetCmdLineArgument("sharedMemoryKey", gSharedMemoryKey);
 
-                                         // commons_example_options.m_option |= PHYSICS_SERVER_ENABLE_COMMAND_LOGGING;
-                                         // commons_example_options.m_option |= PHYSICS_SERVER_REPLAY_FROM_COMMAND_LOG;
+//                                          // commons_example_options.m_option |= PHYSICS_SERVER_ENABLE_COMMAND_LOGGING;
+//                                          // commons_example_options.m_option |= PHYSICS_SERVER_REPLAY_FROM_COMMAND_LOG;
 
-                                         example = (SharedMemoryCommon *)PhysicsServerCreateFuncBullet2(commons_example_options);
+//                                          example = (SharedMemoryCommon *)PhysicsServerCreateFuncBullet2(commons_example_options);
 
-                                         example->initPhysics();
+//                                          example->initPhysics();
 
-                                         while (example->isConnected() && !(example->wantsTermination() || interrupted))
-                                         {
-                                             example->stepSimulation(1.f / 60.f);
-                                         }
+//                                          while (example->isConnected() && !(example->wantsTermination() || interrupted))
+//                                          {
+//                                              example->stepSimulation(1.f / 60.f);
+//                                          }
 
-                                         example->exitPhysics();
+//                                          example->exitPhysics();
 
-                                         delete example;
-                                     });
+//                                          delete example;
+//                                      });
         _loading_scene_timer = create_wall_timer(std::chrono::milliseconds(500), std::bind(&BulletServer::_createWorld, this));
     }
 
     BulletServer::~BulletServer()
     {
-        if (_server_thread.joinable())
-            _server_thread.join();
+        // if (_server_thread.joinable())
+        //     _server_thread.join();
     }
 
     ReturnCode BulletServer::_getParametersFromServer()
@@ -142,11 +142,12 @@ namespace bullet_server
         //! LOAD AVENA ARM FROM URDF
         URDF_LOAD_PARAMS.m_forceOverrideFixedBase = true;
         URDF_LOAD_PARAMS.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
-        URDF_LOAD_PARAMS.m_startPosition = btVector3(0.18, -0.35, TABLE_HEIGHT + 0.05);
+        URDF_LOAD_PARAMS.m_startPosition = btVector3(0.18, -0.35, TABLE_HEIGHT);
         URDF_LOAD_PARAMS.m_startOrientation = sim->getQuaternionFromEuler(btVector3(0, 0, 0));
 
         const std::string robot_urdf = helpers::commons::getRobotDescription();
-        const std::string AVENA_ARM_URDF_PATH = "robot_description.urdf";
+        std::string package_share_directory = ament_index_cpp::get_package_share_directory("bullet_server");
+        const std::string AVENA_ARM_URDF_PATH = package_share_directory + "/robot_description.urdf";
         std::ofstream f(AVENA_ARM_URDF_PATH);
         f << robot_urdf;
         f.close();

@@ -21,6 +21,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(helpers_commons REQUIRED)
 find_package(bullet_client REQUIRED)
 find_package(Bullet REQUIRED)
@@ -39,6 +40,7 @@ target_compile_definitions(bullet_server PRIVATE "BULLET_SERVER_BUILDING_LIBRARY
 ament_target_dependencies(bullet_server 
   rclcpp
   rclcpp_components
+  ament_index_cpp
   Bullet
   bullet_client
   helpers_commons

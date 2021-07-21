@@ -14,6 +14,7 @@
 
 // ___ROS___
 #include <rclcpp/rclcpp.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 // ___Avena___
 #include <bullet_client/b3RobotSimulatorClientAPI.h>
@@ -22,33 +23,33 @@
 // ___Package___
 #include "bullet_server/visibility_control.h"
 
-// This is some global and static variables which are used somewhere else so better leave them be
-int gSharedMemoryKey = -1;
+// // This is some global and static variables which are used somewhere else so better leave them be
+// int gSharedMemoryKey = -1;
 
-static SharedMemoryCommon *example = NULL;
-static bool interrupted = false;
+// static SharedMemoryCommon *example = NULL;
+// static bool interrupted = false;
 
-#ifndef _WIN32
-#include <signal.h>
-#include <err.h>
-#include <unistd.h>
-static void cleanup(int signo)
-{
-  std::cout << "Calling cleanup. Interrupt flag is " << std::boolalpha << interrupted << std::noboolalpha << std::endl;
-  if (interrupted)
-  { // this is the second time, we're hanging somewhere
-    //  if (example) {
-    //      example->abort();
-    //  }
-    b3Printf("Aborting and deleting SharedMemoryCommon object");
-    sleep(1);
-    delete example;
-    errx(EXIT_FAILURE, "aborted example on signal %d", signo);
-  }
-  interrupted = true;
-  warnx("caught signal %d", signo);
-}
-#endif //_WIN32
+// #ifndef _WIN32
+// #include <signal.h>
+// #include <err.h>
+// #include <unistd.h>
+// static void cleanup(int signo)
+// {
+//   std::cout << "Calling cleanup. Interrupt flag is " << std::boolalpha << interrupted << std::noboolalpha << std::endl;
+//   if (interrupted)
+//   { // this is the second time, we're hanging somewhere
+//     //  if (example) {
+//     //      example->abort();
+//     //  }
+//     b3Printf("Aborting and deleting SharedMemoryCommon object");
+//     sleep(1);
+//     delete example;
+//     errx(EXIT_FAILURE, "aborted example on signal %d", signo);
+//   }
+//   interrupted = true;
+//   warnx("caught signal %d", signo);
+// }
+// #endif //_WIN32
 
 namespace bullet_server
 {
@@ -79,7 +80,7 @@ namespace bullet_server
     ReturnCode _createWorld();
     ReturnCode _getParametersFromServer();
 
-    std::thread _server_thread;
+    // std::thread _server_thread;
     rclcpp::TimerBase::SharedPtr _loading_scene_timer;
     WorkspaceArea _workspace_area;
   };
