@@ -126,7 +126,7 @@ namespace avena_view
         connect(this, SIGNAL(securityWarningClosed()), this, SLOT(hideSecurityRgbWarning()));
 
         detectron_runner_ = std::make_shared<DetectronRunner>(&ui_);
-        connect(ui_.detectronStartButton, SIGNAL(clicked(bool)), detectron_runner_.get(), SLOT(startDetectron()));
+
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
@@ -510,6 +510,7 @@ namespace avena_view
 
         if (launch_file_pid_ > 0)
         {
+            //TODO: change returend value type to int with exit code
             if (killAllChildProcessPids())
             {
                 writeTerminalAndUiLog("Sucessfully stopped pick place system", Status::STOPPED, ui_.logConsole);

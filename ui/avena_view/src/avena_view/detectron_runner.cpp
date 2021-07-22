@@ -2,29 +2,26 @@
 
 DetectronRunner::DetectronRunner(Ui::AvenaViewWidget* ui)
 {
-    int dupa = 0;
-    std::string share_dir_path = ament_index_cpp::get_package_share_directory("detect_server");
-    
-    std::cout << __func__ << " " << dupa++ << std::endl;
-    QString path_to_script = QString(share_dir_path.c_str()) + "/../lib/detect_server/detect_server";
-
-    std::cout << __func__ << " " << dupa++ << std::endl;
+    share_dir_path_ = ament_index_cpp::get_package_share_directory("detect_server");
+    QString path_to_script = QString(share_dir_path_.c_str()) + "/../../lib/detect_server/detect_server";
     std::cout << "Path to script: " << path_to_script.toUtf8().toStdString() << std::endl;
-
-    std::cout << __func__ << " " << dupa++ << std::endl;
     detectron_process_ = std::make_shared<QProcess>();
-    std::cout << __func__ << " " << dupa++ << std::endl;
     detectron_process_->setProgram("python3");
-    std::cout << __func__ << " " << dupa++ << std::endl;
     detectron_process_->setArguments({path_to_script});
-    std::cout << __func__ << " " << dupa++ << std::endl;
+    detectron_process_->setStandardOutputFile( QString(share_dir_path_.c_str()) + "/detectron_output.txt");
+    detectron_process_->setStandardErrorFile( QString(share_dir_path_.c_str()) + "/detectron_output.txt");
     pid_ = 0;
-    out_pid_file_.open("detectron.pid");
-    in_pid_file_.open("detectron.pid");
-    std::cout << __func__ << " " << dupa++ << std::endl;
-
+    out_pid_file_.open( share_dir_path_ + "/detect.pid");
+    in_pid_file_.open( share_dir_path_ + "/detect.pid");
+    in_logs_file_.open( share_dir_path_ + "/detectron_output.txt" );
     ui_ = ui;
-    std::cout << __func__ << " " << dupa++ << std::endl;
+
+    logs_file_watcher_ = std::make_shared<QFileSystemWatcher>();
+    logs_file_watcher_->addPath(QString(share_dir_path_.c_str()) + "/detectron_output.txt");
+
+    connect(ui_->detectronStartButton, SIGNAL(clicked(bool)), this, SLOT(startDetectron()));
+    connect(ui_->detectronStopButton, SIGNAL(clicked(bool)), this, SLOT(stopDetectron()));
+    connect(logs_file_watcher_.get(), SIGNAL(fileChanged(QString)), this, SLOT(showLast20Logs()));
 }
 
 DetectronRunner::~DetectronRunner()
@@ -34,7 +31,12 @@ DetectronRunner::~DetectronRunner()
 
 void DetectronRunner::startDetectron()
 {
-    if(out_pid_file_)
+    bool restoring_result = restoreLastSession();
+
+    if(restoring_result)
+        return;
+
+    if(!out_pid_file_)
         throw std::runtime_error(std::string("Cannot open pid file"));
     if(detectron_process_->startDetached(&pid_))
     {
@@ -49,10 +51,11 @@ void DetectronRunner::startDetectron()
 }
 void DetectronRunner::stopDetectron()
 {
-    if(kill(pid_, SIGINT) == 0)
-    {
-        std::cout << "Stopping detectron server" << std::endl;
-    }
+    int killing_result = 0;
+    if(pid_ != 0)
+        killing_result = kill(pid_, SIGINT);
+    ui_->detectronLogConsole->append( "Detectron stopped with exit code: " + QString::number(killing_result));
+    fs::remove(share_dir_path_ + "/detect.pid");
 }
 
 bool DetectronRunner::restoreLastSession()
@@ -78,6 +81,7 @@ bool DetectronRunner::restoreLastSession()
     else
     {
         std::cout << "Instances are missing" << std::endl;
+        return false;
     }
     
     in_pid_file_ >> pid_;
@@ -86,5 +90,12 @@ bool DetectronRunner::restoreLastSession()
 
 void DetectronRunner::showLast20Logs()
 {
-
+    in_logs_file_.clear();
+    in_logs_file_.seekg(0, std::ios::beg);
+    std::string line;
+    ui_->detectronLogConsole->clear();
+	while(std::getline(in_logs_file_,line))
+    {
+        ui_->detectronLogConsole->append(QString(line.c_str()));
+    }
 }

@@ -11,6 +11,10 @@
 #include <sstream>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <signal.h>
+#include <filesystem>
+#include <string>
+
+namespace fs = std::filesystem;
 
 class DetectronRunner : public QObject
 {
@@ -31,8 +35,10 @@ class DetectronRunner : public QObject
         std::shared_ptr<QProcess> detectron_process_;
         std::shared_ptr<QFileSystemWatcher> logs_file_watcher_;
         std::ofstream out_pid_file_;
+        std::ifstream in_logs_file_;
         std::ifstream in_pid_file_;
         qint64 pid_;
+        std::string share_dir_path_;
 
         Ui::AvenaViewWidget* ui_;
 };
