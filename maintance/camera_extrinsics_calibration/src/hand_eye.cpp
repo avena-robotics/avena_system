@@ -4,7 +4,7 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
     : Node("hand_eye_calibration", options)
 {
     helpers::commons::setLoggerLevel(get_logger(), "info");
-    rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1));
+    rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile();
     
     _initializeSubscribers(qos_settings);
     _change_tool_client = create_client<custom_interfaces::srv::ChangeTool>("change_tool");
@@ -32,6 +32,8 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
 
 void PclCalibrator::_initializeSubscribers(const rclcpp::QoS &qos_settings)
 {
+    rclcpp::QoS qos_settings_info = rclcpp::QoS(rclcpp::KeepLast(1));
+
     _camera1_rgb_sub = create_subscription<sensor_msgs::msg::Image>(_camera1_rgb_topic, qos_settings,
                                                                     [this](sensor_msgs::msg::Image::SharedPtr msg)
                                                                     {
@@ -46,14 +48,14 @@ void PclCalibrator::_initializeSubscribers(const rclcpp::QoS &qos_settings)
                                                                         std::lock_guard<std::mutex> lg(_camera2_rgb_image_mtx);
                                                                         _camera2_rgb_image = msg;
                                                                     });
-    _camera1_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera1_info_topic, qos_settings,
+    _camera1_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera1_info_topic, qos_settings_info,
                                                                           [this](sensor_msgs::msg::CameraInfo::SharedPtr msg)
                                                                           {
                                                                               RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera 1 info (message print every 0.5 seconds)");
                                                                               std::lock_guard<std::mutex> lg(_camera1_info_mtx);
                                                                               _camera1_info = msg;
                                                                           });
-    _camera2_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera2_info_topic, qos_settings,
+    _camera2_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera2_info_topic, qos_settings_info,
                                                                           [this](sensor_msgs::msg::CameraInfo::SharedPtr msg)
                                                                           {
                                                                               RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera 2 info (message print every 0.5 seconds)");
@@ -430,10 +432,10 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
             RCLCPP_INFO(get_logger(), "Chessboard corners found. Finding chessboard pose...");
             cv::Mat gray_img;
             cv::cvtColor(view, gray_img, CV_BGR2GRAY);
-            cv::cornerSubPix(gray_img, corners1, cv::Size(3, 3), cv::Size(1, 1), cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
-            cv::solvePnP(objectPoints, corners1, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
+            cv::cornerSubPix(gray_img, corners1, cv::Size(5, 5), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+            bool status_kurwa = cv::solvePnP(objectPoints, corners1, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
             RCLCPP_INFO(get_logger(), "...done");
-
+            std::cout << "status_kurwa: " << status_kurwa << std::endl;
             cv::Mat aa_cv;
             cv::Rodrigues(rotation_vector, aa_cv);
             Eigen::Matrix3f rot_matrix;
@@ -455,6 +457,12 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
             if (_lookupTransform(rgb_img->header.frame_id, camera_base, now(), rgb_to_base) == 1)
                 return CalibrateReturnCode::CAMERA_BASE_TO_RGB_LINK_TF_ERROR;
 
+
+
+            std::cout << "col 1 length: " << out_transform.rotation().col(0).norm() << std::endl;
+            std::cout << "col 2 length: " << out_transform.rotation().col(1).norm() << std::endl;
+            std::cout << "col 3 length: " << out_transform.rotation().col(2).norm() << std::endl;
+
             out_transform = (out_transform.inverse() * rgb_to_base).inverse();
             out_transform = world_to_end_effector_tf * out_transform.inverse();
             // out_transform = out_transform.inverse();
@@ -468,6 +476,7 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
                 point3D.push_back(cv::Point3d(0, 0.1, 0));
 
                 cv::projectPoints(point3D, rotation_vector, translation_vector, camera_matrix, dist_coeffs, point2D);
+                
                 //Tp drow x,y z axis on image.
                 cv::line(view, corners1[0], point2D[0], cv::Scalar(255, 0, 0), 3); //z
                 cv::line(view, corners1[0], point2D[1], cv::Scalar(0, 0, 255), 3); //x
@@ -481,6 +490,7 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
                 // Display image.
 
                 cv::Mat resized_img;
+                cv::drawChessboardCorners(view,patternSize, corners1, found);
                 cv::resize(view, resized_img, view.size() / 4);
                 cv::namedWindow(rgb_img->header.frame_id, cv::WINDOW_NORMAL);
                 cv::imshow(rgb_img->header.frame_id, resized_img);
