@@ -201,6 +201,8 @@ namespace avena_view
             const std::shared_ptr<const CalibrateAction::Feedback> feedback
         );
         void calibrateResultCallback(const GoalCalibrateAction::WrappedResult& result);
+
+        void stopCalibrate();
         
         void runGuiPopUpTest(const std::shared_ptr<custom_interfaces::srv::GUIPopUp::Request> request, std::shared_ptr<custom_interfaces::srv::GUIPopUp::Response> response);
 
