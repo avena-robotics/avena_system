@@ -26,7 +26,7 @@
       <visual>
         <origin xyz="${1.5 * grid_size} ${grid_size} ${z_size/2}" rpy="0 0 0" />
         <geometry>
-          <box size="${x_size} ${y_size} ${z_size}" />
+          <box size="${x_size} ${y_size} ${z_size-0.01}" />
         </geometry>
         <material name="Grey">
           <color rgba="0.5 0.5 0.5 1.0"/>
@@ -35,7 +35,7 @@
       <collision>
         <origin xyz="${1.5 * grid_size} ${grid_size} ${z_size/2}" rpy="0 0 0" />
         <geometry>
-          <box size="${x_size} ${y_size} ${z_size}" />
+          <box size="${x_size} ${y_size} ${z_size-0.01}" />
         </geometry>
       </collision>
     </link>

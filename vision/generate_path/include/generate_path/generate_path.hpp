@@ -124,11 +124,10 @@ bool check_collision_free(b3RobotSimulatorClientAPI_NoGUI *env, std::vector<floa
   
   //! Distanced obstacles
   b3ContactInformation info;
-  
-  // collision_args.m_bodyUniqueIdA = robot_id;
-  // collision_args.m_bodyUniqueIdB = table_id;
-  // env->getClosestPoints(collision_args, distance, &info);
-  // obs += info.m_numContactPoints;
+  collision_args.m_bodyUniqueIdA = robot_id;
+  collision_args.m_bodyUniqueIdB = table_id;
+  env->getClosestPoints(collision_args, distance, &info);
+  obs += info.m_numContactPoints;
     
   //! Contant obstacles (robot with gripper)
   collision_args.m_bodyUniqueIdA = robot_id;
@@ -139,8 +138,15 @@ bool check_collision_free(b3RobotSimulatorClientAPI_NoGUI *env, std::vector<floa
   	for (int j = i + 2; j < env->getNumJoints(robot_id); j++)
   	{
       collision_args.m_linkIndexB = j;
-  		env->getContactPoints(collision_args, &info);
-  		obs += info.m_numContactPoints;
+      env->getClosestPoints(collision_args, distance, &info);
+  		// env->getContactPoints(collision_args, &info);
+      if (info.m_numContactPoints > 0)
+      {
+        if (info.m_contactPointData->m_bodyUniqueIdA == info.m_contactPointData->m_bodyUniqueIdB)
+        {
+          obs += info.m_numContactPoints;
+        }
+      }
   	}
   }
   // std::cout<<obs<<std::endl;
@@ -276,6 +282,9 @@ namespace generate_path
     int _table_idx;
     int _robot_idx;
     int _end_effector_idx;
+
+    int _temp_robot_idx;
+    int _temp_table_idx;
   };
 
 } // namespace generate_path

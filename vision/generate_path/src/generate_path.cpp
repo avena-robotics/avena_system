@@ -43,7 +43,7 @@ namespace generate_path
         _joint_state_sub = create_subscription<sensor_msgs::msg::JointState>("joint_states", 10,
                                                                              [this](const sensor_msgs::msg::JointState::SharedPtr joint_states_msg)
                                                                              {
-                                                                                //  RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received joint states [message throttles with 0.1 sec]");
+                                                                                 //  RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received joint states [message throttles with 0.1 sec]");
                                                                                  _current_joint_states = joint_states_msg;
                                                                              });
         _generated_path_pub = create_publisher<custom_interfaces::msg::GeneratedPath>("generated_path", latching_qos);
@@ -111,10 +111,56 @@ namespace generate_path
         auto result = std::make_shared<GeneratePathPose::Result>();
 
         _setCurrentJointStatesOnPhysicsServer(_current_joint_states);
+        /////////////////////////////////////////////////////////////////////////////'
+        const float safety_range = 0.003;
+        const int contact_number_allowed = 1;
 
+        {
+            b3RobotSimulatorGetContactPointsArgs collision_args;
+            collision_args.m_bodyUniqueIdA = _robot_idx;
+            collision_args.m_bodyUniqueIdB = _table_idx;
+            b3ContactInformation contact_info;
+            _bullet_client->getClosestPoints(collision_args, safety_range, &contact_info);
+            if (contact_info.m_numContactPoints > contact_number_allowed)
+            {
+                RCLCPP_ERROR(get_logger(), "Invalid initial state. Robot is in collision with scene part. Aborting...");
+                _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+                goal_handle->abort(result);
+                return;
+            }
+
+            // Check self collision
+            int contacts_amount = 0;
+            collision_args.m_bodyUniqueIdA = _robot_idx;
+            collision_args.m_bodyUniqueIdB = _robot_idx;
+            for (int i = 0; i < _bullet_client->getNumJoints(_robot_idx) - 2; i++)
+            {
+                collision_args.m_linkIndexA = i;
+                // b3JointInfo joint_info;
+                // _bullet_client->getJointInfo(_robot_idx, i, &joint_info);
+                // std::cout << joint_info.m_jointName << ", " << joint_info.m_linkName << std::endl;
+                for (int j = i + 2; j < _bullet_client->getNumJoints(_robot_idx); j++)
+                {
+                    // b3JointInfo joint_info_inner;
+                    // _bullet_client->getJointInfo(_robot_idx, j, &joint_info_inner);
+                    // std::cout << "\t" << joint_info_inner.m_jointName << ", " << joint_info_inner.m_linkName << std::endl;
+                    collision_args.m_linkIndexB = j;
+                    _bullet_client->getClosestPoints(collision_args, safety_range, &contact_info);
+                    contacts_amount += contact_info.m_numContactPoints;
+                }
+            }
+            if (contacts_amount > 0)
+            {
+                RCLCPP_ERROR(get_logger(), "Invalid initial state. Robot is in collision with itself. Aborting...");
+                _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+                goal_handle->abort(result);
+                return;
+            }
+        }
+
+        /////////////////////////////////////////////////////////////////////////////
         // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 128);
         // cv::waitKey();
-
 
         auto end_effector_pose = goal_handle.get()->get_goal()->end_effector_pose;
         auto goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose, _current_joint_states);
@@ -123,27 +169,70 @@ namespace generate_path
         {
             _bullet_client->resetJointState(_robot_idx, i, goal_state[i]);
         }
-        // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
-        // cv::waitKey();
 
-{
-
-        std::stringstream ss;
-        ss << "Goal arm config: ";
-        for (auto ac : goal_state)
         {
-            ss << ac << ", ";
+            b3RobotSimulatorGetContactPointsArgs collision_args;
+            collision_args.m_bodyUniqueIdA = _robot_idx;
+            collision_args.m_bodyUniqueIdB = _table_idx;
+            b3ContactInformation contact_info;
+            _bullet_client->getClosestPoints(collision_args, safety_range, &contact_info);
+            if (contact_info.m_numContactPoints > contact_number_allowed)
+            {
+                RCLCPP_ERROR(get_logger(), "Invalid final state. Robot is in collision with scene part. Aborting...");
+                _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+                goal_handle->abort(result);
+                return;
+            }
+
+            // Check self collision
+            int contacts_amount = 0;
+            collision_args.m_bodyUniqueIdA = _robot_idx;
+            collision_args.m_bodyUniqueIdB = _robot_idx;
+            for (int i = 0; i < _bullet_client->getNumJoints(_robot_idx) - 2; i++)
+            {
+                collision_args.m_linkIndexA = i;
+                // b3JointInfo joint_info;
+                // _bullet_client->getJointInfo(_robot_idx, i, &joint_info);
+                // std::cout << joint_info.m_jointName << ", " << joint_info.m_linkName << std::endl;
+                for (int j = i + 2; j < _bullet_client->getNumJoints(_robot_idx); j++)
+                {
+                    // b3JointInfo joint_info_inner;
+                    // _bullet_client->getJointInfo(_robot_idx, j, &joint_info_inner);
+                    // std::cout << "\t" << joint_info_inner.m_jointName << ", " << joint_info_inner.m_linkName << std::endl;
+                    collision_args.m_linkIndexB = j;
+                    _bullet_client->getClosestPoints(collision_args, safety_range, &contact_info);
+                    contacts_amount += contact_info.m_numContactPoints;
+                }
+            }
+            if (contacts_amount > 0)
+            {
+                RCLCPP_ERROR(get_logger(), "Invalid final state. Robot is in collision with itself. Aborting...");
+                _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+                goal_handle->abort(result);
+                return;
+            }
         }
-        RCLCPP_WARN(get_logger(), ss.str());
-}
+
+        _setCurrentJointStatesOnPhysicsServer(_current_joint_states);
+
+        {
+
+            std::stringstream ss;
+            ss << "Goal arm config: ";
+            for (auto ac : goal_state)
+            {
+                ss << ac << ", ";
+            }
+            RCLCPP_WARN(get_logger(), ss.str());
+        }
 
         // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
         // cv::waitKey();
 
         std::vector<float> joint_states(_current_joint_states->position.begin(), _current_joint_states->position.end());
         // std::vector<float> goal_states = {0, 0, 0, 0, 0, 2, 0};
-        const float safety_range = 0.0;
-        const int threshold = 1;
+        // const float safety_range = 0.003;
+        // const int contact_number_allowed = 1;
         std::vector<int> obstacles = {_table_idx};
         std::vector<int> robot = {_robot_idx};
         int max_iter = 50000;
@@ -152,7 +241,7 @@ namespace generate_path
         std::vector<ArmConfiguration> path;
         {
             helpers::Timer timer("RRT algorithm", get_logger());
-            path = rrt(joint_states, goal_state, max_iter, delta_q, steer_goal_p, _bullet_client.get(), safety_range, obstacles, robot, threshold);
+            path = rrt(joint_states, goal_state, max_iter, delta_q, steer_goal_p, _bullet_client.get(), safety_range, obstacles, robot, contact_number_allowed);
         }
         RCLCPP_INFO_STREAM(get_logger(), "Length of generated path: " << path.size());
 
@@ -163,7 +252,7 @@ namespace generate_path
             goal_handle->abort(result);
             return;
         }
-        
+
         std::stringstream ss;
         ss << "Last config: ";
         auto last_arm_config = path.back();
@@ -192,7 +281,6 @@ namespace generate_path
             RCLCPP_INFO(get_logger(), "Goal to pose succeeded");
         }
         RCLCPP_INFO(get_logger(), "Generate to pose finished");
-
     }
 
     ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &current_joint_states)
@@ -213,18 +301,18 @@ namespace generate_path
         ik_args.m_upperLimits.resize(_robot_info.bounds.size());
         ik_args.m_jointRanges.resize(_robot_info.bounds.size());
         ik_args.m_restPoses.resize(_robot_info.bounds.size());
+        ik_args.m_jointDamping.resize(_robot_info.bounds.size());
         for (size_t i = 0; i < _robot_info.bounds.size(); ++i)
         {
             ik_args.m_lowerLimits[i] = _robot_info.bounds[i].bounds_low;
             ik_args.m_upperLimits[i] = _robot_info.bounds[i].bounds_high;
             ik_args.m_jointRanges[i] = std::abs(_robot_info.bounds[i].bounds_high) + std::abs(_robot_info.bounds[i].bounds_low);
             ik_args.m_restPoses[i] = 0;
-
-            // std::cout << ik_args.m_lowerLimits[i] << ", " << ik_args.m_upperLimits[i] << std::endl; 
+            // ik_args.m_jointDamping[i] = 0.1;
         }
-        ik_args.m_restPoses[3] = -0.9;
-        ik_args.m_restPoses[5] = 2.47;
-
+        // ik_args.m_jointDamping[5] = 1;
+        // ik_args.m_restPoses[3] = -0.9;
+        // ik_args.m_restPoses[5] = 2.47;
 
         ik_args.m_flags |= B3_HAS_IK_TARGET_ORIENTATION;
         ik_args.m_flags |= B3_HAS_NULL_SPACE_VELOCITY;
@@ -273,7 +361,6 @@ namespace generate_path
         _bullet_client->addUserDebugLine(from, to_z, LINE_ARGS);
         //////////////////////////////////////////////////////////
 
-
         b3RobotSimulatorInverseKinematicsResults ik_results;
         // _bullet_client->calculateInverseKinematics(ik_args, ik_results);
         _bullet_client->calculateIK(ik_args, ik_results);
@@ -304,6 +391,7 @@ namespace generate_path
             if (std::strcmp(body_info.m_bodyName, _robot_info.robot_name.c_str()) == 0)
             {
                 _robot_idx = body_unique_id;
+                _temp_robot_idx = body_id;
                 // std::cout << "body id: " << body_id << std::endl;
                 // std::cout << "body unique id: " << body_unique_id << std::endl;
                 // std::cout << "m_baseName: " << body_info.m_baseName << ", m_bodyName: " << body_info.m_bodyName << std::endl;
@@ -331,6 +419,7 @@ namespace generate_path
             }
             else
             {
+                _temp_table_idx = body_id;
                 _table_idx = body_unique_id;
             }
         }
