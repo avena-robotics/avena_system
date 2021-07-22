@@ -37,6 +37,7 @@ namespace avena_view
         ui_.statusIndicator->setScene(pick_place_graphics_scene_.get());
 
         launch_file_process_ = new QProcess();
+        calibrate_launch_file_process_ = new QProcess();
 
         refreshing_node_list_timer_ = std::make_shared<QTimer>(this);
         refreshing_on_ = true;
@@ -89,6 +90,7 @@ namespace avena_view
         user_answer_pub_ = node_->create_publisher<custom_interfaces::msg::GuiBtMessage>("/user_answer", 10);
         arm_command_client_ = node_->create_client<custom_interfaces::srv::ControlCommand>("arm_controller/commands");
         pick_place_action_client_ = rclcpp_action::create_client<BTPickAndPlaceAction>(node_, PICK_PLACE_ACTION_SERVER_NAME);
+        calibrate_action_client_ = rclcpp_action::create_client<custom_interfaces::action::SimpleAction>(node_, CALIBRATE_ACTION_SERVER_NAME);
 
         danger_tool_in_hand_pub_ = node_->create_publisher<std_msgs::msg::Bool>("/danger_tool_in_hand", 10);
         set_background_pub_ = node_->create_publisher<std_msgs::msg::Bool>("/rgbdiff_set_background", 10);
@@ -126,7 +128,6 @@ namespace avena_view
         connect(this, SIGNAL(securityWarningClosed()), this, SLOT(hideSecurityRgbWarning()));
 
         detectron_runner_ = std::make_shared<DetectronRunner>(&ui_);
-
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
@@ -1029,6 +1030,8 @@ namespace avena_view
         msg_box.setText("Attach calibration chessbord to robotic arm");
         msg_box.exec();
 
+        runLaunchFile();
+
         if (msg_box.clickedButton() == done_btn)
         {
             //run calibration
@@ -1036,6 +1039,31 @@ namespace avena_view
         else if (msg_box.clickedButton() == abort_btn)
         {
             //cancel calibration
+        }
+    }
+
+    void AvenaView::runCalibrationLaunchFile()
+    {
+        RCLCPP_INFO(node_->get_logger(), "Starting system");
+        QString program = "ros2";
+
+        calibrate_launch_file_process_->setArguments({"launch", "camera_extrinsics_calibration", CALIBRATE_LAUNCH_FILE});
+        calibrate_launch_file_process_->setProgram(program);
+        launch_file_pid_ = 0;
+
+        if (calibrate_launch_file_process_->startDetached(&calibrate_launch_file_pid_))
+        {
+            this->writeLog("Starting calibration", ui_.logConsoleCalibrate);
+            auto post_start_action = [this]()
+            {
+
+                this->writeLog("Sucessfully started calibration", ui_.logConsoleCalibrate);
+            };
+            QTimer::singleShot(3000, this, post_start_action);
+        }
+        else
+        {
+            writeLog("Error while starting calibration", ui_.logConsoleCalibrate);
         }
     }
 
