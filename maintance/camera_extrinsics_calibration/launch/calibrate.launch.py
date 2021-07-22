@@ -32,10 +32,11 @@ def generate_launch_description():
                 ComposableNode(
                     package='camera_extrinsics_calibration',
                     plugin='PclCalibrator',
-                    name='hand_eye'
+                    name='hand_eye_calibration'
                     )
             ],
             output='screen',
+            # prefix=['xterm -e gdb -ex run --args'],
     )
 
     return launch.LaunchDescription([container])
