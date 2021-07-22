@@ -50,6 +50,8 @@ set(msg_files
   "msg/DetectionsTracking.msg"
   "msg/ModuleCommand.msg"
   "msg/GuiBtMessage.msg"
+  "msg/GeneratedPath.msg"
+  
 )
 
 set(srv_files

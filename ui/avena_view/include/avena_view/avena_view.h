@@ -51,7 +51,6 @@ Q_DECLARE_METATYPE(custom_interfaces::msg::Heartbeat::SharedPtr)
 Q_DECLARE_METATYPE(std_msgs::msg::String::SharedPtr)
 Q_DECLARE_METATYPE(rcl_interfaces::msg::Log::SharedPtr)
 
-
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
@@ -77,10 +76,10 @@ namespace avena_view
         return (a == b);
     }
 
-    bool isItem(const std::string& path);
-    bool isContrainer(const std::string& path);
-    std::vector<std::string> getAreaNames(const std::string& file_path);
-    
+    bool isItem(const std::string &path);
+    bool isContrainer(const std::string &path);
+    std::vector<std::string> getAreaNames(const std::string &file_path);
+
     enum class Status
     {
         STARTING,
@@ -120,7 +119,7 @@ namespace avena_view
         virtual void pausePickPlace();
         virtual void runCalibration();
         virtual void showQuestionMessageBox(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
-        
+
         virtual void showSecurityRgbWarning();
         virtual void hideSecurityRgbWarning();
 
@@ -137,6 +136,8 @@ namespace avena_view
         virtual void refreshNodeList(custom_interfaces::msg::Heartbeat::SharedPtr msg);
         virtual void refreshLogConsole(std_msgs::msg::String::SharedPtr msg);
         virtual void refreshRosoutConsole(rcl_interfaces::msg::Log::SharedPtr msg);
+
+        virtual void stopCalibrate();
 
     signals:
         void questionRecived(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
@@ -159,14 +160,14 @@ namespace avena_view
 
         void runCalibrationLaunchFile();
 
-        bool killAllChildProcessPids();
+        bool killAllChildProcessPids(PID launch_file_pid);
 
         void subscribeHeartBeat();
         void subscribeLogs();
         void subscribeRosOut();
         void subscribeBtQuestion();
 
-        void addNodeToList(const std::string& node_name);
+        void addNodeToList(const std::string &node_name);
         void setUpNodesTabContent(const NodeType &node, int row);
         void sendArmCommand(ControlCommands command);
         void writeLog(QString msg, QTextBrowser *dst_ptr);
@@ -178,7 +179,7 @@ namespace avena_view
         void setUpStartedPickPlaceUi();
         void fillNodesList();
         void setUpRunningArmControlUi();
-        void writeTerminalAndUiLog(const char* msg, Status status, QTextBrowser* console);
+        void writeTerminalAndUiLog(const char *msg, Status status, QTextBrowser *console);
         void fillConfigTree();
         void startNodes();
         void setUpDangerToolTimer();
@@ -187,29 +188,25 @@ namespace avena_view
 
         void setUpGuiWarningUi();
 
-        void sendPickPlaceGoal(const std::string& command);
+        void sendPickPlaceGoal(const std::string &command);
         void pickPlaceGoalResponseCallback(std::shared_future<GoalHandleBTPickAndPlaceAction::SharedPtr> future);
         void pickPlaceFeedbackCallback(
             GoalHandleBTPickAndPlaceAction::SharedPtr,
-            const std::shared_ptr<const BTPickAndPlaceAction::Feedback> feedback
-        );
-        void pickPlaceResultCallback(const GoalHandleBTPickAndPlaceAction::WrappedResult& result);
+            const std::shared_ptr<const BTPickAndPlaceAction::Feedback> feedback);
+        void pickPlaceResultCallback(const GoalHandleBTPickAndPlaceAction::WrappedResult &result);
 
         void calibrateGoalResponseCallback(std::shared_future<GoalCalibrateAction::SharedPtr> future);
         void calibrateFeedbackCallback(
             GoalCalibrateAction::SharedPtr,
-            const std::shared_ptr<const CalibrateAction::Feedback> feedback
-        );
-        void calibrateResultCallback(const GoalCalibrateAction::WrappedResult& result);
+            const std::shared_ptr<const CalibrateAction::Feedback> feedback);
+        void calibrateResultCallback(const GoalCalibrateAction::WrappedResult &result);
 
-        void stopCalibrate();
-        
         void runGuiPopUpTest(const std::shared_ptr<custom_interfaces::srv::GUIPopUp::Request> request, std::shared_ptr<custom_interfaces::srv::GUIPopUp::Response> response);
 
         std::chrono::nanoseconds rosTime2Chrono(builtin_interfaces::msg::Time &stamp);
 
         Ui::AvenaViewWidget ui_;
-        QWidget* widget_;
+        QWidget *widget_;
         std::shared_ptr<QTimer> refreshing_node_list_timer_;
         std::shared_ptr<QTimer> publishing_danger_tool_status_timer_;
         std::shared_ptr<QMessageBox> security_rgb_warning_;
@@ -219,13 +216,13 @@ namespace avena_view
 
         // QList<QTreeWidgetItem*> parameters;
 
-        QProcess* launch_file_process_;
+        QProcess *launch_file_process_;
         qint64 launch_file_pid_;
         std::string pid_file_name_;
 
-        QProcess* calibrate_launch_file_process_;
+        QProcess *calibrate_launch_file_process_;
         qint64 calibrate_launch_file_pid_;
-        
+
         // QScrollBar *sb_;
 
         NodeListMap node_list_;
