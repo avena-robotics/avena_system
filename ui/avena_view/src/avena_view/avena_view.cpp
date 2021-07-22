@@ -1056,7 +1056,7 @@ namespace avena_view
 
     void AvenaView::runCalibrationLaunchFile()
     {
-        int dupa =0;
+        int dupa = 0;
         std::cout << __func__ << " " << dupa++ << std::endl;
         using namespace std::placeholders;
         std::cout << __func__ << " " << dupa++ << std::endl;
@@ -1064,7 +1064,7 @@ namespace avena_view
         std::cout << __func__ << " " << dupa++ << std::endl;
         QString program = "ros2";
         std::cout << __func__ << " " << dupa++ << std::endl;
-        calibrate_launch_file_process_->setArguments({"launch", "camera_extrinsics_calibration", CALIBRATE_LAUNCH_FILE});
+        calibrate_launch_file_process_->setArguments({"launch", "avena_bringup", CALIBRATE_LAUNCH_FILE});
         std::cout << __func__ << " " << dupa++ << std::endl;
         calibrate_launch_file_process_->setProgram(program);
         std::cout << __func__ << " " << dupa++ << std::endl;

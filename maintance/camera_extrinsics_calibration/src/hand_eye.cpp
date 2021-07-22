@@ -433,9 +433,8 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
             cv::Mat gray_img;
             cv::cvtColor(view, gray_img, CV_BGR2GRAY);
             cv::cornerSubPix(gray_img, corners1, cv::Size(5, 5), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
-            bool status_kurwa = cv::solvePnP(objectPoints, corners1, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
+            cv::solvePnPRansac(objectPoints, corners1, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
             RCLCPP_INFO(get_logger(), "...done");
-            std::cout << "status_kurwa: " << status_kurwa << std::endl;
             cv::Mat aa_cv;
             cv::Rodrigues(rotation_vector, aa_cv);
             Eigen::Matrix3f rot_matrix;
@@ -457,11 +456,6 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
             if (_lookupTransform(rgb_img->header.frame_id, camera_base, now(), rgb_to_base) == 1)
                 return CalibrateReturnCode::CAMERA_BASE_TO_RGB_LINK_TF_ERROR;
 
-
-
-            std::cout << "col 1 length: " << out_transform.rotation().col(0).norm() << std::endl;
-            std::cout << "col 2 length: " << out_transform.rotation().col(1).norm() << std::endl;
-            std::cout << "col 3 length: " << out_transform.rotation().col(2).norm() << std::endl;
 
             out_transform = (out_transform.inverse() * rgb_to_base).inverse();
             out_transform = world_to_end_effector_tf * out_transform.inverse();

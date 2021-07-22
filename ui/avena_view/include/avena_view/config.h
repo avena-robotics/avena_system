@@ -10,10 +10,10 @@
 #define START_ACTION_COMMAND "START"
 #define STOP_ACTION_COMMAND "STOP"
 #define PICK_PLACE_ACTION_SERVER_NAME "logic_server"
-#define CALIBRATE_ACTION_SERVER_NAME "calibrate"
+#define CALIBRATE_ACTION_SERVER_NAME "calibrate_cameras"
 
 #define START_LAUNCH_FILE "heartbeats_test_launch.py"
-#define CALIBRATE_LAUNCH_FILE "calibrate.launch.py"
+#define CALIBRATE_LAUNCH_FILE "calibration_franka.launch.py"
 
 #define BT_WARNING_DURATION 5
 
