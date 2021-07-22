@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 from .functions import run_detectron_server
+from ament_index_python.packages import get_package_share_directory
 
 
 def main():
@@ -20,10 +21,12 @@ def main():
     print('Running Detectron server with real model')
     print('Serving real on ports 8767 and 8768')
 
+    package_share_directory = get_package_share_directory('detect_server')
+
     d1_blender = multiprocessing.Process(target=run_detectron_server,
-                                         args=(8767, '/home/avena/ros2_ws/src/avena_system/vision/detect_weights',))
+                                         args=(8767, os.path.join(package_share_directory, "detect_weights"),))
     d2_blender = multiprocessing.Process(target=run_detectron_server,
-                                         args=(8768, '/home/avena/ros2_ws/src/avena_system/vision/detect_weights',))
+                                         args=(8768, os.path.join(package_share_directory, "detect_weights"),))
     d1_blender.start()
     d2_blender.start()
 

@@ -124,6 +124,9 @@ namespace avena_view
         previus_gui_warning_msg_ = false;
         setUpGuiWarningUi();
         connect(this, SIGNAL(securityWarningClosed()), this, SLOT(hideSecurityRgbWarning()));
+
+        detectron_runner_ = std::make_shared<DetectronRunner>(&ui_);
+
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
@@ -206,7 +209,7 @@ namespace avena_view
     {
         security_rgb_warning_ = std::make_shared<QMessageBox>();
         security_rgb_warning_->setText("Security Area triggered. Waiting...");
-        security_rgb_warning_->setStandardButtons(nullptr);
+        // security_rgb_warning_->setStandardButtons(nullptr);
     }
 
     void AvenaView::writeTerminalAndUiLog(const char *msg, Status status, QTextBrowser *console)
@@ -247,29 +250,6 @@ namespace avena_view
             return file["is_container"].as<bool>();
         }
         return false;
-    }
-
-    std::string exec(const char *cmd)
-    {
-        char buffer[128];
-        std::string result = "";
-        FILE *pipe = popen(cmd, "r");
-        if (!pipe)
-            throw std::runtime_error("popen() failed!");
-        try
-        {
-            while (fgets(buffer, sizeof buffer, pipe) != NULL)
-            {
-                result += buffer;
-            }
-        }
-        catch (...)
-        {
-            pclose(pipe);
-            throw;
-        }
-        pclose(pipe);
-        return result;
     }
 
     std::chrono::nanoseconds AvenaView::rosTime2Chrono(builtin_interfaces::msg::Time &stamp)
@@ -530,6 +510,7 @@ namespace avena_view
 
         if (launch_file_pid_ > 0)
         {
+            //TODO: change returend value type to int with exit code
             if (killAllChildProcessPids())
             {
                 writeTerminalAndUiLog("Sucessfully stopped pick place system", Status::STOPPED, ui_.logConsole);

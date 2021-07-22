@@ -215,7 +215,6 @@ namespace rgb_diff_action_server
     {
         status = custom_interfaces::msg::Heartbeat::RUNNING;
     }
-
     void RgbDiffActionServer::shutDownNode()
     {
         status = custom_interfaces::msg::Heartbeat::STOPPED;
@@ -273,7 +272,6 @@ namespace rgb_diff_action_server
 
         return ret_mask;
     }
-
     void RgbDiffActionServer::set_security_area_masks()
     {
 
