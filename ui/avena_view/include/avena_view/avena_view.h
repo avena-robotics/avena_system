@@ -30,6 +30,7 @@
 #include <custom_interfaces/msg/module_command.hpp>
 #include <custom_interfaces/srv/control_command.hpp>
 #include <custom_interfaces/action/bt_pick_and_place_action.hpp>
+#include <custom_interfaces/action/simple_action.hpp>
 #include <avena_view/config.h>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <filesystem>
@@ -45,10 +46,10 @@
 #include "utils.h"
 #include "avena_view/detectron_runner.h"
 
-Q_DECLARE_METATYPE(custom_interfaces::msg::GuiBtMessage::SharedPtr);
-Q_DECLARE_METATYPE(custom_interfaces::msg::Heartbeat::SharedPtr);
-Q_DECLARE_METATYPE(std_msgs::msg::String::SharedPtr);
-Q_DECLARE_METATYPE(rcl_interfaces::msg::Log::SharedPtr);
+Q_DECLARE_METATYPE(custom_interfaces::msg::GuiBtMessage::SharedPtr)
+Q_DECLARE_METATYPE(custom_interfaces::msg::Heartbeat::SharedPtr)
+Q_DECLARE_METATYPE(std_msgs::msg::String::SharedPtr)
+Q_DECLARE_METATYPE(rcl_interfaces::msg::Log::SharedPtr)
 
 
 using namespace std::chrono_literals;
@@ -59,6 +60,8 @@ using NodeType = std::pair<std::string, custom_interfaces::msg::Heartbeat::Share
 using PID = qint64;
 using BTPickAndPlaceAction = custom_interfaces::action::BTPickAndPlaceAction;
 using GoalHandleBTPickAndPlaceAction = rclcpp_action::ClientGoalHandle<BTPickAndPlaceAction>;
+using CalibrateAction = custom_interfaces::action::SimpleAction;
+using GoalCalibrateAction = rclcpp_action::ClientGoalHandle<CalibrateAction>;
 
 namespace avena_view
 {
@@ -154,6 +157,8 @@ namespace avena_view
         void securityTriggerStatusCallback(std_msgs::msg::Bool::SharedPtr msg);
         void securityPauseStatusCallback(std_msgs::msg::Bool::SharedPtr msg);
 
+        void runCalibrationLaunchFile();
+
         bool killAllChildProcessPids();
 
         void subscribeHeartBeat();
@@ -189,6 +194,13 @@ namespace avena_view
             const std::shared_ptr<const BTPickAndPlaceAction::Feedback> feedback
         );
         void pickPlaceResultCallback(const GoalHandleBTPickAndPlaceAction::WrappedResult& result);
+
+        void calibrateGoalResponseCallback(std::shared_future<GoalCalibrateAction::SharedPtr> future);
+        void calibrateFeedbackCallback(
+            GoalCalibrateAction::SharedPtr,
+            const std::shared_ptr<const CalibrateAction::Feedback> feedback
+        );
+        void calibrateResultCallback(const GoalCalibrateAction::WrappedResult& result);
         
         void runGuiPopUpTest(const std::shared_ptr<custom_interfaces::srv::GUIPopUp::Request> request, std::shared_ptr<custom_interfaces::srv::GUIPopUp::Response> response);
 
@@ -208,6 +220,9 @@ namespace avena_view
         QProcess* launch_file_process_;
         qint64 launch_file_pid_;
         std::string pid_file_name_;
+
+        QProcess* calibrate_launch_file_process_;
+        qint64 calibrate_launch_file_pid_;
         
         // QScrollBar *sb_;
 
@@ -224,6 +239,7 @@ namespace avena_view
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr logs_sub_;
         rclcpp::Subscription<rcl_interfaces::msg::Log>::SharedPtr rosout_sub_;
         rclcpp_action::Client<BTPickAndPlaceAction>::SharedPtr pick_place_action_client_;
+        rclcpp_action::Client<custom_interfaces::action::SimpleAction>::SharedPtr calibrate_action_client_;
 
         rclcpp::Publisher<custom_interfaces::msg::GuiBtMessage>::SharedPtr user_answer_pub_;
         rclcpp::Subscription<custom_interfaces::msg::GuiBtMessage>::SharedPtr bt_question_sub_;
