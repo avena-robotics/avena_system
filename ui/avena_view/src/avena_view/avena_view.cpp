@@ -1029,13 +1029,71 @@ namespace avena_view
 
         if (msg_box.clickedButton() == done_btn)
         {
-            //run calibration
-            std::cout << "DUPA" << std::endl;
             runCalibrationLaunchFile();
         }
         else if (msg_box.clickedButton() == abort_btn)
         {
-            //cancel calibration
+            stopCalibrate();
+        }
+    }
+
+    void AvenaView::stopCalibrate()
+    {
+        int killing_result = 0;
+        if(calibrate_launch_file_pid_ > 0)
+            killing_result = kill(calibrate_launch_file_pid_, SIGINT);
+        ui_.logConsoleCalibrate->append( "Calibrate stopped with exit code: " + QString::number(killing_result));
+    }
+
+    void AvenaView::calibrateGoalResponseCallback(std::shared_future<GoalCalibrateAction::SharedPtr> future)
+    {
+    }
+
+    void AvenaView::calibrateFeedbackCallback(
+        GoalCalibrateAction::SharedPtr,
+        const std::shared_ptr<const CalibrateAction::Feedback> feedback)
+    {
+    }
+
+    void AvenaView::calibrateResultCallback(const GoalCalibrateAction::WrappedResult &result)
+    {
+        this->writeLog("Calibration action returned result", ui_.logConsoleCalibrate);
+    }
+
+    void AvenaView::runCalibrationLaunchFile()
+    {
+        using namespace std::placeholders;
+        RCLCPP_INFO(node_->get_logger(), "Starting system");
+        QString program = "ros2";
+        calibrate_launch_file_process_->setArguments({"launch", "camera_extrinsics_calibration", CALIBRATE_LAUNCH_FILE});
+        calibrate_launch_file_process_->setProgram(program);
+        calibrate_launch_file_pid_ = 0;
+
+        if (calibrate_launch_file_process_->startDetached(&calibrate_launch_file_pid_))
+        {
+            this->writeLog("Starting calibration", ui_.logConsoleCalibrate);
+                auto post_start_action = [this]()
+            {
+                if (!this->calibrate_action_client_->wait_for_action_server(200ms))
+                {
+                    RCLCPP_ERROR(node_->get_logger(), "Action server not available");
+                    rclcpp::shutdown();
+                }
+                auto goal_msg = CalibrateAction::Goal();
+                auto send_goal_options = rclcpp_action::Client<CalibrateAction>::SendGoalOptions();
+                send_goal_options.feedback_callback = std::bind(&AvenaView::calibrateFeedbackCallback, this, _1, _2);
+                send_goal_options.goal_response_callback = std::bind(&AvenaView::calibrateGoalResponseCallback, this, _1);
+                send_goal_options.result_callback = std::bind(&AvenaView::calibrateResultCallback, this, _1);
+
+                this->calibrate_action_client_->async_send_goal(goal_msg, send_goal_options);
+
+                this->writeLog("Sucessfully started calibration", ui_.logConsoleCalibrate);
+            };
+            QTimer::singleShot(3000, this, post_start_action);
+        }
+        else
+        {
+            writeLog("Error while starting calibration", ui_.logConsoleCalibrate);
         }
     }
 
