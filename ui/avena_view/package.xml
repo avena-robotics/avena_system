@@ -25,7 +25,7 @@
   <!-- <depend>compose_items</depend>
   <depend>select_new_masks</depend>
   <depend>ptcld_transformer</depend> -->
-  <depend>logic_bt</depend>
+  <depend>security_rgb</depend>
   <depend>rclcpp_action</depend>
   <depend>rgb_diff</depend>
 
