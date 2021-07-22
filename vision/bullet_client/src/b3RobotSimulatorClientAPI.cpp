@@ -32,6 +32,79 @@ namespace bullet_client
 	{
 	}
 
+	void b3RobotSimulatorClientAPI::removeAllUserDebugItems()
+	{
+		b3SharedMemoryCommandHandle commandHandle;
+		b3SharedMemoryStatusHandle statusHandle;
+		int statusType;
+		commandHandle = b3InitUserDebugDrawRemoveAll(m_data->m_physicsClientHandle);
+		statusHandle = b3SubmitClientCommandAndWaitStatus(m_data->m_physicsClientHandle, commandHandle);
+		statusType = b3GetStatusType(statusHandle);
+	}
+
+	bool b3RobotSimulatorClientAPI::calculateIK(const struct b3RobotSimulatorInverseKinematicArgs &args, struct b3RobotSimulatorInverseKinematicsResults &results)
+	{
+		if (!isConnected())
+		{
+			b3Warning("Not connected");
+			return false;
+		}
+		btAssert(args.m_endEffectorLinkIndex >= 0);
+		btAssert(args.m_bodyUniqueId >= 0);
+
+		b3SharedMemoryCommandHandle command = b3CalculateInverseKinematicsCommandInit(m_data->m_physicsClientHandle, args.m_bodyUniqueId);
+		if ((args.m_flags & B3_HAS_IK_TARGET_ORIENTATION) && (args.m_flags & B3_HAS_NULL_SPACE_VELOCITY))
+		{
+			std::cout << "\nhere" << std::endl;
+			b3CalculateInverseKinematicsPosOrnWithNullSpaceVel(command, args.m_numDegreeOfFreedom, args.m_endEffectorLinkIndex, args.m_endEffectorTargetPosition, args.m_endEffectorTargetOrientation, &args.m_lowerLimits[0], &args.m_upperLimits[0], &args.m_jointRanges[0], &args.m_restPoses[0]);
+		}
+		else if (args.m_flags & B3_HAS_IK_TARGET_ORIENTATION)
+		{
+			b3CalculateInverseKinematicsAddTargetPositionWithOrientation(command, args.m_endEffectorLinkIndex, args.m_endEffectorTargetPosition, args.m_endEffectorTargetOrientation);
+		}
+		else if (args.m_flags & B3_HAS_NULL_SPACE_VELOCITY)
+		{
+			b3CalculateInverseKinematicsPosWithNullSpaceVel(command, args.m_numDegreeOfFreedom, args.m_endEffectorLinkIndex, args.m_endEffectorTargetPosition, &args.m_lowerLimits[0], &args.m_upperLimits[0], &args.m_jointRanges[0], &args.m_restPoses[0]);
+		}
+		else
+		{
+			b3CalculateInverseKinematicsAddTargetPurePosition(command, args.m_endEffectorLinkIndex, args.m_endEffectorTargetPosition);
+		}
+
+		if (args.m_flags & B3_HAS_JOINT_DAMPING)
+		{
+			b3CalculateInverseKinematicsSetJointDamping(command, args.m_numDegreeOfFreedom, &args.m_jointDamping[0]);
+		}
+
+		if (args.m_flags & B3_HAS_CURRENT_POSITIONS)
+		{
+			b3CalculateInverseKinematicsSetCurrentPositions(command, args.m_numDegreeOfFreedom, &args.m_currentJointPositions[0]);
+		}
+
+		b3CalculateInverseKinematicsSetResidualThreshold(command, 1e-4);
+		b3CalculateInverseKinematicsSetMaxNumIterations(command, 1000);
+		// std::cout << "here once again" << std::endl;
+
+		b3SharedMemoryStatusHandle statusHandle;
+		statusHandle = b3SubmitClientCommandAndWaitStatus(m_data->m_physicsClientHandle, command);
+
+		int numPos = 0;
+
+		bool result = b3GetStatusInverseKinematicsJointPositions(statusHandle,
+																 &results.m_bodyUniqueId,
+																 &numPos,
+																 0) != 0;
+		if (result && numPos)
+		{
+			results.m_calculatedJointPositions.resize(numPos);
+			result = b3GetStatusInverseKinematicsJointPositions(statusHandle,
+																&results.m_bodyUniqueId,
+																&numPos,
+																&results.m_calculatedJointPositions[0]) != 0;
+		}
+		return result;
+	}
+
 	void b3RobotSimulatorClientAPI::renderScene()
 	{
 		if (!isConnected())

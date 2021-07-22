@@ -5,11 +5,13 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <opencv2/opencv.hpp>
 
 // ___Avena___
 #include <custom_interfaces/action/generate_path_pose.hpp>
 #include <custom_interfaces/msg/generated_path.hpp>
 #include <helpers_commons/helpers_commons.hpp>
+#include <helpers_vision/helpers_vision.hpp>
 #include <bullet_client/b3RobotSimulatorClientAPI.h>
 
 // ___Package___
@@ -19,11 +21,11 @@
 std::random_device rd;
 std::mt19937 gen(rd());
 std::uniform_real_distribution<> dis(0.0, 1.0);
-std::uniform_real_distribution<> joint1_3_5_7(-2.9671, 2.9671);
-std::uniform_real_distribution<> joint2(-1.8326, 1.8326);
-std::uniform_real_distribution<> joint4(-3.1416, 0);
-std::uniform_real_distribution<> joint6(-0.0873, 3.8223);
-int END_EFECTOR_LINK_INDEX = 6;
+std::uniform_real_distribution<> joint1_3_5_7(-2.8973, 2.8973);
+std::uniform_real_distribution<> joint2(-1.7628, 1.7628);
+std::uniform_real_distribution<> joint4(-3.0718, -0.0698);
+std::uniform_real_distribution<> joint6(-0.0175, 3.7525);
+int END_EFECTOR_LINK_INDEX = 7;
 
 std::vector<float> semi_random_sample(double steer_goal_p, std::vector<float> &q_goal)
 {
@@ -65,7 +67,7 @@ float get_euclidean_distance(std::vector<float> &q1, std::vector<float> &q2)
 
 std::vector<float> nearest(std::vector<std::vector<float>> &V, std::vector<float> &q_rand)
 {
-  double distance = 999999;
+  double distance = std::numeric_limits<double>::max();
   double distance_to_compare;
   std::vector<float> q_nearest;
 
@@ -94,9 +96,11 @@ std::vector<float> steer(std::vector<float> &q_nearest, std::vector<float> &q_ra
   else
   {
     int len = q_rand.size();
+    float dist = get_euclidean_distance(q_rand, q_nearest);
     for (int i = 0; i < len; i++)
     {
-      q_hat.push_back((q_rand[i] - q_nearest[i]) / get_euclidean_distance(q_rand, q_nearest));
+      q_hat.push_back((q_rand[i] - q_nearest[i]) / dist);
+      // q_new.push_back(q_nearest[i] + q_hat[i]);
       q_new.push_back(q_nearest[i] + q_hat[i] * delta_q);
     }
   }
@@ -108,38 +112,37 @@ bool check_collision_free(b3RobotSimulatorClientAPI_NoGUI *env, std::vector<floa
 {
 
   int obs = 0;
+  // int robot_id = env->getBodyUniqueId(robot[0]);
+  // int table_id = env->getBodyUniqueId(obstacles[0]);
   int robot_id = robot[0];
-  for (int i = 0; i <= END_EFECTOR_LINK_INDEX; i++)
+  int table_id = obstacles[0];
+  
+  for (int i = 0; i < END_EFECTOR_LINK_INDEX; i++)
   {
     env->resetJointState(robot_id, i, q_new[i]);
   }
-  // env->stepSimulation();
+  
   //! Distanced obstacles
   b3ContactInformation info;
-  int robot_len = robot.size();
-  int obstacles_len = obstacles.size();
-  for (int i = 0; i < robot_len; i++)
-  {
-    collision_args.m_bodyUniqueIdA = robot[i];
-    for (int j = 0; j < obstacles_len; j++)
-    {
-      collision_args.m_bodyUniqueIdB = obstacles[j];
-      env->getClosestPoints(collision_args, distance, &info);
-      obs += info.m_numContactPoints;
-    }
-  }
-
+  
+  // collision_args.m_bodyUniqueIdA = robot_id;
+  // collision_args.m_bodyUniqueIdB = table_id;
+  // env->getClosestPoints(collision_args, distance, &info);
+  // obs += info.m_numContactPoints;
+    
   //! Contant obstacles (robot with gripper)
-  // for (int i = 0; i < robot_len - 1; i++)
-  // {
-  // 	collision_args.m_bodyUniqueIdA = robot[i];
-  // 	for (int j = i + 1; j < robot_len; j++)
-  // 	{
-  // 		collision_args.m_bodyUniqueIdB = robot[j];
-  // 		env->getContactPoints(collision_args, &info);
-  // 		obs += info.m_numContactPoints;
-  // 	}
-  // }
+  collision_args.m_bodyUniqueIdA = robot_id;
+  collision_args.m_bodyUniqueIdB = robot_id;
+  for (int i = 0; i < env->getNumJoints(robot_id) - 2; i++)
+  {
+  	collision_args.m_linkIndexA = i;
+  	for (int j = i + 2; j < env->getNumJoints(robot_id); j++)
+  	{
+      collision_args.m_linkIndexB = j;
+  		env->getContactPoints(collision_args, &info);
+  		obs += info.m_numContactPoints;
+  	}
+  }
   // std::cout<<obs<<std::endl;
   if (obs > collision_threshold)
     return false;
@@ -163,6 +166,8 @@ std::vector<std::vector<float>> rrt(std::vector<float> &q_init, std::vector<floa
   std::vector<std::vector<std::vector<float>>> E;
   std::vector<std::vector<float>> path;
   bool found = false;
+  
+  // const float alpha = 0.0000001;
 
   std::vector<float> q_rand;
   std::vector<float> q_nearest;
@@ -172,18 +177,21 @@ std::vector<std::vector<float>> rrt(std::vector<float> &q_init, std::vector<floa
 
   for (int i = 0; i < MAX_ITERS; i++)
   {
+    // steer_goal_p = steer_goal_p * std::exp(-alpha * i);
+    // if (steer_goal_p > 0.0001)
+    //   std::cout << i << ", " << steer_goal_p << std::endl; 
     q_rand = semi_random_sample(steer_goal_p, q_goal);
     q_nearest = nearest(V, q_rand);
     q_new = steer(q_nearest, q_rand, delta_q);
     if (check_collision_free(env, q_new, distance, COLLISION_ARGS, obstacles, robot, collision_threshold))
     {
-      auto result1 = std::find(begin(V), end(V), q_new);
+      auto result1 = std::find(std::begin(V), std::end(V), q_new);
       if (result1 == std::end(V))
       {
         V.push_back(q_new);
       }
       std::vector<std::vector<float>> edge = {q_nearest, q_new};
-      auto result2 = std::find(begin(E), end(E), edge);
+      auto result2 = std::find(std::begin(E), std::end(E), edge);
       if (result2 == std::end(E))
       {
         E.push_back(edge);
@@ -200,7 +208,7 @@ std::vector<std::vector<float>> rrt(std::vector<float> &q_init, std::vector<floa
   }
   if (found)
   {
-    std::cout << "FOUND PATH" << std::endl;
+    // std::cout << "FOUND PATH" << std::endl;
     std::vector<float> current_q = q_goal;
     path.push_back(current_q);
     while (current_q != q_init)
@@ -253,7 +261,7 @@ namespace generate_path
     ReturnCode _setCurrentJointStatesOnPhysicsServer(const sensor_msgs::msg::JointState::SharedPtr &joint_states);
     ReturnCode _getParametersFromServer();
     void _convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment);
-    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &joint_states);
+    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &current_joint_states);
     // ReturnCode _readSceneInfo();
 
     // ___Attributes___

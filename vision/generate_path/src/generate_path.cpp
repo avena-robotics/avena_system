@@ -104,22 +104,56 @@ namespace generate_path
 
     void GeneratePath::_executePose(const std::shared_ptr<GoalHandleGeneratePathPose> goal_handle)
     {
+        _bullet_client->removeAllUserDebugItems();
+
         RCLCPP_INFO(get_logger(), "Generating pose path");
         _bullet_client->syncBodies();
         auto result = std::make_shared<GeneratePathPose::Result>();
 
         _setCurrentJointStatesOnPhysicsServer(_current_joint_states);
 
+        // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 128);
+        // cv::waitKey();
+
+
         auto end_effector_pose = goal_handle.get()->get_goal()->end_effector_pose;
         auto goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose, _current_joint_states);
 
+        for (int i = 0; i < END_EFECTOR_LINK_INDEX; i++)
+        {
+            _bullet_client->resetJointState(_robot_idx, i, goal_state[i]);
+        }
+        // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
+        // cv::waitKey();
+
+{
+
+        std::stringstream ss;
+        ss << "Goal arm config: ";
+        for (auto ac : goal_state)
+        {
+            ss << ac << ", ";
+        }
+        RCLCPP_WARN(get_logger(), ss.str());
+}
+
+        // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
+        // cv::waitKey();
+
         std::vector<float> joint_states(_current_joint_states->position.begin(), _current_joint_states->position.end());
         // std::vector<float> goal_states = {0, 0, 0, 0, 0, 2, 0};
-        const float safety_range = 0.003;
+        const float safety_range = 0.0;
         const int threshold = 1;
         std::vector<int> obstacles = {_table_idx};
         std::vector<int> robot = {_robot_idx};
-        auto path = rrt(joint_states, goal_state, 10000, 0.1, 0.01, _bullet_client.get(), safety_range, obstacles, robot, threshold);
+        int max_iter = 50000;
+        float delta_q = 0.1;
+        float steer_goal_p = 0.05;
+        std::vector<ArmConfiguration> path;
+        {
+            helpers::Timer timer("RRT algorithm", get_logger());
+            path = rrt(joint_states, goal_state, max_iter, delta_q, steer_goal_p, _bullet_client.get(), safety_range, obstacles, robot, threshold);
+        }
         RCLCPP_INFO_STREAM(get_logger(), "Length of generated path: " << path.size());
 
         if (path.size() == 0)
@@ -128,6 +162,20 @@ namespace generate_path
             _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
             goal_handle->abort(result);
             return;
+        }
+        
+        std::stringstream ss;
+        ss << "Last config: ";
+        auto last_arm_config = path.back();
+        for (auto ac : last_arm_config)
+        {
+            ss << ac << ", ";
+        }
+        RCLCPP_WARN(get_logger(), ss.str());
+
+        for (int i = 0; i < END_EFECTOR_LINK_INDEX; i++)
+        {
+            _bullet_client->resetJointState(_robot_idx, i, last_arm_config[i]);
         }
 
         custom_interfaces::msg::GeneratedPath generated_path;
@@ -144,12 +192,12 @@ namespace generate_path
             RCLCPP_INFO(get_logger(), "Goal to pose succeeded");
         }
         RCLCPP_INFO(get_logger(), "Generate to pose finished");
+
     }
 
-    ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &joint_states)
+    ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &current_joint_states)
     {
         b3RobotSimulatorInverseKinematicArgs ik_args;
-        b3RobotSimulatorInverseKinematicsResults ik_results;
         ik_args.m_bodyUniqueId = _robot_idx;
         ik_args.m_endEffectorLinkIndex = _end_effector_idx;
         ik_args.m_endEffectorTargetPosition[0] = end_effector_pose.position.x;
@@ -160,21 +208,84 @@ namespace generate_path
         ik_args.m_endEffectorTargetOrientation[2] = end_effector_pose.orientation.z;
         ik_args.m_endEffectorTargetOrientation[3] = end_effector_pose.orientation.w;
         ik_args.m_numDegreeOfFreedom = _robot_info.nr_joints;
-        // ik_args.m_currentJointPositions.resize(_robot_info.nr_joints);
-        // for (size_t i = 0; i < _robot_info.nr_joints; ++i)
-        //     ik_args.m_currentJointPositions[i] = joint_states->position[i];
 
-        // ik_args.m_flags = B3_HAS_IK_TARGET_ORIENTATION;// | B3_HAS_CURRENT_POSITIONS;
+        ik_args.m_lowerLimits.resize(_robot_info.bounds.size());
+        ik_args.m_upperLimits.resize(_robot_info.bounds.size());
+        ik_args.m_jointRanges.resize(_robot_info.bounds.size());
+        ik_args.m_restPoses.resize(_robot_info.bounds.size());
+        for (size_t i = 0; i < _robot_info.bounds.size(); ++i)
+        {
+            ik_args.m_lowerLimits[i] = _robot_info.bounds[i].bounds_low;
+            ik_args.m_upperLimits[i] = _robot_info.bounds[i].bounds_high;
+            ik_args.m_jointRanges[i] = std::abs(_robot_info.bounds[i].bounds_high) + std::abs(_robot_info.bounds[i].bounds_low);
+            ik_args.m_restPoses[i] = 0;
+
+            // std::cout << ik_args.m_lowerLimits[i] << ", " << ik_args.m_upperLimits[i] << std::endl; 
+        }
+        ik_args.m_restPoses[3] = -0.9;
+        ik_args.m_restPoses[5] = 2.47;
+
+
+        ik_args.m_flags |= B3_HAS_IK_TARGET_ORIENTATION;
+        ik_args.m_flags |= B3_HAS_NULL_SPACE_VELOCITY;
+
+        // ik_args.m_currentJointPositions.clear();
+        // for (size_t i = 0; i < _robot_info.nr_joints; ++i)
+        //     ik_args.m_currentJointPositions.push_back(current_joint_states->position[i]);
+        // ik_args.m_flags |= B3_HAS_CURRENT_POSITIONS;
 
         RCLCPP_ERROR_STREAM(get_logger(), "ik_args.m_flags: " << ik_args.m_flags);
 
-        _bullet_client->calculateInverseKinematics(ik_args, ik_results);
+        //////////////////////////////////////////////////////////
+        // End effector pose visualization
+        Eigen::Affine3f ee_aff;
+        auto ros_ee_aff = end_effector_pose;
+        ros_ee_aff.position.z += 0.545;
+        helpers::converters::geometryToEigenAffine(ros_ee_aff, ee_aff);
+
+        Eigen::Vector3f ee_pos(ee_aff.translation());
+        Eigen::Quaternionf ee_quat(ee_aff.rotation());
+        Eigen::Vector3f x_shift = ee_quat.toRotationMatrix().col(0) * 0.2;
+        Eigen::Vector3f ee_pos_x = ee_pos + x_shift;
+
+        Eigen::Vector3f y_shift = ee_quat.toRotationMatrix().col(1) * 0.2;
+        Eigen::Vector3f ee_pos_y = ee_pos + y_shift;
+
+        Eigen::Vector3f z_shift = ee_quat.toRotationMatrix().col(2) * 0.2;
+        Eigen::Vector3f ee_pos_z = ee_pos + z_shift;
+
+        b3RobotSimulatorAddUserDebugLineArgs LINE_ARGS;
+        LINE_ARGS.m_colorRGB[0] = 1;
+        LINE_ARGS.m_colorRGB[1] = 0;
+        LINE_ARGS.m_colorRGB[2] = 0;
+        btVector3 from(ros_ee_aff.position.x, ros_ee_aff.position.y, ros_ee_aff.position.z);
+        btVector3 to_x(ee_pos_x.x(), ee_pos_x.y(), ee_pos_x.z());
+        _bullet_client->addUserDebugLine(from, to_x, LINE_ARGS);
+        LINE_ARGS.m_colorRGB[0] = 0;
+        LINE_ARGS.m_colorRGB[1] = 1;
+        LINE_ARGS.m_colorRGB[2] = 0;
+        btVector3 to_y(ee_pos_y.x(), ee_pos_y.y(), ee_pos_y.z());
+        _bullet_client->addUserDebugLine(from, to_y, LINE_ARGS);
+        LINE_ARGS.m_colorRGB[0] = 0;
+        LINE_ARGS.m_colorRGB[1] = 0;
+        LINE_ARGS.m_colorRGB[2] = 1;
+        btVector3 to_z(ee_pos_z.x(), ee_pos_z.y(), ee_pos_z.z());
+        _bullet_client->addUserDebugLine(from, to_z, LINE_ARGS);
+        //////////////////////////////////////////////////////////
+
+
+        b3RobotSimulatorInverseKinematicsResults ik_results;
+        // _bullet_client->calculateInverseKinematics(ik_args, ik_results);
+        _bullet_client->calculateIK(ik_args, ik_results);
+
+        for (int i = 0; i < ik_results.m_calculatedJointPositions.size(); i++)
+        {
+            std::cout << "i: " << i << ", " << ik_results.m_calculatedJointPositions[i] << std::endl;
+        }
+
         ArmConfiguration goal_configuration(_robot_info.nr_joints);
         for (size_t i = 0; i < goal_configuration.size(); i++)
-        {
-            std::cout << "Joint " << i << " calculated pose: " << ik_results.m_calculatedJointPositions[i] << std::endl;
             goal_configuration[i] = ik_results.m_calculatedJointPositions[i];
-        }
 
         return goal_configuration;
     }

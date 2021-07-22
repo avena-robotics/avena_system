@@ -24,6 +24,7 @@ find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(custom_interfaces REQUIRED)
 find_package(helpers_commons REQUIRED)
+find_package(helpers_vision REQUIRED)
 find_package(bullet_client REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED 
@@ -41,6 +42,7 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp_action
   rclcpp_components
   helpers_commons
+  helpers_vision
   bullet_client
 )
 rclcpp_components_register_nodes(${PROJECT_NAME} "generate_path::GeneratePath")

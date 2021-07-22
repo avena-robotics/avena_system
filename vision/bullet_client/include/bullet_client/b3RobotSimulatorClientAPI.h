@@ -3,6 +3,7 @@
 
 #include <SharedMemory/b3RobotSimulatorClientAPI_NoGUI.h>
 #include <memory>
+#include <iostream>
 
 namespace bullet_client
 {
@@ -17,6 +18,10 @@ namespace bullet_client
     b3RobotSimulatorClientAPI();
 
     virtual ~b3RobotSimulatorClientAPI();
+
+  	virtual void removeAllUserDebugItems();
+
+    bool calculateIK(const struct b3RobotSimulatorInverseKinematicArgs& args, struct b3RobotSimulatorInverseKinematicsResults& results);
 
     virtual bool connect(int mode, const std::string &hostName = "localhost", int portOrKey = -1);
 

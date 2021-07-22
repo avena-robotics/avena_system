@@ -141,7 +141,7 @@ namespace bullet_server
 
         //! LOAD AVENA ARM FROM URDF
         URDF_LOAD_PARAMS.m_forceOverrideFixedBase = true;
-        URDF_LOAD_PARAMS.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
+        // URDF_LOAD_PARAMS.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
         URDF_LOAD_PARAMS.m_startPosition = btVector3(0.18, -0.35, TABLE_HEIGHT);
         URDF_LOAD_PARAMS.m_startOrientation = sim->getQuaternionFromEuler(btVector3(0, 0, 0));
 
