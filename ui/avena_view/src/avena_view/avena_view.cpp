@@ -1027,11 +1027,10 @@ namespace avena_view
         msg_box.setText("Attach calibration chessbord to robotic arm");
         msg_box.exec();
 
-        runLaunchFile();
-
         if (msg_box.clickedButton() == done_btn)
         {
             //run calibration
+            std::cout << "DUPA" << std::endl;
             runCalibrationLaunchFile();
         }
         else if (msg_box.clickedButton() == abort_btn)
@@ -1057,17 +1056,25 @@ namespace avena_view
 
     void AvenaView::runCalibrationLaunchFile()
     {
+        int dupa =0;
+        std::cout << __func__ << " " << dupa++ << std::endl;
         using namespace std::placeholders;
+        std::cout << __func__ << " " << dupa++ << std::endl;
         RCLCPP_INFO(node_->get_logger(), "Starting system");
+        std::cout << __func__ << " " << dupa++ << std::endl;
         QString program = "ros2";
-
+        std::cout << __func__ << " " << dupa++ << std::endl;
         calibrate_launch_file_process_->setArguments({"launch", "camera_extrinsics_calibration", CALIBRATE_LAUNCH_FILE});
+        std::cout << __func__ << " " << dupa++ << std::endl;
         calibrate_launch_file_process_->setProgram(program);
+        std::cout << __func__ << " " << dupa++ << std::endl;
         calibrate_launch_file_pid_ = 0;
+        std::cout << __func__ << " " << dupa++ << std::endl;
 
         if (calibrate_launch_file_process_->startDetached(&calibrate_launch_file_pid_))
         {
             this->writeLog("Starting calibration", ui_.logConsoleCalibrate);
+            std::cout << __func__ << " " << dupa++ << std::endl;
             auto post_start_action = [this]()
             {
                 if (!this->calibrate_action_client_->wait_for_action_server(200ms))
@@ -1085,7 +1092,9 @@ namespace avena_view
 
                 this->writeLog("Sucessfully started calibration", ui_.logConsoleCalibrate);
             };
+            std::cout << __func__ << " " << dupa++ << std::endl;
             QTimer::singleShot(3000, this, post_start_action);
+            std::cout << __func__ << " " << dupa++ << std::endl;
         }
         else
         {
