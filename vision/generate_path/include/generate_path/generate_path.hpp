@@ -17,7 +17,7 @@
 // ___Package___
 #include "generate_path/visibility_control.h"
 
-// FIXME:
+// FIXME: Refactor
 std::random_device rd;
 std::mt19937 gen(rd());
 std::uniform_real_distribution<> dis(0.0, 1.0);
@@ -25,6 +25,7 @@ std::uniform_real_distribution<> joint1_3_5_7(-2.8973, 2.8973);
 std::uniform_real_distribution<> joint2(-1.7628, 1.7628);
 std::uniform_real_distribution<> joint4(-3.0718, -0.0698);
 std::uniform_real_distribution<> joint6(-0.0175, 3.7525);
+
 int END_EFECTOR_LINK_INDEX = 7;
 
 std::vector<float> semi_random_sample(double steer_goal_p, std::vector<float> &q_goal)
@@ -107,28 +108,28 @@ std::vector<float> steer(std::vector<float> &q_nearest, std::vector<float> &q_ra
   return q_new;
 }
 
-bool check_collision_free(b3RobotSimulatorClientAPI_NoGUI *env, std::vector<float> &q_new, double distance, b3RobotSimulatorGetContactPointsArgs &collision_args, std::vector<int> &obstacles, std::vector<int> &robot,
+bool check_collision_free(bullet_client::b3RobotSimulatorClientAPI *env, std::vector<float> &q_new, double distance, std::vector<int> &obstacles, std::vector<int> &robot,
                           int collision_threshold)
 {
-
   int obs = 0;
   // int robot_id = env->getBodyUniqueId(robot[0]);
   // int table_id = env->getBodyUniqueId(obstacles[0]);
   int robot_id = robot[0];
   int table_id = obstacles[0];
-  
+
   for (int i = 0; i < END_EFECTOR_LINK_INDEX; i++)
   {
     env->resetJointState(robot_id, i, q_new[i]);
   }
-  
+
+  b3RobotSimulatorGetContactPointsArgs collision_args;
   //! Distanced obstacles
   b3ContactInformation info;
   collision_args.m_bodyUniqueIdA = robot_id;
   collision_args.m_bodyUniqueIdB = table_id;
   env->getClosestPoints(collision_args, distance, &info);
   obs += info.m_numContactPoints;
-    
+
   //! Contant obstacles (robot with gripper)
   collision_args.m_bodyUniqueIdA = robot_id;
   collision_args.m_bodyUniqueIdB = robot_id;
@@ -139,24 +140,14 @@ bool check_collision_free(b3RobotSimulatorClientAPI_NoGUI *env, std::vector<floa
   	{
       collision_args.m_linkIndexB = j;
       env->getClosestPoints(collision_args, distance, &info);
-  		// env->getContactPoints(collision_args, &info);
-      if (info.m_numContactPoints > 0)
-      {
-        if (info.m_contactPointData->m_bodyUniqueIdA == info.m_contactPointData->m_bodyUniqueIdB)
-        {
-          obs += info.m_numContactPoints;
-        }
-      }
+      obs += info.m_numContactPoints;
   	}
   }
-  // std::cout<<obs<<std::endl;
-  if (obs > collision_threshold)
-    return false;
-  else
-    return true;
+
+  return obs <= collision_threshold;
 }
 
-std::vector<std::vector<float>> rrt(std::vector<float> &q_init, std::vector<float> &q_goal, int MAX_ITERS, double delta_q, double steer_goal_p, b3RobotSimulatorClientAPI_NoGUI *env, double distance,
+std::vector<std::vector<float>> rrt(std::vector<float> &q_init, std::vector<float> &q_goal, int MAX_ITERS, double delta_q, double steer_goal_p, bullet_client::b3RobotSimulatorClientAPI *env, double distance,
                                     std::vector<int> &obstacles, std::vector<int> &robot, int collision_threshold)
 {
   /*
@@ -172,24 +163,22 @@ std::vector<std::vector<float>> rrt(std::vector<float> &q_init, std::vector<floa
   std::vector<std::vector<std::vector<float>>> E;
   std::vector<std::vector<float>> path;
   bool found = false;
-  
+
   // const float alpha = 0.0000001;
 
   std::vector<float> q_rand;
   std::vector<float> q_nearest;
   std::vector<float> q_new;
 
-  b3RobotSimulatorGetContactPointsArgs COLLISION_ARGS;
-
   for (int i = 0; i < MAX_ITERS; i++)
   {
     // steer_goal_p = steer_goal_p * std::exp(-alpha * i);
     // if (steer_goal_p > 0.0001)
-    //   std::cout << i << ", " << steer_goal_p << std::endl; 
+    //   std::cout << i << ", " << steer_goal_p << std::endl;
     q_rand = semi_random_sample(steer_goal_p, q_goal);
     q_nearest = nearest(V, q_rand);
     q_new = steer(q_nearest, q_rand, delta_q);
-    if (check_collision_free(env, q_new, distance, COLLISION_ARGS, obstacles, robot, collision_threshold))
+    if (check_collision_free(env, q_new, distance, obstacles, robot, collision_threshold))
     {
       auto result1 = std::find(std::begin(V), std::end(V), q_new);
       if (result1 == std::end(V))
@@ -268,6 +257,7 @@ namespace generate_path
     ReturnCode _getParametersFromServer();
     void _convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment);
     ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &current_joint_states);
+    int _calculateContactPointsAmount(const float &distance);
     // ReturnCode _readSceneInfo();
 
     // ___Attributes___
@@ -275,6 +265,7 @@ namespace generate_path
     rclcpp_action::Server<GeneratePathPose>::SharedPtr _action_server_pose;
     rclcpp::Publisher<custom_interfaces::msg::GeneratedPath>::SharedPtr _generated_path_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _joint_state_sub;
+    std::mutex _current_joint_states_mtx;
     sensor_msgs::msg::JointState::SharedPtr _current_joint_states;
     std::shared_ptr<bullet_client::b3RobotSimulatorClientAPI> _bullet_client;
     helpers::commons::RobotInfo _robot_info;
@@ -283,8 +274,8 @@ namespace generate_path
     int _robot_idx;
     int _end_effector_idx;
 
-    int _temp_robot_idx;
-    int _temp_table_idx;
+    // int _temp_robot_idx;
+    // int _temp_table_idx;
   };
 
 } // namespace generate_path

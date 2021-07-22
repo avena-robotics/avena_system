@@ -55,7 +55,6 @@ namespace bullet_client
 		b3SharedMemoryCommandHandle command = b3CalculateInverseKinematicsCommandInit(m_data->m_physicsClientHandle, args.m_bodyUniqueId);
 		if ((args.m_flags & B3_HAS_IK_TARGET_ORIENTATION) && (args.m_flags & B3_HAS_NULL_SPACE_VELOCITY))
 		{
-			std::cout << "\nhere" << std::endl;
 			b3CalculateInverseKinematicsPosOrnWithNullSpaceVel(command, args.m_numDegreeOfFreedom, args.m_endEffectorLinkIndex, args.m_endEffectorTargetPosition, args.m_endEffectorTargetOrientation, &args.m_lowerLimits[0], &args.m_upperLimits[0], &args.m_jointRanges[0], &args.m_restPoses[0]);
 		}
 		else if (args.m_flags & B3_HAS_IK_TARGET_ORIENTATION)
@@ -83,7 +82,7 @@ namespace bullet_client
 
 		b3CalculateInverseKinematicsSetResidualThreshold(command, 1e-4);
 		b3CalculateInverseKinematicsSetMaxNumIterations(command, 1000);
-		// std::cout << "here once again" << std::endl;
+		b3CalculateInverseKinematicsSelectSolver(command, IK_SDLS);
 
 		b3SharedMemoryStatusHandle statusHandle;
 		statusHandle = b3SubmitClientCommandAndWaitStatus(m_data->m_physicsClientHandle, command);
