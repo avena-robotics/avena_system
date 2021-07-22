@@ -117,8 +117,7 @@ namespace avena_view
         connect(this, SIGNAL(securityTriggerChanged(bool)), this, SLOT(refreshSecurityTriggerStatus(bool)));
         connect(this, SIGNAL(securityPauseChanged(bool)), this, SLOT(refreshSecurityPasueStatus(bool)));
 
-        const bool connected = connect(this, SIGNAL(nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr)), this, SLOT(refreshNodeList(custom_interfaces::msg::Heartbeat::SharedPtr)));
-        qDebug() << "Connection established?" << connected;
+        connect(this, SIGNAL(nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr)), this, SLOT(refreshNodeList(custom_interfaces::msg::Heartbeat::SharedPtr)));
 
         connect(this, SIGNAL(logsAppeared(std_msgs::msg::String::SharedPtr)), this, SLOT(refreshLogConsole(std_msgs::msg::String::SharedPtr)));
         connect(this, SIGNAL(rosOutAppeared(rcl_interfaces::msg::Log::SharedPtr)), this, SLOT(refreshRosoutConsole(rcl_interfaces::msg::Log::SharedPtr)));
@@ -772,9 +771,9 @@ namespace avena_view
     {
         if (msg->data && !previus_gui_warning_msg_)
             emit securityWarningRecived();
-        else if(!msg->data && previus_gui_warning_msg_)
+        else if (!msg->data && previus_gui_warning_msg_)
             emit securityWarningClosed();
-            
+
         previus_gui_warning_msg_ = msg->data;
     }
 
@@ -966,9 +965,8 @@ namespace avena_view
 
     void AvenaView::showSecurityRgbWarning()
     {
-        writeLog( "Security RGB Warning" , ui_.logConsole);
+        writeLog("Security RGB Warning", ui_.logConsole);
         security_rgb_warning_->exec();
-
 
         // auto q_progress = std::make_shared<QProgressDialog>(
         //     "Securit4y area breached. Waiting 5s.", "Abort", 0, BT_WARNING_DURATION);
@@ -977,15 +975,14 @@ namespace avena_view
 
         // q_progress->setValue(0);
         // q_progress->show();
-        
+
         // for (size_t i = 0; i < BT_WARNING_DURATION; i++)
         // {
         //     QCoreApplication::processEvents();
         //     q_progress->setValue(i);
         //     std::this_thread::sleep_for(std::chrono::seconds(1));
         // }
-        
-        
+
         // q_progress->setValue(BT_WARNING_DURATION);
     }
 
@@ -1035,6 +1032,7 @@ namespace avena_view
         if (msg_box.clickedButton() == done_btn)
         {
             //run calibration
+            runCalibrationLaunchFile();
         }
         else if (msg_box.clickedButton() == abort_btn)
         {
@@ -1042,20 +1040,48 @@ namespace avena_view
         }
     }
 
+    void AvenaView::calibrateGoalResponseCallback(std::shared_future<GoalCalibrateAction::SharedPtr> future)
+    {
+    }
+
+    void AvenaView::calibrateFeedbackCallback(
+        GoalCalibrateAction::SharedPtr,
+        const std::shared_ptr<const CalibrateAction::Feedback> feedback)
+    {
+    }
+
+    void AvenaView::calibrateResultCallback(const GoalCalibrateAction::WrappedResult &result)
+    {
+        this->writeLog("Calibration action returned result", ui_.logConsoleCalibrate);
+    }
+
     void AvenaView::runCalibrationLaunchFile()
     {
+        using namespace std::placeholders;
         RCLCPP_INFO(node_->get_logger(), "Starting system");
         QString program = "ros2";
 
         calibrate_launch_file_process_->setArguments({"launch", "camera_extrinsics_calibration", CALIBRATE_LAUNCH_FILE});
         calibrate_launch_file_process_->setProgram(program);
-        launch_file_pid_ = 0;
+        calibrate_launch_file_pid_ = 0;
 
         if (calibrate_launch_file_process_->startDetached(&calibrate_launch_file_pid_))
         {
             this->writeLog("Starting calibration", ui_.logConsoleCalibrate);
             auto post_start_action = [this]()
             {
+                if (!this->calibrate_action_client_->wait_for_action_server(200ms))
+                {
+                    RCLCPP_ERROR(node_->get_logger(), "Action server not available");
+                    rclcpp::shutdown();
+                }
+                auto goal_msg = CalibrateAction::Goal();
+                auto send_goal_options = rclcpp_action::Client<CalibrateAction>::SendGoalOptions();
+                send_goal_options.feedback_callback = std::bind(&AvenaView::calibrateFeedbackCallback, this, _1, _2);
+                send_goal_options.goal_response_callback = std::bind(&AvenaView::calibrateGoalResponseCallback, this, _1);
+                send_goal_options.result_callback = std::bind(&AvenaView::calibrateResultCallback, this, _1);
+
+                this->calibrate_action_client_->async_send_goal(goal_msg, send_goal_options);
 
                 this->writeLog("Sucessfully started calibration", ui_.logConsoleCalibrate);
             };
