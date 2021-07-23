@@ -204,7 +204,7 @@ namespace bullet_server
         TABLE_ARGS.m_linkMasses = mass_links.data(); //!3
 
         std::vector<btVector3> link_positions = {btVector3(0.38, 1.18, TABLE_HEIGHT / 2.0 + 0.30), btVector3(0.38, -1.18, TABLE_HEIGHT / 2.0 + 0.30), btVector3(-0.03, -0.03, 0.3 + 0.05), btVector3(-0.03, 0.03, 0.3 + 0.05),
-                                                 btVector3(-TABLE_WIDTH_HALF - 2 * 0.005, 0, TABLE_HEIGHT + 0.2), btVector3(TABLE_WIDTH_HALF + 2 * 0.005, 0, TABLE_HEIGHT + 0.2), btVector3(0, -TABLE_LENGTH_HALF - 2 * 0.005, TABLE_HEIGHT + 0.2),
+                                                 btVector3(-TABLE_WIDTH_HALF - 2 * 0.005, 0, TABLE_HEIGHT + 0.2), btVector3(TABLE_WIDTH_HALF + 2 * 0.005 + 0.2, 0, TABLE_HEIGHT + 0.2), btVector3(0, -TABLE_LENGTH_HALF - 2 * 0.005, TABLE_HEIGHT + 0.2),
                                                  btVector3(0, TABLE_LENGTH_HALF + 2 * 0.005, TABLE_HEIGHT + 0.2)};
         // std::vector<btVector3> link_positions = {btVector3(0, 0, 1)};
         TABLE_ARGS.m_linkPositions = link_positions.data(); //!4

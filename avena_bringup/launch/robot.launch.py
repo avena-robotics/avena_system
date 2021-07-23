@@ -24,14 +24,14 @@ def launch_setup(context, *args, **kwargs):
     params = {'robot_description': robot_desc.decode('utf-8')}
 
     return [
-        # Node(
-        #     package='joint_state_publisher',
-        #     executable='joint_state_publisher',
-        #     output='both',
-        #     parameters=[{'source_list': ['arm_joint_states', 'gripper_joint_states'],
-        #                  'rate': 10,
-        #                  'publish_default_positions': False}]
-        # ),
+        Node(
+            package='joint_state_publisher',
+            executable='joint_state_publisher',
+            output='both',
+            parameters=[{'source_list': ['arm_joint_states', 'gripper_joint_states'],
+                         'rate': 10,
+                         'publish_default_positions': False}]
+        ),
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',

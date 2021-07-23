@@ -172,9 +172,9 @@ namespace generate_path
         std::vector<float> joint_states(current_joint_states->position.begin(), current_joint_states->position.end());
         std::vector<int> obstacles = {_table_idx};
         std::vector<int> robot = {_robot_idx};
-        int max_iter = 50000;
-        float delta_q = 0.1;
-        float steer_goal_p = 0.05;
+        int max_iter = 10000;
+        float delta_q = 0.15;
+        float steer_goal_p = 0.1;
         std::vector<ArmConfiguration> path;
         {
             helpers::Timer timer("RRT algorithm", get_logger());
