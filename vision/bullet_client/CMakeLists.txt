@@ -21,6 +21,8 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
 find_package(Bullet REQUIRED)
 
+message(${BULLET_INCLUDE_DIRS})
+
 add_library(bullet_client SHARED
   src/b3RobotSimulatorClientAPI.cpp
 )
