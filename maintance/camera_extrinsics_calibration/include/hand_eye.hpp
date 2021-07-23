@@ -64,6 +64,7 @@ enum CalibrateReturnCode
     WORLD_TO_END_EFFECTOR_TF_ERROR,
     CAMERA_BASE_TO_RGB_LINK_TF_ERROR,
     CALIBRATION_MAT_NOT_FOUND,
+    PNP_ERROR
 };
 
 class PclCalibrator : public rclcpp::Node
@@ -148,7 +149,7 @@ private:
     std::mutex _camera1_info_mtx;
     std::mutex _camera2_info_mtx;
 
-    bool _display_cv = true;
+    bool _display_cv = false;
 
     std::vector<Eigen::Affine3f> _cam1_robot_positions;
     std::vector<Eigen::Affine3f> _cam2_robot_positions;

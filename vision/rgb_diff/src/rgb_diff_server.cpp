@@ -55,15 +55,13 @@ namespace rgb_diff_action_server
                                                                                            RCLCPP_WARN(get_logger(),
                                                                                                        "New message has not arrived yet. Processing old message.");
                                                                                        _last_processed_msg_timestamp = _rgb_images->header.stamp;
-                                                                              
+
                                                                                        cv::Mat robot_mask_cam1;
                                                                                        cv::Mat robot_mask_cam2;
                                                                                        _robot_mask_object->prepareRobotMask(_last_processed_msg_timestamp, robot_mask_cam1, robot_mask_cam2);
 
                                                                                        helpers::converters::rosImageToCV(_rgb_images->cam1_rgb, this->cam1_rgb);
                                                                                        helpers::converters::rosImageToCV(_rgb_images->cam2_rgb, this->cam2_rgb);
-                                                                         
-                                                                         
 
                                                                                        // perform background segmentation
                                                                                        this->background_substractor(
@@ -75,12 +73,9 @@ namespace rgb_diff_action_server
                                                                                            this->cam2_rgb,
                                                                                            this->_rgbdiff_background_cam2,
                                                                                            this->result_cam2);
-                                                                                    
-                                                                                       
-                                                                                        _robot_mask_object->waitForMasks();
-                                                                                       
-                                                                           
-                                                                        
+
+                                                                                       _robot_mask_object->waitForMasks();
+
                                                                                        // apply security area masks
                                                                                        cv::bitwise_and(
                                                                                            this->result_cam1,
@@ -90,24 +85,38 @@ namespace rgb_diff_action_server
                                                                                            this->result_cam2,
                                                                                            this->_sec_area_cam2_mask,
                                                                                            this->result_cam2);
-                                                                                
-                                                                        
+                                                                                       cv::Mat o1;
+                                                                                       cv::Mat o2;
+
+                                                                                       cv::bitwise_and(
+                                                                                           this->cam1_rgb,
+                                                                                           this->_sec_area_cam1_mask,
+                                                                                           o1);
+                                                                                       cv::bitwise_and(
+                                                                                           this->cam2_rgb,
+                                                                                           this->_sec_area_cam2_mask,
+                                                                                           o2);
+                                                                                       cv::imshow("camera_11", o1);
+                                                                                       cv::imshow("camera_22", o2);
+                                                                                       cv::waitKey(10);
+
                                                                                        // substract any movement in the picture attributable to robot
                                                                                        cv::subtract(this->result_cam1, robot_mask_cam1, this->result_cam1);
                                                                                        cv::subtract(this->result_cam2, robot_mask_cam2, this->result_cam2);
-                                                            
 
                                                                                        // substract any robot pixels from the background image
                                                                                        cv::subtract(this->result_cam1, this->bckgrnd_robot_mask_cam1, this->result_cam1);
                                                                                        cv::subtract(this->result_cam2, this->bckgrnd_robot_mask_cam2, this->result_cam2);
-                                                                
-                                                                        
 
                                                                                        int change_sec_area =
                                                                                            cv::countNonZero(
                                                                                                this->result_cam1) +
                                                                                            cv::countNonZero(
                                                                                                this->result_cam2);
+
+                                                                                       cv::imshow("camera_1", this->result_cam1);
+                                                                                       cv::imshow("camera_2", this->result_cam2);
+                                                                                       cv::waitKey(10);
 
                                                                                        //PUBLISH BOOL FOR SECURTY AREA CHANGE
                                                                                        std_msgs::msg::Bool::UniquePtr affirmative(
@@ -160,12 +169,10 @@ namespace rgb_diff_action_server
 
                                                                                            {
 
-                                                                                               helpers::Timer time("geting masks took: ",true);
-                                                                                               _robot_mask_object->prepareRobotMask(_last_processed_msg_timestamp,this->bckgrnd_robot_mask_cam1,this->bckgrnd_robot_mask_cam2);
-                                                                                                void waitForMasks();
-
+                                                                                               helpers::Timer time("geting masks took: ", true);
+                                                                                               _robot_mask_object->prepareRobotMask(_last_processed_msg_timestamp, this->bckgrnd_robot_mask_cam1, this->bckgrnd_robot_mask_cam2);
+                                                                                               void waitForMasks();
                                                                                            }
-                                                                        
                                                                                        }
                                                                                        else
                                                                                        {
@@ -274,12 +281,12 @@ namespace rgb_diff_action_server
     }
     void RgbDiffActionServer::set_security_area_masks()
     {
-        std::string cam_1_mask = std::string(MASKS_PATH) + std::string(CAM_1_FILENAME);
-        std::string cam_2_mask = std::string(MASKS_PATH) + std::string(CAM_2_FILENAME);
-        this->_sec_area_cam1_mask = cv::imread(cam_1_mask,
+
+        // UNCOMMENT WHEN MASKS READY
+        this->_sec_area_cam1_mask = cv::imread("/home/oem/Desktop/demo_test/src/avena_system/vision/rgb_diff/scene_masks/cam1_mask.png",
                                                cv::IMREAD_GRAYSCALE);
 
-        this->_sec_area_cam2_mask = cv::imread(cam_2_mask,
+        this->_sec_area_cam2_mask = cv::imread("/home/oem/Desktop/demo_test/src/avena_system/vision/rgb_diff/scene_masks/cam2_mask.png",
                                                cv::IMREAD_GRAYSCALE);
     }
 

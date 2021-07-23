@@ -23,7 +23,18 @@ def launch_setup(context, *args, **kwargs):
     robot_desc, _ = p.communicate()
     params = {'robot_description': robot_desc.decode('utf-8')}
 
+
+    world_to_link_0_pos = {}
+    world_to_link_0_pos['x'] = '0.18'
+    world_to_link_0_pos['y'] = '-0.35' 
+    world_to_link_0_pos['z'] = '0'
     return [
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            output='both',
+            arguments=[world_to_link_0_pos['x'], world_to_link_0_pos['y'], world_to_link_0_pos['z'], '0', '0', '0', '1', 'world', f'right_franka_link_0']
+        ),
         Node(
             package='joint_state_publisher',
             executable='joint_state_publisher',

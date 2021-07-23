@@ -4,8 +4,8 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
     : Node("hand_eye_calibration", options)
 {
     helpers::commons::setLoggerLevel(get_logger(), "info");
-    rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1));
-    
+    rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile();
+
     _initializeSubscribers(qos_settings);
     _change_tool_client = create_client<custom_interfaces::srv::ChangeTool>("change_tool");
 
@@ -17,10 +17,10 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
     _static_broadcaster = std::make_unique<tf2_ros::StaticTransformBroadcaster>(get_node_topics_interface());
 
     _cam1_robot_positions.resize(1);
-    _cam1_robot_positions[0] = Eigen::Translation3f(0.609, -0.824, 0.625) * Eigen::Quaternionf(0.797, 0.032, -0.490, -0.353);  
+    _cam1_robot_positions[0] = Eigen::Translation3f(0.609, -0.824, 0.625) * Eigen::Quaternionf(0.797, 0.032, -0.490, -0.353);
 
     _cam2_robot_positions.resize(1);
-    _cam2_robot_positions[0] = Eigen::Translation3f(0.380, 0.438, 0.547) * Eigen::Quaternionf(0.844,-0.050, -0.262, 0.465);  
+    _cam2_robot_positions[0] = Eigen::Translation3f(0.380, 0.438, 0.547) * Eigen::Quaternionf(0.844, -0.050, -0.262, 0.465);
 
     _action_server = rclcpp_action::create_server<HandEyeAction>(
         this,
@@ -32,6 +32,8 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
 
 void PclCalibrator::_initializeSubscribers(const rclcpp::QoS &qos_settings)
 {
+    rclcpp::QoS qos_settings_info = rclcpp::QoS(rclcpp::KeepLast(1));
+
     _camera1_rgb_sub = create_subscription<sensor_msgs::msg::Image>(_camera1_rgb_topic, qos_settings,
                                                                     [this](sensor_msgs::msg::Image::SharedPtr msg)
                                                                     {
@@ -46,14 +48,14 @@ void PclCalibrator::_initializeSubscribers(const rclcpp::QoS &qos_settings)
                                                                         std::lock_guard<std::mutex> lg(_camera2_rgb_image_mtx);
                                                                         _camera2_rgb_image = msg;
                                                                     });
-    _camera1_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera1_info_topic, qos_settings,
+    _camera1_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera1_info_topic, qos_settings_info,
                                                                           [this](sensor_msgs::msg::CameraInfo::SharedPtr msg)
                                                                           {
                                                                               RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera 1 info (message print every 0.5 seconds)");
                                                                               std::lock_guard<std::mutex> lg(_camera1_info_mtx);
                                                                               _camera1_info = msg;
                                                                           });
-    _camera2_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera2_info_topic, qos_settings,
+    _camera2_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera2_info_topic, qos_settings_info,
                                                                           [this](sensor_msgs::msg::CameraInfo::SharedPtr msg)
                                                                           {
                                                                               RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera 2 info (message print every 0.5 seconds)");
@@ -139,7 +141,7 @@ void PclCalibrator::_execute(const std::shared_ptr<GoalHandleHandEye> goal_handl
         return;
     }
 
-    if(calibration_return_code == 0)
+    if (calibration_return_code == 0)
         goal_handle->succeed(result);
     else
         goal_handle->abort(result);
@@ -166,8 +168,8 @@ int PclCalibrator::_initiateCalibration()
 
         std::vector<Eigen::Affine3f> cam_robot_positions;
         _rotateSamples(positions, AMOUNT_SAMPLES_PER_CAMERA, cam_robot_positions);
-        std::vector<Eigen::Affine3f> cam_to_base_samples;        
-        
+        std::vector<Eigen::Affine3f> cam_to_base_samples;
+
         int current_threshold = -1;
 
         for (auto position = cam_robot_positions.begin(); position != cam_robot_positions.end(); position++)
@@ -209,13 +211,17 @@ int PclCalibrator::_initiateCalibration()
             {
                 RCLCPP_WARN_STREAM(this->get_logger(), "Cannot find calibration mat");
             }
+            else if (calibrate_return_code == CalibrateReturnCode::PNP_ERROR)
+            {
+                RCLCPP_WARN_STREAM(this->get_logger(), "PnP algorith was not able to solve the problem, skipping sample...");
+            }
 
             if (calibrate_return_code != CalibrateReturnCode::SUCCESS)
             {
                 nr_cam_fails++;
                 continue;
             }
-            
+
             nr_cam_succeses++;
             cam_to_base_samples.push_back(cam_to_base_sample);
         }
@@ -228,20 +234,20 @@ int PclCalibrator::_initiateCalibration()
         for (auto &pose : cam_to_base_samples)
             cam_pose.matrix() = cam_pose.matrix() + pose.matrix();
 
-        std::cout << "cam fails: " << nr_cam_fails  << ", cam succeses: " << nr_cam_succeses << std::endl;
+        std::cout << "cam fails: " << nr_cam_fails << ", cam succeses: " << nr_cam_succeses << std::endl;
         std::cout << "cam sample size: " << cam_to_base_samples.size() << std::endl;
 
-        if(cam_to_base_samples.size() > 0)
-            cam_pose.matrix() = cam_pose.matrix() / cam_to_base_samples.size();\
+        if (cam_to_base_samples.size() > 0)
+            cam_pose.matrix() = cam_pose.matrix() / cam_to_base_samples.size();
         return cam_pose;
     };
 
     RCLCPP_INFO(get_logger(), "Calibrating camera 1");
     auto cam1_pose = single_camera_calibration(_cam1_robot_positions, _camera1_rgb_topic, _camera1_info_topic);
-    
+
     RCLCPP_INFO(get_logger(), "Calibrating camera 2");
     auto cam2_pose = single_camera_calibration(_cam2_robot_positions, _camera2_rgb_topic, _camera2_info_topic);
-    
+
     bool invalid_calibration = false;
     if (cam1_pose.matrix() != Eigen::Matrix4f::Zero())
     {
@@ -250,7 +256,7 @@ int PclCalibrator::_initiateCalibration()
     }
     else
         invalid_calibration = true;
-    
+
     if (cam2_pose.matrix() != Eigen::Matrix4f::Zero())
     {
         _displayTransform(cam2_pose, WORLD, _camera2_base);
@@ -386,7 +392,7 @@ int PclCalibrator::_lookupTransform(const std::string &target_frame, const std::
 // }
 
 CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std::string &cam_info_topic, Eigen::Affine3f &out_transform, int &in_out_curr_threshold)
-{   
+{
     auto find_tf = [this, &camera_rgb_topic](const sensor_msgs::msg::Image::SharedPtr &rgb_img, const cv::Mat &view, const cv::Mat &equ_img, const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs, const int threshold, Eigen::Affine3f &out_transform) -> CalibrateReturnCode
     {
         std::vector<cv::Point2f> corners1;
@@ -427,13 +433,10 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
                 cv::waitKey(0);
             }
 
-            RCLCPP_INFO(get_logger(), "Chessboard corners found. Finding chessboard pose...");
             cv::Mat gray_img;
             cv::cvtColor(view, gray_img, CV_BGR2GRAY);
-            cv::cornerSubPix(gray_img, corners1, cv::Size(3, 3), cv::Size(1, 1), cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+            cv::cornerSubPix(gray_img, corners1, cv::Size(5, 5), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
             cv::solvePnP(objectPoints, corners1, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
-            RCLCPP_INFO(get_logger(), "...done");
-
             cv::Mat aa_cv;
             cv::Rodrigues(rotation_vector, aa_cv);
             Eigen::Matrix3f rot_matrix;
@@ -444,10 +447,10 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
 
             out_transform = Eigen::Translation3f(vec) * Eigen::Quaternionf(rot_matrix);
 
-            Eigen::Affine3f world_to_end_effector_tf;  
-            Eigen::Affine3f rgb_to_base;  
+            Eigen::Affine3f world_to_end_effector_tf;
+            Eigen::Affine3f rgb_to_base;
 
-            std::string camera_base = (camera_rgb_topic == _camera1_rgb_topic) ? _camera1_base : _camera2_base ;
+            std::string camera_base = (camera_rgb_topic == _camera1_rgb_topic) ? _camera1_base : _camera2_base;
 
             if (_lookupTransform(WORLD, PANDA_EE_LINK, now(), world_to_end_effector_tf) == 1)
                 return CalibrateReturnCode::WORLD_TO_END_EFFECTOR_TF_ERROR;
@@ -455,19 +458,40 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
             if (_lookupTransform(rgb_img->header.frame_id, camera_base, now(), rgb_to_base) == 1)
                 return CalibrateReturnCode::CAMERA_BASE_TO_RGB_LINK_TF_ERROR;
 
+            std::vector<cv::Point3d> point3D;
+            std::vector<cv::Point2d> point2D;
+            point3D.push_back(cv::Point3d(0, 0, -0.1));
+            point3D.push_back(cv::Point3d(0.1, 0, 0));
+            point3D.push_back(cv::Point3d(0, 0.1, 0));
+
+            cv::projectPoints(point3D, rotation_vector, translation_vector, camera_matrix, dist_coeffs, point2D);
+
+            float x1, x2, y1, y2;
+            x1 = corners1[3].x - corners1[0].x;
+            x2 = point2D[1].x - corners1[0].x;
+            y1 = corners1[3].y - corners1[0].y;
+            y2 = point2D[1].y - corners1[0].y;
+            float angle_x = acos((x1 * x2 + y1 * y2) / (sqrt(x1 * x1 + y1 * y1) * sqrt(x2 * x2 + y2 * y2))) * 180 / M_PI;
+
+            float x_1, x_2, y_1, y_2;
+            x_1 = corners1[8].x - corners1[0].x;
+            x_2 = point2D[2].x - corners1[0].x;
+            y_1 = corners1[8].y - corners1[0].y;
+            y_2 = point2D[2].y - corners1[0].y;
+            float angle_y = acos((x_1 * x_2 + y_1 * y_2) / (sqrt(x_1 * x_1 + y_1 * y_1) * sqrt(x_2 * x_2 + y_2 * y_2))) * 180 / M_PI;
+
+            if (angle_x > 0.3 || std::isnan(angle_x) || angle_y > 0.3 || std::isnan(angle_y))
+            {
+                return CalibrateReturnCode::PNP_ERROR;
+            }
+
             out_transform = (out_transform.inverse() * rgb_to_base).inverse();
             out_transform = world_to_end_effector_tf * out_transform.inverse();
             // out_transform = out_transform.inverse();
 
             if (_display_cv)
             {
-                std::vector<cv::Point3d> point3D;
-                std::vector<cv::Point2d> point2D;
-                point3D.push_back(cv::Point3d(0, 0, -0.1));
-                point3D.push_back(cv::Point3d(0.1, 0, 0));
-                point3D.push_back(cv::Point3d(0, 0.1, 0));
 
-                cv::projectPoints(point3D, rotation_vector, translation_vector, camera_matrix, dist_coeffs, point2D);
                 //Tp drow x,y z axis on image.
                 cv::line(view, corners1[0], point2D[0], cv::Scalar(255, 0, 0), 3); //z
                 cv::line(view, corners1[0], point2D[1], cv::Scalar(0, 0, 255), 3); //x
@@ -478,9 +502,11 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
                 cv::circle(view, point2D[0], 3, cv::Scalar(255, 0, 0), 4, 8, 0);
                 cv::circle(view, point2D[1], 3, cv::Scalar(0, 0, 255), 4, 8, 0);
                 cv::circle(view, point2D[2], 3, cv::Scalar(0, 255, 0), 4, 8, 0);
+
                 // Display image.
 
                 cv::Mat resized_img;
+                cv::drawChessboardCorners(view, patternSize, corners1, found);
                 cv::resize(view, resized_img, view.size() / 4);
                 cv::namedWindow(rgb_img->header.frame_id, cv::WINDOW_NORMAL);
                 cv::imshow(rgb_img->header.frame_id, resized_img);
@@ -496,7 +522,7 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
 
     if (!image)
         return CalibrateReturnCode::IMAGE_ERROR;
-    
+
     if (!cam_info)
         return CalibrateReturnCode::CAMERA_INFO_ERROR;
 
@@ -512,7 +538,7 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
 
     cv::Mat equ_img;
     cv::equalizeHist(gray_img, equ_img);
-    
+
     if (in_out_curr_threshold == -1)
     {
         for (int threshold = 0; threshold <= 255; threshold++)

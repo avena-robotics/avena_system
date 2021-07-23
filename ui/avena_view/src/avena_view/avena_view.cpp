@@ -39,6 +39,8 @@ namespace avena_view
         launch_file_process_ = new QProcess();
         calibrate_launch_file_process_ = new QProcess();
 
+        calibrate_launch_file_pid_ = 0;
+
         refreshing_node_list_timer_ = std::make_shared<QTimer>(this);
         refreshing_on_ = true;
         connect(refreshing_node_list_timer_.get(), SIGNAL(timeout()), this, SLOT(refreshNodeList()));
@@ -127,6 +129,8 @@ namespace avena_view
         connect(this, SIGNAL(securityWarningClosed()), this, SLOT(hideSecurityRgbWarning()));
 
         detectron_runner_ = std::make_shared<DetectronRunner>(&ui_);
+
+        connect(ui_.calibrateCancelButton, SIGNAL(clicked(bool)), this, SLOT(stopCalibrate()));
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
@@ -189,6 +193,8 @@ namespace avena_view
     {
         if (pick_place_status_ == Status::RUNNING)
             terminateLaunchFile();
+
+        stopCalibrate();
         refreshing_on_ = false;
         refreshing_node_list_timer_->stop();
         // delete refreshing_node_list_timer_;
@@ -511,7 +517,7 @@ namespace avena_view
         if (launch_file_pid_ > 0)
         {
             //TODO: change returend value type to int with exit code
-            if (killAllChildProcessPids())
+            if (killAllChildProcessPids(launch_file_pid_))
             {
                 writeTerminalAndUiLog("Sucessfully stopped pick place system", Status::STOPPED, ui_.logConsole);
                 fs::remove(pid_file_name_);
@@ -528,7 +534,7 @@ namespace avena_view
         }
     }
 
-    bool AvenaView::killAllChildProcessPids()
+    bool AvenaView::killAllChildProcessPids(PID launch_file_pid)
     {
         std::string pids = exec("ps -e -o ppid= -o pid=");
         std::stringstream ss;
@@ -548,8 +554,8 @@ namespace avena_view
 
         std::map<int, std::vector<qint64>> pids_layers;
         int layer_id = 0;
-        pids_layers.insert({layer_id++, {launch_file_pid_}});
-        pids_layers.insert({layer_id, pids_map[launch_file_pid_]});
+        pids_layers.insert({layer_id++, {launch_file_pid}});
+        pids_layers.insert({layer_id, pids_map[launch_file_pid]});
         bool result = true;
         for (int i = pids_layers.size() - 1; i >= 0; i--)
         {
@@ -1029,13 +1035,33 @@ namespace avena_view
 
         if (msg_box.clickedButton() == done_btn)
         {
-            //run calibration
-            std::cout << "DUPA" << std::endl;
             runCalibrationLaunchFile();
         }
         else if (msg_box.clickedButton() == abort_btn)
         {
-            //cancel calibration
+            stopCalibrate();
+        }
+    }
+
+    void AvenaView::stopCalibrate()
+    {
+        RCLCPP_INFO(node_->get_logger(), "Stoping system");
+
+        if (calibrate_launch_file_pid_ > 0)
+        {
+            //TODO: change returend value type to int with exit code
+            if (killAllChildProcessPids(calibrate_launch_file_pid_))
+            {
+                writeTerminalAndUiLog("Sucessfully stopped calibration", Status::STOPPED, ui_.logConsole);
+            }
+            else
+            {
+                writeTerminalAndUiLog("Error while stopping calibration", Status::ERROR, ui_.logConsole);
+            }
+        }
+        else
+        {
+            writeTerminalAndUiLog("Nothing to stop", Status::ERROR, ui_.logConsole);
         }
     }
 
@@ -1056,25 +1082,16 @@ namespace avena_view
 
     void AvenaView::runCalibrationLaunchFile()
     {
-        int dupa =0;
-        std::cout << __func__ << " " << dupa++ << std::endl;
         using namespace std::placeholders;
-        std::cout << __func__ << " " << dupa++ << std::endl;
         RCLCPP_INFO(node_->get_logger(), "Starting system");
-        std::cout << __func__ << " " << dupa++ << std::endl;
         QString program = "ros2";
-        std::cout << __func__ << " " << dupa++ << std::endl;
-        calibrate_launch_file_process_->setArguments({"launch", "camera_extrinsics_calibration", CALIBRATE_LAUNCH_FILE});
-        std::cout << __func__ << " " << dupa++ << std::endl;
+        calibrate_launch_file_process_->setArguments({"launch", "avena_bringup", CALIBRATE_LAUNCH_FILE});
         calibrate_launch_file_process_->setProgram(program);
-        std::cout << __func__ << " " << dupa++ << std::endl;
         calibrate_launch_file_pid_ = 0;
-        std::cout << __func__ << " " << dupa++ << std::endl;
 
         if (calibrate_launch_file_process_->startDetached(&calibrate_launch_file_pid_))
         {
             this->writeLog("Starting calibration", ui_.logConsoleCalibrate);
-            std::cout << __func__ << " " << dupa++ << std::endl;
             auto post_start_action = [this]()
             {
                 if (!this->calibrate_action_client_->wait_for_action_server(200ms))
@@ -1092,9 +1109,7 @@ namespace avena_view
 
                 this->writeLog("Sucessfully started calibration", ui_.logConsoleCalibrate);
             };
-            std::cout << __func__ << " " << dupa++ << std::endl;
             QTimer::singleShot(3000, this, post_start_action);
-            std::cout << __func__ << " " << dupa++ << std::endl;
         }
         else
         {
