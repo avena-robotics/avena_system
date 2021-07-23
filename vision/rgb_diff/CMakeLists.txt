@@ -11,6 +11,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 set(CMAKE_BUILD_TYPE RELEASE)
+add_compile_definitions( MASKS_PATH="${CMAKE_SOURCE_DIR}/masks/"
+        CAM_1_FILENAME="cam1_mask.png"
+        CAM_2_FILENAME="cam2_mask.png")
 
 # find dependencies
 find_package(ament_cmake REQUIRED)

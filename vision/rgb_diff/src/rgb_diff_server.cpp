@@ -274,12 +274,12 @@ namespace rgb_diff_action_server
     }
     void RgbDiffActionServer::set_security_area_masks()
     {
-
-        // UNCOMMENT WHEN MASKS READY
-        this->_sec_area_cam1_mask = cv::imread("/root/ros2_ws/src/avena_ros2/rgb_diff/masks/cam1_mask.png",
+        std::string cam_1_mask = MASKS_PATH + CAM_1_FILENAME;
+        std::string cam_2_mask = MASKS_PATH + CAM_2_FILENAME;
+        this->_sec_area_cam1_mask = cv::imread(cam_1_mask,
                                                cv::IMREAD_GRAYSCALE);
 
-        this->_sec_area_cam2_mask = cv::imread("/root/ros2_ws/src/avena_ros2/rgb_diff/masks/cam2_mask.png",
+        this->_sec_area_cam2_mask = cv::imread(cam_2_mask,
                                                cv::IMREAD_GRAYSCALE);
     }
 
