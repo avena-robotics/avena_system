@@ -1,0 +1,5 @@
+std_msgs/Float64 time_stamp
+---
+std_msgs/Float64 time_stamp
+sensor_msgs/Image camera_1_rgb
+sensor_msgs/Image camera_2_rgb

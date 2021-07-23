@@ -1,0 +1,5 @@
+std_msgs/Float64 time_stamp
+---
+std_msgs/Float64 time_stamp
+sensor_msgs/Image[] item_cam2_masks
+std_msgs/String[] item_cam2_labels
