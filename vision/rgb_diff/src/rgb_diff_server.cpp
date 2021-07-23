@@ -85,6 +85,20 @@ namespace rgb_diff_action_server
                                                                                            this->result_cam2,
                                                                                            this->_sec_area_cam2_mask,
                                                                                            this->result_cam2);
+                                                                                       cv::Mat o1;
+                                                                                       cv::Mat o2;
+
+                                                                                       cv::bitwise_and(
+                                                                                           this->cam1_rgb,
+                                                                                           this->_sec_area_cam1_mask,
+                                                                                           o1);
+                                                                                       cv::bitwise_and(
+                                                                                           this->cam2_rgb,
+                                                                                           this->_sec_area_cam2_mask,
+                                                                                           o2);
+                                                                                       cv::imshow("camera_11", o1);
+                                                                                       cv::imshow("camera_22", o2);
+                                                                                       cv::waitKey(10);
 
                                                                                        // substract any movement in the picture attributable to robot
                                                                                        cv::subtract(this->result_cam1, robot_mask_cam1, this->result_cam1);
@@ -99,6 +113,10 @@ namespace rgb_diff_action_server
                                                                                                this->result_cam1) +
                                                                                            cv::countNonZero(
                                                                                                this->result_cam2);
+
+                                                                                       cv::imshow("camera_1", this->result_cam1);
+                                                                                       cv::imshow("camera_2", this->result_cam2);
+                                                                                       cv::waitKey(10);
 
                                                                                        //PUBLISH BOOL FOR SECURTY AREA CHANGE
                                                                                        std_msgs::msg::Bool::UniquePtr affirmative(
@@ -265,10 +283,10 @@ namespace rgb_diff_action_server
     {
 
         // UNCOMMENT WHEN MASKS READY
-        this->_sec_area_cam1_mask = cv::imread("/home/oem/Desktop/demo_test/src/avena_system/vision/rgb_diff/masks/cam1_mask.png",
+        this->_sec_area_cam1_mask = cv::imread("/home/oem/Desktop/demo_test/src/avena_system/vision/rgb_diff/scene_masks/cam1_mask.png",
                                                cv::IMREAD_GRAYSCALE);
 
-        this->_sec_area_cam2_mask = cv::imread("/home/oem/Desktop/demo_test/src/avena_system/vision/rgb_diff/masks/cam2_mask.png",
+        this->_sec_area_cam2_mask = cv::imread("/home/oem/Desktop/demo_test/src/avena_system/vision/rgb_diff/scene_masks/cam2_mask.png",
                                                cv::IMREAD_GRAYSCALE);
     }
 

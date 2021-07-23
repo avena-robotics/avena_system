@@ -12,11 +12,11 @@ def generate_launch_description():
     robot = 'franka' if working_side == 'right' else 'avena'     
 
     return launch.LaunchDescription([
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-                'avena_bringup'), 'launch', 'calibration.launch.py')),
-            launch_arguments={'working_side': working_side}.items()
-        ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+        #         'avena_bringup'), 'launch', 'calibration.launch.py')),
+        #     launch_arguments={'working_side': working_side}.items()
+        # ),
 
         # Load robot description, robot state publisher and joint state publisher
         IncludeLaunchDescription(
