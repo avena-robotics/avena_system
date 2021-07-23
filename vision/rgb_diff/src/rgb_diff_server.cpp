@@ -274,8 +274,8 @@ namespace rgb_diff_action_server
     }
     void RgbDiffActionServer::set_security_area_masks()
     {
-        std::string cam_1_mask = MASKS_PATH + CAM_1_FILENAME;
-        std::string cam_2_mask = MASKS_PATH + CAM_2_FILENAME;
+        std::string cam_1_mask = std::string(MASKS_PATH) + std::string(CAM_1_FILENAME);
+        std::string cam_2_mask = std::string(MASKS_PATH) + std::string(CAM_2_FILENAME);
         this->_sec_area_cam1_mask = cv::imread(cam_1_mask,
                                                cv::IMREAD_GRAYSCALE);
 
