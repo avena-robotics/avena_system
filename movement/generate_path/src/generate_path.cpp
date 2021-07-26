@@ -173,138 +173,11 @@ namespace generate_path
         // std::vector<float> joint_states(current_joint_states->position.begin(), current_joint_states->position.end());
         std::vector<int> obstacles = {_table_idx};
         std::vector<int> robot = {_robot_idx};
-        // int max_iter = 10000;
-        // float delta_q = 0.15;
-        // float steer_goal_p = 0.1;
-        // std::vector<ArmConfiguration> path;
-        // {
-        //     helpers::Timer timer("RRT algorithm", get_logger());
-        //     path = rrt(joint_states, goal_state, max_iter, delta_q, steer_goal_p, _bullet_client.get(), safety_range, obstacles, robot, contact_number_allowed);
-        // }
-        // RCLCPP_INFO_STREAM(get_logger(), "Length of generated path: " << path.size());
-
-        // if (path.size() == 0)
-        // {
-        //     RCLCPP_ERROR(get_logger(), "Planner was not able to generate path. Aborting...");
-        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-        //     goal_handle->abort(result);
-        //     return;
-        // }
-
-        ///////////////////////////////////////////////////////////////
-        // Using OMPL
-        // State space based on Franka's joints
-        auto space = std::make_shared<ompl::base::RealVectorStateSpace>(7);
-
-        // Joints constraints
-        ompl::base::RealVectorBounds bounds(7);
-
-        bounds.setLow(0, -2.8973);
-        bounds.setHigh(0, 2.8973);
-        bounds.setLow(1, -1.7628);
-        bounds.setHigh(1, 1.7628);
-        bounds.setLow(2, -2.8973);
-        bounds.setHigh(2, 2.8973);
-        bounds.setLow(3, -3.0718);
-        bounds.setHigh(3, -0.0698);
-        bounds.setLow(4, -2.8973);
-        bounds.setHigh(4, 2.8973);
-        bounds.setLow(5, -0.0175);
-        bounds.setHigh(5, 3.7525);
-        bounds.setLow(6, -2.8973);
-        bounds.setHigh(6, 2.8973);
-
-        space->setBounds(bounds);
-
-        auto si = std::make_shared<ompl::base::SpaceInformation>(space);
-
-        si->setStateValidityChecker([=](const ompl::base::State *state)
-                                    {
-                                        for (int i = 0; i < END_EFECTOR_LINK_INDEX; i++)
-                                        {
-                                            _bullet_client->resetJointState(_robot_idx, i, state->as<ompl::base::RealVectorStateSpace::StateType>()->values[i]);
-                                        }
-
-                                        return _calculateContactPointsAmount(safety_range) <= contact_number_allowed;
-                                    });
-
-        ompl::base::ScopedState<> start(space);
-        for (size_t i = 0; i < current_joint_states->position.size(); ++i)
-            start[i] = current_joint_states->position[i];
-
-        ompl::base::ScopedState<> goal(space);
-        for (size_t i = 0; i < goal_state.size(); ++i)
-            goal[i] = goal_state[i];
-
-        auto pdef = std::make_shared<ompl::base::ProblemDefinition>(si);
-        pdef->setStartAndGoalStates(start, goal);
-        
-        auto planner = std::make_shared<ompl::geometric::RRT>(si);
-
-        planner->setProblemDefinition(pdef);
-        planner->setIntermediateStates(true);
-        
-        // perform setup steps for the planner
-        planner->setup();
-
-        // print the settings for this space
-        std::cout << "settings: " << std::endl;
-        si->printSettings(std::cout);
-
-        // print the problem settings
-        std::cout << "problem settings: " << std::endl;
-        pdef->print(std::cout);
-
-        // attempt to solve the problem within one second of planning time
-        ompl::base::PlannerStatus solved = planner->ompl::base::Planner::solve(1.0);
-
-        std::vector<ArmConfiguration> path;
-
-        if (solved)
-        {
-            std::cout << "getRange: " << planner->getRange() << std::endl;
-            // get the goal representation from the problem definition (not the same as the goal state)
-            // and inquire about the found path
-            // ompl::base::PathPtr path = pdef->getSolutionPath();
-            // std::cout << "Found solution:" << std::endl;
-
-            // print the path to screen
-            // path->print(std::cout);
-
-            // std::cout << "path->length(): " << path->length() << std::endl;
-
-            ompl::geometric::PathGeometric ompl_path(dynamic_cast<const ompl::geometric::PathGeometric &>(*pdef->getSolutionPath()));
-            const std::vector<ompl::base::State *> &states = ompl_path.getStates();
-            ompl::base::State *state;
-            for (size_t i = 0; i < states.size(); ++i)
-            {
-                state = states[i]->as<ompl::base::State>();
-
-                ArmConfiguration temp_rob_ang(7);
-                temp_rob_ang[0] = state->as<ompl::base::RealVectorStateSpace::StateType>()->values[0];
-                temp_rob_ang[1] = state->as<ompl::base::RealVectorStateSpace::StateType>()->values[1];
-                temp_rob_ang[2] = state->as<ompl::base::RealVectorStateSpace::StateType>()->values[2];
-                temp_rob_ang[3] = state->as<ompl::base::RealVectorStateSpace::StateType>()->values[3];
-                temp_rob_ang[4] = state->as<ompl::base::RealVectorStateSpace::StateType>()->values[4];
-                temp_rob_ang[5] = state->as<ompl::base::RealVectorStateSpace::StateType>()->values[5];
-                temp_rob_ang[6] = state->as<ompl::base::RealVectorStateSpace::StateType>()->values[6];
-                path.push_back(temp_rob_ang);
-            }
-        }
-        else
-            std::cout << "No solution found" << std::endl;
-        ///////////////////////////////////////////////////////////////
 
         // Set arm to last config for visualization
         {
             auto last_arm_config = path.back();
-            // std::stringstream ss;
-            // ss << "Last config: ";
-            // for (auto ac : last_arm_config)
-            // {
-            //     ss << ac << ", ";
-            // }
-            // RCLCPP_WARN(get_logger(), ss.str());
+
             for (int i = 0; i < END_EFECTOR_LINK_INDEX; i++)
             {
                 _bullet_client->resetJointState(_robot_idx, i, last_arm_config[i]);
@@ -398,9 +271,9 @@ namespace generate_path
             ik_args.m_upperLimits[i] = _robot_info.bounds[i].bounds_high;
             ik_args.m_jointRanges[i] = std::abs(_robot_info.bounds[i].bounds_high) + std::abs(_robot_info.bounds[i].bounds_low);
             ik_args.m_restPoses[i] = 0;
-            // ik_args.m_jointDamping[i] = 0.1;
+            ik_args.m_jointDamping[i] = 0.1;
         }
-        // ik_args.m_jointDamping[5] = 1;
+        ik_args.m_jointDamping[5] = 1;
         // ik_args.m_restPoses[3] = -0.9;
         // ik_args.m_restPoses[5] = 2.47;
 
