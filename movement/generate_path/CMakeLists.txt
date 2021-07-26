@@ -26,16 +26,21 @@ find_package(custom_interfaces REQUIRED)
 find_package(helpers_commons REQUIRED)
 find_package(helpers_vision REQUIRED)
 find_package(bullet_client REQUIRED)
+find_package(ompl REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED 
   src/generate_path.cpp
 )
 target_include_directories(${PROJECT_NAME} 
   PUBLIC
+    ${OMPL_INCLUDE_DIRS}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE "GENERATE_PATH_BUILDING_LIBRARY")
+target_link_libraries(${PROJECT_NAME}
+  ${OMPL_LIBRARIES}
+)
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   custom_interfaces

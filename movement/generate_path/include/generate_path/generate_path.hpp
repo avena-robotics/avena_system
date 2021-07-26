@@ -17,6 +17,16 @@
 // ___Package___
 #include "generate_path/visibility_control.h"
 
+
+// ___OMPL___
+#include <ompl/base/SpaceInformation.h>
+#include <ompl/base/spaces/SE3StateSpace.h>
+#include <ompl/geometric/planners/rrt/RRTConnect.h>
+#include <ompl/geometric/planners/rrt/RRT.h>
+#include <ompl/geometric/SimpleSetup.h>
+#include <ompl/config.h>
+
+
 // FIXME: Refactor
 std::random_device rd;
 std::mt19937 gen(rd());
