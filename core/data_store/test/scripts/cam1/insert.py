@@ -8,7 +8,7 @@ class MinimalClientAsync(Node):
 
     def __init__(self):
         super().__init__('rgb_delete_client_async')
-        self.cli = self.create_client(DataStoreItemCam1Insert, 'item_cam_1_insert')
+        self.cli = self.create_client(DataStoreItemCam1Insert, 'item_cam1_insert')
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
         self.req = DataStoreItemCam1Insert.Request()
