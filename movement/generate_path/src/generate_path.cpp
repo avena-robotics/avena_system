@@ -275,7 +275,7 @@ namespace generate_path
         ik_args.m_endEffectorLinkIndex = _end_effector_idx;
         ik_args.m_endEffectorTargetPosition[0] = end_effector_pose.position.x;
         ik_args.m_endEffectorTargetPosition[1] = end_effector_pose.position.y;
-        ik_args.m_endEffectorTargetPosition[2] = end_effector_pose.position.z + 0.545; // FIXME: Change the scene
+        ik_args.m_endEffectorTargetPosition[2] = end_effector_pose.position.z;
         ik_args.m_endEffectorTargetOrientation[0] = end_effector_pose.orientation.x;
         ik_args.m_endEffectorTargetOrientation[1] = end_effector_pose.orientation.y;
         ik_args.m_endEffectorTargetOrientation[2] = end_effector_pose.orientation.z;
@@ -313,7 +313,6 @@ namespace generate_path
         // End effector pose visualization
         Eigen::Affine3f ee_aff;
         auto ros_ee_aff = end_effector_pose;
-        ros_ee_aff.position.z += 0.545;
         helpers::converters::geometryToEigenAffine(ros_ee_aff, ee_aff);
 
         Eigen::Vector3f ee_pos(ee_aff.translation());

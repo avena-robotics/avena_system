@@ -26,7 +26,8 @@ find_package(helpers_commons REQUIRED)
 find_package(bullet_client REQUIRED)
 find_package(Bullet REQUIRED)
 
-# Bullet shared memory server - only without GUI
+###############################################################
+# Bullet shared memory server - without GUI
 add_library(bullet_server SHARED
   src/bullet_server.cpp
 )
@@ -40,7 +41,6 @@ target_compile_definitions(bullet_server PRIVATE "BULLET_SERVER_BUILDING_LIBRARY
 ament_target_dependencies(bullet_server 
   rclcpp
   rclcpp_components
-  ament_index_cpp
   Bullet
   bullet_client
   helpers_commons
@@ -77,6 +77,58 @@ ament_export_targets(
 )
 
 ###############################################################
+# Setup scene component
+add_library(setup_scene SHARED
+  src/setup_scene.cpp
+)
+target_include_directories(setup_scene 
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_compile_definitions(setup_scene PRIVATE "BULLET_SERVER_BUILDING_LIBRARY")
+ament_target_dependencies(setup_scene 
+  rclcpp
+  rclcpp_components
+  ament_index_cpp
+  Bullet
+  bullet_client
+  helpers_commons
+)
+rclcpp_components_register_nodes(setup_scene 
+  PLUGIN "bullet_server::SetupScene"
+  EXECUTABLE setup_scene_node
+)
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+install(
+  TARGETS setup_scene
+  EXPORT export_setup_scene
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+ament_export_dependencies(
+  bullet_client
+  ament_index_cpp
+  helpers_commons
+)
+ament_export_include_directories(
+  include
+)
+ament_export_libraries(
+  setup_scene
+)
+ament_export_targets(
+  export_setup_scene
+  HAS_LIBRARY_TARGET
+)
+###############################################################
+
+
+
 # # Bullet server with shared memory with GUI
 # add_executable(bullet_server_shared_memory_gui
 #   src/main_opengl_single_example.cpp
