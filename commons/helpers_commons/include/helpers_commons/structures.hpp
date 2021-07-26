@@ -32,7 +32,7 @@ namespace helpers
      */
     struct GripperInfo
     {
-      // TODO:
+      std::vector<std::string> link_names;
     };
 
     /**

@@ -21,7 +21,6 @@
 #include <QTreeWidget>
 #include <QMessageBox>
 #include <QMetaType>
-
 #include <vector>
 #include <chrono>
 #include <custom_interfaces/msg/heartbeat.hpp>
@@ -31,6 +30,7 @@
 #include <custom_interfaces/msg/module_command.hpp>
 #include <custom_interfaces/srv/control_command.hpp>
 #include <custom_interfaces/action/bt_pick_and_place_action.hpp>
+#include <custom_interfaces/action/simple_action.hpp>
 #include <avena_view/config.h>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <filesystem>
@@ -43,12 +43,13 @@
 #include <QScrollBar>
 #include <QProgressDialog>
 #include <QDebug>
+#include "utils.h"
+#include "avena_view/detectron_runner.h"
 
-Q_DECLARE_METATYPE(custom_interfaces::msg::GuiBtMessage::SharedPtr);
-Q_DECLARE_METATYPE(custom_interfaces::msg::Heartbeat::SharedPtr);
-Q_DECLARE_METATYPE(std_msgs::msg::String::SharedPtr);
-Q_DECLARE_METATYPE(rcl_interfaces::msg::Log::SharedPtr);
-
+Q_DECLARE_METATYPE(custom_interfaces::msg::GuiBtMessage::SharedPtr)
+Q_DECLARE_METATYPE(custom_interfaces::msg::Heartbeat::SharedPtr)
+Q_DECLARE_METATYPE(std_msgs::msg::String::SharedPtr)
+Q_DECLARE_METATYPE(rcl_interfaces::msg::Log::SharedPtr)
 
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
@@ -58,6 +59,8 @@ using NodeType = std::pair<std::string, custom_interfaces::msg::Heartbeat::Share
 using PID = qint64;
 using BTPickAndPlaceAction = custom_interfaces::action::BTPickAndPlaceAction;
 using GoalHandleBTPickAndPlaceAction = rclcpp_action::ClientGoalHandle<BTPickAndPlaceAction>;
+using CalibrateAction = custom_interfaces::action::SimpleAction;
+using GoalCalibrateAction = rclcpp_action::ClientGoalHandle<CalibrateAction>;
 
 namespace avena_view
 {
@@ -73,12 +76,10 @@ namespace avena_view
         return (a == b);
     }
 
-    std::string exec(const char *cmd);
+    bool isItem(const std::string &path);
+    bool isContrainer(const std::string &path);
+    std::vector<std::string> getAreaNames(const std::string &file_path);
 
-    bool isItem(const std::string& path);
-    bool isContrainer(const std::string& path);
-    std::vector<std::string> getAreaNames(const std::string& file_path);
-    
     enum class Status
     {
         STARTING,
@@ -118,7 +119,7 @@ namespace avena_view
         virtual void pausePickPlace();
         virtual void runCalibration();
         virtual void showQuestionMessageBox(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
-        
+
         virtual void showSecurityRgbWarning();
         virtual void hideSecurityRgbWarning();
 
@@ -136,16 +137,18 @@ namespace avena_view
         virtual void refreshLogConsole(std_msgs::msg::String::SharedPtr msg);
         virtual void refreshRosoutConsole(rcl_interfaces::msg::Log::SharedPtr msg);
 
+        virtual void stopCalibrate();
+
     signals:
-        virtual void questionRecived(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
-        virtual void securityWarningRecived();
-        virtual void securityWarningClosed();
-        virtual void securityTriggerChanged(bool msg);
-        virtual void securityPauseChanged(bool msg);
-        virtual void dangerToolStatusChanged(bool msg);
-        virtual void nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr msg);
-        virtual void logsAppeared(std_msgs::msg::String::SharedPtr msg);
-        virtual void rosOutAppeared(rcl_interfaces::msg::Log::SharedPtr msg);
+        void questionRecived(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
+        void securityWarningRecived();
+        void securityWarningClosed();
+        void securityTriggerChanged(bool msg);
+        void securityPauseChanged(bool msg);
+        void dangerToolStatusChanged(bool msg);
+        void nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr msg);
+        void logsAppeared(std_msgs::msg::String::SharedPtr msg);
+        void rosOutAppeared(rcl_interfaces::msg::Log::SharedPtr msg);
 
     private:
         void heartBeatCallback(custom_interfaces::msg::Heartbeat::SharedPtr msg);
@@ -155,14 +158,16 @@ namespace avena_view
         void securityTriggerStatusCallback(std_msgs::msg::Bool::SharedPtr msg);
         void securityPauseStatusCallback(std_msgs::msg::Bool::SharedPtr msg);
 
-        bool killAllChildProcessPids();
+        void runCalibrationLaunchFile();
+
+        bool killAllChildProcessPids(PID launch_file_pid);
 
         void subscribeHeartBeat();
         void subscribeLogs();
         void subscribeRosOut();
         void subscribeBtQuestion();
 
-        void addNodeToList(const std::string& node_name);
+        void addNodeToList(const std::string &node_name);
         void setUpNodesTabContent(const NodeType &node, int row);
         void sendArmCommand(ControlCommands command);
         void writeLog(QString msg, QTextBrowser *dst_ptr);
@@ -174,7 +179,7 @@ namespace avena_view
         void setUpStartedPickPlaceUi();
         void fillNodesList();
         void setUpRunningArmControlUi();
-        void writeTerminalAndUiLog(const char* msg, Status status, QTextBrowser* console);
+        void writeTerminalAndUiLog(const char *msg, Status status, QTextBrowser *console);
         void fillConfigTree();
         void startNodes();
         void setUpDangerToolTimer();
@@ -183,20 +188,25 @@ namespace avena_view
 
         void setUpGuiWarningUi();
 
-        void sendPickPlaceGoal(const std::string& command);
+        void sendPickPlaceGoal(const std::string &command);
         void pickPlaceGoalResponseCallback(std::shared_future<GoalHandleBTPickAndPlaceAction::SharedPtr> future);
         void pickPlaceFeedbackCallback(
             GoalHandleBTPickAndPlaceAction::SharedPtr,
-            const std::shared_ptr<const BTPickAndPlaceAction::Feedback> feedback
-        );
-        void pickPlaceResultCallback(const GoalHandleBTPickAndPlaceAction::WrappedResult& result);
-        
+            const std::shared_ptr<const BTPickAndPlaceAction::Feedback> feedback);
+        void pickPlaceResultCallback(const GoalHandleBTPickAndPlaceAction::WrappedResult &result);
+
+        void calibrateGoalResponseCallback(std::shared_future<GoalCalibrateAction::SharedPtr> future);
+        void calibrateFeedbackCallback(
+            GoalCalibrateAction::SharedPtr,
+            const std::shared_ptr<const CalibrateAction::Feedback> feedback);
+        void calibrateResultCallback(const GoalCalibrateAction::WrappedResult &result);
+
         void runGuiPopUpTest(const std::shared_ptr<custom_interfaces::srv::GUIPopUp::Request> request, std::shared_ptr<custom_interfaces::srv::GUIPopUp::Response> response);
 
         std::chrono::nanoseconds rosTime2Chrono(builtin_interfaces::msg::Time &stamp);
 
         Ui::AvenaViewWidget ui_;
-        QWidget* widget_;
+        QWidget *widget_;
         std::shared_ptr<QTimer> refreshing_node_list_timer_;
         std::shared_ptr<QTimer> publishing_danger_tool_status_timer_;
         std::shared_ptr<QMessageBox> security_rgb_warning_;
@@ -206,10 +216,13 @@ namespace avena_view
 
         // QList<QTreeWidgetItem*> parameters;
 
-        QProcess* launch_file_process_;
+        QProcess *launch_file_process_;
         qint64 launch_file_pid_;
         std::string pid_file_name_;
-        
+
+        QProcess *calibrate_launch_file_process_;
+        qint64 calibrate_launch_file_pid_;
+
         // QScrollBar *sb_;
 
         NodeListMap node_list_;
@@ -225,6 +238,7 @@ namespace avena_view
         rclcpp::Subscription<std_msgs::msg::String>::SharedPtr logs_sub_;
         rclcpp::Subscription<rcl_interfaces::msg::Log>::SharedPtr rosout_sub_;
         rclcpp_action::Client<BTPickAndPlaceAction>::SharedPtr pick_place_action_client_;
+        rclcpp_action::Client<custom_interfaces::action::SimpleAction>::SharedPtr calibrate_action_client_;
 
         rclcpp::Publisher<custom_interfaces::msg::GuiBtMessage>::SharedPtr user_answer_pub_;
         rclcpp::Subscription<custom_interfaces::msg::GuiBtMessage>::SharedPtr bt_question_sub_;
@@ -237,6 +251,8 @@ namespace avena_view
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr security_trigger_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr security_pause_sub_;
         rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr danger_tool_in_hand_sub_;
+
+        std::shared_ptr<DetectronRunner> detectron_runner_;
     };
 }
 

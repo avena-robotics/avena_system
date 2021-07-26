@@ -37,6 +37,9 @@ namespace avena_view
         ui_.statusIndicator->setScene(pick_place_graphics_scene_.get());
 
         launch_file_process_ = new QProcess();
+        calibrate_launch_file_process_ = new QProcess();
+
+        calibrate_launch_file_pid_ = 0;
 
         refreshing_node_list_timer_ = std::make_shared<QTimer>(this);
         refreshing_on_ = true;
@@ -89,6 +92,7 @@ namespace avena_view
         user_answer_pub_ = node_->create_publisher<custom_interfaces::msg::GuiBtMessage>("/user_answer", 10);
         arm_command_client_ = node_->create_client<custom_interfaces::srv::ControlCommand>("arm_controller/commands");
         pick_place_action_client_ = rclcpp_action::create_client<BTPickAndPlaceAction>(node_, PICK_PLACE_ACTION_SERVER_NAME);
+        calibrate_action_client_ = rclcpp_action::create_client<custom_interfaces::action::SimpleAction>(node_, CALIBRATE_ACTION_SERVER_NAME);
 
         danger_tool_in_hand_pub_ = node_->create_publisher<std_msgs::msg::Bool>("/danger_tool_in_hand", 10);
         set_background_pub_ = node_->create_publisher<std_msgs::msg::Bool>("/rgbdiff_set_background", 10);
@@ -115,8 +119,7 @@ namespace avena_view
         connect(this, SIGNAL(securityTriggerChanged(bool)), this, SLOT(refreshSecurityTriggerStatus(bool)));
         connect(this, SIGNAL(securityPauseChanged(bool)), this, SLOT(refreshSecurityPasueStatus(bool)));
 
-        const bool connected = connect(this, SIGNAL(nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr)), this, SLOT(refreshNodeList(custom_interfaces::msg::Heartbeat::SharedPtr)));
-        qDebug() << "Connection established?" << connected;
+        connect(this, SIGNAL(nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr)), this, SLOT(refreshNodeList(custom_interfaces::msg::Heartbeat::SharedPtr)));
 
         connect(this, SIGNAL(logsAppeared(std_msgs::msg::String::SharedPtr)), this, SLOT(refreshLogConsole(std_msgs::msg::String::SharedPtr)));
         connect(this, SIGNAL(rosOutAppeared(rcl_interfaces::msg::Log::SharedPtr)), this, SLOT(refreshRosoutConsole(rcl_interfaces::msg::Log::SharedPtr)));
@@ -124,6 +127,10 @@ namespace avena_view
         previus_gui_warning_msg_ = false;
         setUpGuiWarningUi();
         connect(this, SIGNAL(securityWarningClosed()), this, SLOT(hideSecurityRgbWarning()));
+
+        detectron_runner_ = std::make_shared<DetectronRunner>(&ui_);
+
+        connect(ui_.calibrateCancelButton, SIGNAL(clicked(bool)), this, SLOT(stopCalibrate()));
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
@@ -186,6 +193,8 @@ namespace avena_view
     {
         if (pick_place_status_ == Status::RUNNING)
             terminateLaunchFile();
+
+        stopCalibrate();
         refreshing_on_ = false;
         refreshing_node_list_timer_->stop();
         // delete refreshing_node_list_timer_;
@@ -206,7 +215,7 @@ namespace avena_view
     {
         security_rgb_warning_ = std::make_shared<QMessageBox>();
         security_rgb_warning_->setText("Security Area triggered. Waiting...");
-        security_rgb_warning_->setStandardButtons(nullptr);
+        // security_rgb_warning_->setStandardButtons(nullptr);
     }
 
     void AvenaView::writeTerminalAndUiLog(const char *msg, Status status, QTextBrowser *console)
@@ -247,29 +256,6 @@ namespace avena_view
             return file["is_container"].as<bool>();
         }
         return false;
-    }
-
-    std::string exec(const char *cmd)
-    {
-        char buffer[128];
-        std::string result = "";
-        FILE *pipe = popen(cmd, "r");
-        if (!pipe)
-            throw std::runtime_error("popen() failed!");
-        try
-        {
-            while (fgets(buffer, sizeof buffer, pipe) != NULL)
-            {
-                result += buffer;
-            }
-        }
-        catch (...)
-        {
-            pclose(pipe);
-            throw;
-        }
-        pclose(pipe);
-        return result;
     }
 
     std::chrono::nanoseconds AvenaView::rosTime2Chrono(builtin_interfaces::msg::Time &stamp)
@@ -530,7 +516,8 @@ namespace avena_view
 
         if (launch_file_pid_ > 0)
         {
-            if (killAllChildProcessPids())
+            //TODO: change returend value type to int with exit code
+            if (killAllChildProcessPids(launch_file_pid_))
             {
                 writeTerminalAndUiLog("Sucessfully stopped pick place system", Status::STOPPED, ui_.logConsole);
                 fs::remove(pid_file_name_);
@@ -547,7 +534,7 @@ namespace avena_view
         }
     }
 
-    bool AvenaView::killAllChildProcessPids()
+    bool AvenaView::killAllChildProcessPids(PID launch_file_pid)
     {
         std::string pids = exec("ps -e -o ppid= -o pid=");
         std::stringstream ss;
@@ -567,8 +554,8 @@ namespace avena_view
 
         std::map<int, std::vector<qint64>> pids_layers;
         int layer_id = 0;
-        pids_layers.insert({layer_id++, {launch_file_pid_}});
-        pids_layers.insert({layer_id, pids_map[launch_file_pid_]});
+        pids_layers.insert({layer_id++, {launch_file_pid}});
+        pids_layers.insert({layer_id, pids_map[launch_file_pid]});
         bool result = true;
         for (int i = pids_layers.size() - 1; i >= 0; i--)
         {
@@ -790,9 +777,9 @@ namespace avena_view
     {
         if (msg->data && !previus_gui_warning_msg_)
             emit securityWarningRecived();
-        else if(!msg->data && previus_gui_warning_msg_)
+        else if (!msg->data && previus_gui_warning_msg_)
             emit securityWarningClosed();
-            
+
         previus_gui_warning_msg_ = msg->data;
     }
 
@@ -984,9 +971,8 @@ namespace avena_view
 
     void AvenaView::showSecurityRgbWarning()
     {
-        writeLog( "Security RGB Warning" , ui_.logConsole);
+        writeLog("Security RGB Warning", ui_.logConsole);
         security_rgb_warning_->exec();
-
 
         // auto q_progress = std::make_shared<QProgressDialog>(
         //     "Securit4y area breached. Waiting 5s.", "Abort", 0, BT_WARNING_DURATION);
@@ -995,15 +981,14 @@ namespace avena_view
 
         // q_progress->setValue(0);
         // q_progress->show();
-        
+
         // for (size_t i = 0; i < BT_WARNING_DURATION; i++)
         // {
         //     QCoreApplication::processEvents();
         //     q_progress->setValue(i);
         //     std::this_thread::sleep_for(std::chrono::seconds(1));
         // }
-        
-        
+
         // q_progress->setValue(BT_WARNING_DURATION);
     }
 
@@ -1050,11 +1035,85 @@ namespace avena_view
 
         if (msg_box.clickedButton() == done_btn)
         {
-            //run calibration
+            runCalibrationLaunchFile();
         }
         else if (msg_box.clickedButton() == abort_btn)
         {
-            //cancel calibration
+            stopCalibrate();
+        }
+    }
+
+    void AvenaView::stopCalibrate()
+    {
+        RCLCPP_INFO(node_->get_logger(), "Stoping system");
+
+        if (calibrate_launch_file_pid_ > 0)
+        {
+            //TODO: change returend value type to int with exit code
+            if (killAllChildProcessPids(calibrate_launch_file_pid_))
+            {
+                writeTerminalAndUiLog("Sucessfully stopped calibration", Status::STOPPED, ui_.logConsole);
+            }
+            else
+            {
+                writeTerminalAndUiLog("Error while stopping calibration", Status::ERROR, ui_.logConsole);
+            }
+        }
+        else
+        {
+            writeTerminalAndUiLog("Nothing to stop", Status::ERROR, ui_.logConsole);
+        }
+    }
+
+    void AvenaView::calibrateGoalResponseCallback(std::shared_future<GoalCalibrateAction::SharedPtr> future)
+    {
+    }
+
+    void AvenaView::calibrateFeedbackCallback(
+        GoalCalibrateAction::SharedPtr,
+        const std::shared_ptr<const CalibrateAction::Feedback> feedback)
+    {
+    }
+
+    void AvenaView::calibrateResultCallback(const GoalCalibrateAction::WrappedResult &result)
+    {
+        this->writeLog("Calibration action returned result", ui_.logConsoleCalibrate);
+    }
+
+    void AvenaView::runCalibrationLaunchFile()
+    {
+        using namespace std::placeholders;
+        RCLCPP_INFO(node_->get_logger(), "Starting system");
+        QString program = "ros2";
+        calibrate_launch_file_process_->setArguments({"launch", "avena_bringup", CALIBRATE_LAUNCH_FILE});
+        calibrate_launch_file_process_->setProgram(program);
+        calibrate_launch_file_pid_ = 0;
+
+        if (calibrate_launch_file_process_->startDetached(&calibrate_launch_file_pid_))
+        {
+            this->writeLog("Starting calibration", ui_.logConsoleCalibrate);
+            auto post_start_action = [this]()
+            {
+                if (!this->calibrate_action_client_->wait_for_action_server(200ms))
+                {
+                    RCLCPP_ERROR(node_->get_logger(), "Action server not available");
+                    rclcpp::shutdown();
+                }
+                auto goal_msg = CalibrateAction::Goal();
+                auto send_goal_options = rclcpp_action::Client<CalibrateAction>::SendGoalOptions();
+                send_goal_options.feedback_callback = std::bind(&AvenaView::calibrateFeedbackCallback, this, _1, _2);
+                send_goal_options.goal_response_callback = std::bind(&AvenaView::calibrateGoalResponseCallback, this, _1);
+                send_goal_options.result_callback = std::bind(&AvenaView::calibrateResultCallback, this, _1);
+
+                this->calibrate_action_client_->async_send_goal(goal_msg, send_goal_options);
+
+                this->writeLog("Sucessfully started calibration", ui_.logConsoleCalibrate);
+            };
+            QTimer::singleShot(3000, this, post_start_action);
+        }
+        else
+        {
+            writeLog("Error while starting calibration", ui_.logConsoleCalibrate);
         }
     }
 

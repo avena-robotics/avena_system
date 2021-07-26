@@ -33,10 +33,14 @@ find_package(rclcpp_action REQUIRED)
 
 set(avena_view_SRCS
   src/avena_view/avena_view.cpp
+  src/avena_view/detectron_runner.cpp
+  src/avena_view/utils.cpp
 )
 
 set(avena_view_HDRS
   include/avena_view/avena_view.h
+  include/avena_view/detectron_runner.h
+  include/avena_view/utils.h
 )
 
 set(avena_view_UIS
@@ -49,9 +53,6 @@ set(avena_view_INCLUDE_DIRECTORIES
   ${qt_gui_cpp_INCLUDE_DIRS}
   ${rqt_gui_cpp_INCLUDE_DIRS}
   ${custom_interfaces_INCLUDE_DIRS}
-  ${sensor_msgs_INCLUDE_DIRS}
-  ${geometry_msgs_INCLUDE_DIRS}
-  # ${cv_bridge_INCLUDE_DIRS}
   ${Qt5Widgets_INCLUDE_DIRS}
 )
 

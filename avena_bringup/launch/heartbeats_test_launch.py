@@ -21,9 +21,9 @@ def generate_launch_description():
             'rgb_diff'), 'launch', 'rgb_diff_server.launch.py'))
     )
 
-    logic_bt = IncludeLaunchDescription(
+    security_rgb = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-            'logic_bt'), 'launch', 'logic.launch.py'))
+            'security_rgb'), 'launch', 'security_rgb.launch.py'))
     )
 
-    return LaunchDescription([parameters_server, rgb_diff, logic_bt])
+    return LaunchDescription([parameters_server, rgb_diff, security_rgb])

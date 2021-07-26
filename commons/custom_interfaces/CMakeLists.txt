@@ -51,6 +51,8 @@ set(msg_files
   # "msg/DetectionsTracking.msg"
   "msg/ModuleCommand.msg"
   "msg/GuiBtMessage.msg"
+  "msg/GeneratedPath.msg"
+  
 )
 
 set(srv_files
@@ -71,6 +73,18 @@ set(srv_files
   "srv/ControlCommand.srv"
   "srv/SetTrajectory.srv"
   "srv/GUIPopUp.srv"
+  "srv/DataStoreItemCam1Delete.srv"
+  "srv/DataStoreItemCam1GetList.srv"
+  "srv/DataStoreItemCam1Insert.srv"
+  "srv/DataStoreItemCam1Select.srv"
+  "srv/DataStoreItemCam2Delete.srv"
+  "srv/DataStoreItemCam2GetList.srv"
+  "srv/DataStoreItemCam2Insert.srv"
+  "srv/DataStoreItemCam2Select.srv"
+  "srv/DataStoreRgbDataDelete.srv"
+  "srv/DataStoreRgbDataGetList.srv"
+  "srv/DataStoreRgbDataInsert.srv"
+  "srv/DataStoreRgbDataSelect.srv"
 )
 
 set(action_files
