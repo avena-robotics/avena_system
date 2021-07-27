@@ -45,6 +45,8 @@
 #include <QDebug>
 #include "utils.h"
 #include "avena_view/detectron_runner.h"
+#include "avena_view/launch_files_manager.h"
+#include <csignal>
 
 Q_DECLARE_METATYPE(custom_interfaces::msg::GuiBtMessage::SharedPtr)
 Q_DECLARE_METATYPE(custom_interfaces::msg::Heartbeat::SharedPtr)
@@ -104,6 +106,8 @@ namespace avena_view
 
         virtual void restoreSettings(const qt_gui_cpp::Settings &plugin_settings, const qt_gui_cpp::Settings &instance_settings);
 
+        void sigIntHandle(int signum);
+
     private slots:
         virtual void refreshNodeList();
         virtual void handleTableCellClick(int row, int col);
@@ -139,6 +143,10 @@ namespace avena_view
 
         virtual void stopCalibrate();
 
+        virtual void startCameras();
+        virtual void stopCameras();
+        virtual void switchResolutions();
+
     signals:
         void questionRecived(custom_interfaces::msg::GuiBtMessage::SharedPtr msg);
         void securityWarningRecived();
@@ -160,8 +168,7 @@ namespace avena_view
 
         void runCalibrationLaunchFile();
 
-        bool killAllChildProcessPids(PID launch_file_pid);
-
+        
         void subscribeHeartBeat();
         void subscribeLogs();
         void subscribeRosOut();
@@ -219,6 +226,8 @@ namespace avena_view
         QProcess *launch_file_process_;
         qint64 launch_file_pid_;
         std::string pid_file_name_;
+
+        std::shared_ptr<LaunchFile> cameras_launch_file_;
 
         QProcess *calibrate_launch_file_process_;
         qint64 calibrate_launch_file_pid_;
