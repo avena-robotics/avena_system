@@ -16,6 +16,7 @@ namespace data_store
         _rgb_data_element_ptr = std::make_unique<RgbData>(shared_from_this(), qos_latching, "rgb_data");
         _item_cam1_element_ptr = std::make_unique<ItemCam1>(shared_from_this(), qos_latching, "item_cam1");
         _item_cam2_element_ptr = std::make_unique<ItemCam2>(shared_from_this(), qos_latching, "item_cam2");
+        _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), qos_latching, "tracker");
         // add other data elements here
         status = custom_interfaces::msg::Heartbeat::RUNNING;
     }

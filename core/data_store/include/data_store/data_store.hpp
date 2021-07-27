@@ -25,6 +25,7 @@ namespace data_store
         std::unique_ptr<RgbData> _rgb_data_element_ptr;
         std::unique_ptr<ItemCam1> _item_cam1_element_ptr;
         std::unique_ptr<ItemCam2> _item_cam2_element_ptr;
+        std::unique_ptr<Tracker> _tracker_element_ptr;
         // add other data elements here
     };
 

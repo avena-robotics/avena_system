@@ -19,6 +19,12 @@
 #include "custom_interfaces/srv/data_store_item_cam2_select.hpp"
 #include "custom_interfaces/srv/data_store_item_cam2_get_list.hpp"
 
+//tracker
+#include "custom_interfaces/srv/data_store_tracker_insert.hpp"
+#include "custom_interfaces/srv/data_store_tracker_delete.hpp"
+#include "custom_interfaces/srv/data_store_tracker_select.hpp"
+#include "custom_interfaces/srv/data_store_tracker_get_list.hpp"
+
 // add other data elements here
 
 namespace data_store
@@ -43,6 +49,13 @@ namespace data_store
     using ItemCam2Select = custom_interfaces::srv::DataStoreItemCam2Select;
     using ItemCam2GetList = custom_interfaces::srv::DataStoreItemCam2GetList;
     using ItemCam2 = DataElement<ItemCam2Select, ItemCam2Insert, ItemCam2GetList, ItemCam2Delete>;
+
+    //tracker
+    using TrackerInsert = custom_interfaces::srv::DataStoreTrackerInsert;
+    using TrackerDelete = custom_interfaces::srv::DataStoreTrackerDelete;
+    using TrackerSelect = custom_interfaces::srv::DataStoreTrackerSelect;
+    using TrackerGetList = custom_interfaces::srv::DataStoreTrackerGetList;
+    using Tracker = DataElement<TrackerSelect, TrackerInsert, TrackerGetList, TrackerDelete>;
 
     // add other data elements here
 
