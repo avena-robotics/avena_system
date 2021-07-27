@@ -362,11 +362,6 @@ namespace generate_path
 
     void GeneratePath::_updateJointLimits()
     {
-        for (auto limit : _robot_info.limits)
-        {
-            RCLCPP_WARN_STREAM(get_logger(), limit.lower << ", " << limit.upper);
-        }
-
         const double range_tighten_coeff = 0.95; // values from 0.0 - 1.0 representing how much range should be tighten
         for (size_t i = 0; i < _robot_info.limits.size(); ++i)
         {
@@ -378,11 +373,16 @@ namespace generate_path
             _robot_info.limits[i].upper -= offset;
         }
 
-        RCLCPP_WARN_STREAM(get_logger(), "---");
-        for (auto limit : _robot_info.limits)
-        {
-            RCLCPP_WARN_STREAM(get_logger(), limit.lower << ", " << limit.upper);
-        }
+        std::stringstream ss;
+        ss << std::endl
+           << "Limits for path planning:" << std::endl;
+        for (size_t i = 0; i < _robot_info.limits.size(); ++i)
+            ss << "  joint " << i + 1 << ": (" << _robot_info.limits[i].lower << ", " << _robot_info.limits[i].upper << ")" << std::endl;
+
+        ss << "Limits for IK:" << std::endl;
+        for (size_t i = 0; i < _ik_joint_limits.size(); ++i)
+            ss << "  joint " << i + 1 << ": (" << _ik_joint_limits[i].lower << ", " << _ik_joint_limits[i].upper << ")" << std::endl;
+        RCLCPP_DEBUG(get_logger(), ss.str());
     }
 
     void GeneratePath::_convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment)

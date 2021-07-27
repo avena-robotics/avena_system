@@ -53,7 +53,12 @@ namespace helpers
             for (auto &[link_name, link_info] : model->links_)
             {
                 if (link_info->visual || link_info->visual_array.size() != 0)
-                    robot_info.link_names.push_back(link_name);
+                {
+                    if (link_name.find("gripper") == std::string::npos && link_name.find(robot_info.connection) == std::string::npos)
+                        robot_info.link_names.push_back(link_name);
+                    else
+                        robot_info.gripper_info.link_names.push_back(link_name);
+                }
             }
             robot_info.nr_links = robot_info.link_names.size();
 
@@ -73,8 +78,6 @@ namespace helpers
             }
             robot_info.nr_joints = robot_info.joint_names.size();
             robot_info.nr_fixed_joints = robot_info.fixed_joint_names.size();
-
-            robot_info.gripper_info.link_names = {robot_info.robot_prefix + "_gripper", robot_info.robot_prefix + "_gripper_left_finger", robot_info.robot_prefix + "_gripper_right_finger"};
 
             return robot_info;
 
