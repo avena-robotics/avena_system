@@ -13,6 +13,8 @@ namespace avena_view
 
     void AvenaView::initPlugin(qt_gui_cpp::PluginContext &context)
     {
+        // signal(SIGINT, std::bind(&AvenaView::sigIntHandle, this));
+
         // QApplication::setAttribute(Qt::AA_EnableHighDpiScaling); // DPI support
         // QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
         widget_ = new QWidget();
@@ -131,6 +133,80 @@ namespace avena_view
         detectron_runner_ = std::make_shared<DetectronRunner>(&ui_);
 
         connect(ui_.calibrateCancelButton, SIGNAL(clicked(bool)), this, SLOT(stopCalibrate()));
+
+        cameras_launch_file_ = std::make_shared<LaunchFile>("cameras.pid");
+        connect(ui_.startCamerasButton, SIGNAL(clicked(bool)), this, SLOT(startCameras()));
+        connect(ui_.stopCamerasButton, SIGNAL(clicked(bool)), this, SLOT(stopCameras()));
+        connect(ui_.res1080Radio, SIGNAL(clicked()), this, SLOT(switchResolutions()));
+        connect(ui_.res720Radio, SIGNAL(clicked()), this, SLOT(switchResolutions()));
+        ui_.res720Radio->setChecked(false);
+        ui_.res1080Radio->setChecked(true);
+    }
+
+    void AvenaView::switchResolutions()
+    {
+        if (ui_.res720Radio->isChecked())
+        {
+            ui_.res1080Radio->setChecked(false);
+            ui_.res720Radio->setChecked(true);
+        }
+        else
+        {
+            ui_.res720Radio->setChecked(false);
+            ui_.res1080Radio->setChecked(true);
+        }
+
+        ui_.logConsoleCameras->append(
+            (ui_.res720Radio->isChecked())?"720p ON":"720p OFF"
+        );
+
+        ui_.logConsoleCameras->append(
+            (ui_.res1080Radio->isChecked())?"1080p ON":"1080p OFF"
+        );
+    }
+
+    void AvenaView::startCameras()
+    {
+        bool full_hd = ui_.res1080Radio->isChecked();
+        ui_.logConsoleCameras->append( (full_hd) ? "1080p mode" : "720p mode");
+        ui_.startCamerasButton->setEnabled(false);
+        ui_.stopCamerasButton->setEnabled(false);
+
+        if (full_hd)
+        {
+            cameras_launch_file_->setArguments({"launch",
+                                                "realsense2_camera",
+                                                "rs_multi_camera_launch.py",
+                                                "rgb_width1:=1920",
+                                                "rgb_height1:=1080",
+                                                "rgb_width2:=1920",
+                                                "rgb_height2:=1080"});
+        }
+        else
+        {
+            cameras_launch_file_->setArguments({"launch",
+                                                "realsense2_camera",
+                                                "rs_multi_camera_launch.py",
+                                                "rgb_width1:=1280",
+                                                "rgb_height1:=720",
+                                                "rgb_width2:=1280",
+                                                "rgb_height2:=720"});
+        }
+        auto post_cameras_start = [this]()
+        {
+            ui_.startCamerasButton->setEnabled(false);
+            ui_.stopCamerasButton->setEnabled(true);
+            ui_.logConsoleCameras->append("Started cameras");
+        };
+        cameras_launch_file_->run(post_cameras_start, 5000);
+    }
+
+    void AvenaView::stopCameras()
+    {
+        ui_.logConsoleCameras->append("Stoping cameras");
+        cameras_launch_file_->terminate();
+        ui_.startCamerasButton->setEnabled(true);
+        ui_.stopCamerasButton->setEnabled(false);
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
@@ -194,13 +270,12 @@ namespace avena_view
         if (pick_place_status_ == Status::RUNNING)
             terminateLaunchFile();
 
+        if (cameras_launch_file_->isRunning())
+            cameras_launch_file_->terminate();
+
         stopCalibrate();
         refreshing_on_ = false;
         refreshing_node_list_timer_->stop();
-        // delete refreshing_node_list_timer_;
-        // delete arm_control_graphics_scene_;
-        // delete pick_place_graphics_scene_;
-        // delete launch_file_process_;
     }
 
     void AvenaView::saveSettings(qt_gui_cpp::Settings &plugin_settings, qt_gui_cpp::Settings &instance_settings) const {}
@@ -211,11 +286,16 @@ namespace avena_view
 
 #pragma region UTILS
 
+    void AvenaView::sigIntHandle(int signum)
+    {
+        shutdownPlugin();
+        exit(signum);
+    }
+
     void AvenaView::setUpGuiWarningUi()
     {
         security_rgb_warning_ = std::make_shared<QMessageBox>();
         security_rgb_warning_->setText("Security Area triggered. Waiting...");
-        // security_rgb_warning_->setStandardButtons(nullptr);
     }
 
     void AvenaView::writeTerminalAndUiLog(const char *msg, Status status, QTextBrowser *console)
@@ -534,40 +614,6 @@ namespace avena_view
         }
     }
 
-    bool AvenaView::killAllChildProcessPids(PID launch_file_pid)
-    {
-        std::string pids = exec("ps -e -o ppid= -o pid=");
-        std::stringstream ss;
-        ss << pids;
-
-        qint64 pid, ppid;
-        std::map<qint64, std::vector<qint64>> pids_map;
-        std::map<qint64, std::vector<qint64>>::iterator it;
-        while (ss >> ppid >> pid)
-        {
-            it = pids_map.lower_bound(ppid);
-            if (it != pids_map.end())
-                pids_map[ppid].push_back(pid);
-            else
-                pids_map.insert({ppid, {pid}});
-        }
-
-        std::map<int, std::vector<qint64>> pids_layers;
-        int layer_id = 0;
-        pids_layers.insert({layer_id++, {launch_file_pid}});
-        pids_layers.insert({layer_id, pids_map[launch_file_pid]});
-        bool result = true;
-        for (int i = pids_layers.size() - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < pids_layers[i].size(); j++)
-            {
-                if (kill(pids_layers[i][j], SIGINT) != 0)
-                    result = false;
-            }
-        }
-        return result;
-    }
-
 #pragma endregion
 
 #pragma region ARM_CONTROL
@@ -590,8 +636,6 @@ namespace avena_view
             setIndicator("WAITING", Qt::yellow, arm_control_graphics_scene_.get(), ui_.statusLabelArmControl);
             RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
             writeLog("service not available, waiting again...", ui_.logConsoleArmControl);
-
-            // widget_->update();
         }
 
         if (waiting_counter < 3)
@@ -1080,6 +1124,7 @@ namespace avena_view
         this->writeLog("Calibration action returned result", ui_.logConsoleCalibrate);
     }
 
+    // FIXME: refactor this
     void AvenaView::runCalibrationLaunchFile()
     {
         using namespace std::placeholders;
