@@ -21,7 +21,7 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
 
     _cam2_robot_positions.resize(1);
     _cam2_robot_positions[0] = Eigen::Translation3f(0.380, 0.438, 0.547) * Eigen::Quaternionf(0.844, -0.050, -0.262, 0.465);
-
+    
     _action_server = rclcpp_action::create_server<HandEyeAction>(
         this,
         "calibrate_cameras",
