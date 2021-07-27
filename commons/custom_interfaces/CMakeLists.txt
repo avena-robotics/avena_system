@@ -28,7 +28,7 @@ set(msg_files
   # "msg/Ptclds.msg"
   # "msg/SceneDebugData.msg"
   # "msg/MergedPtcldFiltered.msg"
-  # "msg/Detections.msg"
+  "msg/Detections.msg"
   "msg/Items.msg"
   "msg/Item.msg"
   "msg/ItemElement.msg"
