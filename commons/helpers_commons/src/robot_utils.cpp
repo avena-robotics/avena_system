@@ -75,6 +75,8 @@ namespace helpers
 
                 robot_info.bounds[6].bounds_low = -2.8973 * joint_bounds_coeff;
                 robot_info.bounds[6].bounds_high = 2.8973 * joint_bounds_coeff;
+
+                robot_info.gripper_info.link_names = {robot_info.robot_prefix + "_gripper", robot_info.robot_prefix + "_gripper_left_finger", robot_info.robot_prefix + "_gripper_right_finger"};
             }
             else if (side == "left")
             {
