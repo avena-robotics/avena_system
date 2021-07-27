@@ -83,6 +83,10 @@ set(srv_files
   "srv/DataStoreRgbDataGetList.srv"
   "srv/DataStoreRgbDataInsert.srv"
   "srv/DataStoreRgbDataSelect.srv"
+  "srv/DataStoreTrackerDelete.srv"
+  "srv/DataStoreTrackerInsert.srv"
+  "srv/DataStoreTrackerGetList.srv"
+  "srv/DataStoreTrackerSelect.srv"
 )
 
 set(action_files
