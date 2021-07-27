@@ -12,15 +12,18 @@ namespace generate_path
 
         // Joints constraints
         ompl::base::RealVectorBounds bounds(path_planning_input.scene_info->joint_handles.size());
-        bounds.low = path_planning_input.constraints->low_bounds;
-        bounds.high = path_planning_input.constraints->high_bounds;
+        for (size_t i = 0; i < path_planning_input.constraints->limits.size(); ++i)
+        {
+            bounds.setLow(i, path_planning_input.constraints->limits[i].lower);
+            bounds.setHigh(i, path_planning_input.constraints->limits[i].upper);
+        }
         space->setBounds(bounds);
 
         auto si = std::make_shared<ompl::base::SpaceInformation>(space);
 
         si->setStateValidityChecker([=](const ompl::base::State *state)
                                     {
-                                        for (int i = 0; i < path_planning_input.scene_info->joint_handles.size(); i++)
+                                        for (size_t i = 0; i < path_planning_input.scene_info->joint_handles.size(); i++)
                                             path_planning_input.scene_info->bullet_client->resetJointState(path_planning_input.scene_info->robot_idx, i, state->as<ompl::base::RealVectorStateSpace::StateType>()->values[i]);
 
                                         return Planner::calculateContactPointsAmount(path_planning_input) <= path_planning_input.constraints->contact_number_allowed;

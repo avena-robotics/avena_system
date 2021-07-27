@@ -23,6 +23,7 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
                 'avena_bringup'), 'launch', 'robot.launch.py')),
             launch_arguments={
+                # 'robot_xacro_file': f'{robot}.urdf.xacro',
                 'robot_xacro_file': f'{robot}_calibration.urdf.xacro',
                 'xacro_arguments': f'side:={working_side}'}.items()
         ),

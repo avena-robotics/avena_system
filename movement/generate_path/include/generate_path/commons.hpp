@@ -28,13 +28,21 @@ namespace generate_path
     using SharedPtr = std::shared_ptr<SceneInfo>;
   };
 
+  struct Limits
+  {
+    Limits() = default;
+    Limits(const double &lower, const double &upper)
+        : lower(lower), upper(upper) {}
+    double lower;
+    double upper;
+  };
+
   struct Constraints
   {
-    std::vector<double> low_bounds;
-    std::vector<double> high_bounds;
+    std::vector<Limits> limits;
     std::vector<int> obstacles;
     double safety_distance;
-    size_t contact_number_allowed;
+    int contact_number_allowed;
 
     using SharedPtr = std::shared_ptr<Constraints>;
   };

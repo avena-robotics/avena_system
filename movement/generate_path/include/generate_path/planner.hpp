@@ -1,8 +1,8 @@
 #ifndef GENERATE_PATH__PLANNER_HPP_
 #define GENERATE_PATH__PLANNER_HPP_
 
-// // ___Avena___
-// #include <bullet_client/b3RobotSimulatorClientAPI.h>
+// ___ROS___
+#include <geometry_msgs/msg/pose.hpp>
 
 // ___OMPL___
 #include <ompl/base/SpaceInformation.h>
@@ -17,6 +17,9 @@
 
 namespace generate_path
 {
+  namespace ob = ompl::base;
+  namespace og = ompl::geometric;
+
   class Planner
   {
   public:

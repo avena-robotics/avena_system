@@ -7,7 +7,7 @@
       <joint name="${arm_id}_hand_joint" type="fixed">
         <parent link="${connected_to}"/>
         <child link="${arm_id}_gripper"/>
-        <origin xyz="${xyz}" rpy="0 0 -0.785"/>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
       </joint>
 
     </xacro:unless>
