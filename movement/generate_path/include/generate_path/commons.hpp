@@ -9,7 +9,8 @@
 
 namespace generate_path
 {
-  using ArmConfiguration = std::vector<float>;
+  using ArmConfiguration = std::vector<double>;
+  using Path = std::vector<ArmConfiguration>;
 
   enum class ReturnCode
   {
@@ -21,9 +22,10 @@ namespace generate_path
   {
     bullet_client::b3RobotSimulatorClientAPI::SharedPtr bullet_client;
     int robot_idx;
-    // int table_idx;
     int end_effector_idx;
     std::vector<int> joint_handles;
+
+    using SharedPtr = std::shared_ptr<SceneInfo>;
   };
 
   struct Constraints
@@ -33,15 +35,17 @@ namespace generate_path
     std::vector<int> obstacles;
     double safety_distance;
     size_t contact_number_allowed;
+
+    using SharedPtr = std::shared_ptr<Constraints>;
   };
 
   struct PathPlanningInput
   {
-    SceneInfo scene_info;
-    Constraints constraints;
+    SceneInfo::SharedPtr scene_info;
+    Constraints::SharedPtr constraints;
     ArmConfiguration start_state;
     ArmConfiguration goal_state;
-  }
+  };
 
 } // namespace generate_path
 

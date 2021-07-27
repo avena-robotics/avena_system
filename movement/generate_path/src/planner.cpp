@@ -8,22 +8,22 @@ namespace generate_path
 
     ReturnCode Planner::solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path)
     {
-        auto space = std::make_shared<ompl::base::RealVectorStateSpace>(path_planning_input.scene_info.joint_handles.size());
+        auto space = std::make_shared<ompl::base::RealVectorStateSpace>(path_planning_input.scene_info->joint_handles.size());
 
         // Joints constraints
-        ompl::base::RealVectorBounds bounds(path_planning_input.scene_info.joint_handles.size());
-        bounds.low = path_planning_input.constraints.low_bounds;
-        bounds.high = path_planning_input.constraints.high_bounds;
+        ompl::base::RealVectorBounds bounds(path_planning_input.scene_info->joint_handles.size());
+        bounds.low = path_planning_input.constraints->low_bounds;
+        bounds.high = path_planning_input.constraints->high_bounds;
         space->setBounds(bounds);
 
         auto si = std::make_shared<ompl::base::SpaceInformation>(space);
 
         si->setStateValidityChecker([=](const ompl::base::State *state)
                                     {
-                                        for (int i = 0; i < path_planning_input.scene_info.joint_handles.size(); i++)
-                                            path_planning_input.scene_info.bullet_client->resetJointState(path_planning_input.scene_info.robot_idx, i, state->as<ompl::base::RealVectorStateSpace::StateType>()->values[i]);
+                                        for (int i = 0; i < path_planning_input.scene_info->joint_handles.size(); i++)
+                                            path_planning_input.scene_info->bullet_client->resetJointState(path_planning_input.scene_info->robot_idx, i, state->as<ompl::base::RealVectorStateSpace::StateType>()->values[i]);
 
-                                        return _calculateContactPointsAmount(path_planning_input) <= path_planning_input.constraints.contact_number_allowed;
+                                        return Planner::calculateContactPointsAmount(path_planning_input) <= path_planning_input.constraints->contact_number_allowed;
                                     });
 
         ompl::base::ScopedState<> start(space);
@@ -45,11 +45,11 @@ namespace generate_path
         // perform setup steps for the planner
         planner->setup();
 
-        // // print the settings for this space
-        // si->printSettings(std::cout);
+        // print the settings for this space
+        si->printSettings(std::cout);
 
-        // // print the problem settings
-        // pdef->print(std::cout);
+        // print the problem settings
+        pdef->print(std::cout);
 
         // attempt to solve the problem within one second of planning time
         ompl::base::PlannerStatus solved = planner->ompl::base::Planner::solve(1.0);
@@ -63,7 +63,7 @@ namespace generate_path
             for (size_t i = 0; i < states.size(); ++i)
             {
                 state = states[i]->as<ompl::base::State>();
-                ArmConfiguration path_configuration(path_planning_input.scene_info.joint_handles.size());
+                ArmConfiguration path_configuration(path_planning_input.scene_info->joint_handles.size());
                 for (size_t joint_idx = 0; joint_idx < path_configuration.size(); ++joint_idx)
                     path_configuration[joint_idx] = state->as<ompl::base::RealVectorStateSpace::StateType>()->values[joint_idx];
                 out_path[i] = path_configuration;
@@ -75,32 +75,32 @@ namespace generate_path
         return ReturnCode::SUCCESS;
     }
 
-    int Planner::_calculateContactPointsAmount(const PathPlanningInput &path_planning_input)
+    int Planner::calculateContactPointsAmount(const PathPlanningInput &path_planning_input)
     {
         int contacts_amount = 0;
         // Check collision with obstacles
-        for (auto obstacle_idx : path_planning_input.constraints.obstacles)
+        for (auto obstacle_idx : path_planning_input.constraints->obstacles)
         {
             b3RobotSimulatorGetContactPointsArgs obtacles_collision_args;
-            obtacles_collision_args.m_bodyUniqueIdA = path_planning_input.scene_info.robot_idx;
+            obtacles_collision_args.m_bodyUniqueIdA = path_planning_input.scene_info->robot_idx;
             obtacles_collision_args.m_bodyUniqueIdB = obstacle_idx;
             b3ContactInformation contact_info;
-            path_planning_input.scene_info.bullet_client->getClosestPoints(obtacles_collision_args, path_planning_input.constraints.safety_distance, &contact_info);
+            path_planning_input.scene_info->bullet_client->getClosestPoints(obtacles_collision_args, path_planning_input.constraints->safety_distance, &contact_info);
             contacts_amount += contact_info.m_numContactPoints;
         }
 
         // Check self collision
         b3ContactInformation contact_info;
         b3RobotSimulatorGetContactPointsArgs self_collision_args;
-        self_collision_args.m_bodyUniqueIdA = path_planning_input.scene_info.robot_idx;
-        self_collision_args.m_bodyUniqueIdB = path_planning_input.scene_info.robot_idx;
-        for (int i = 0; i < path_planning_input.scene_info.bullet_client->getNumJoints(path_planning_input.scene_info.robot_idx) - 2; i++)
+        self_collision_args.m_bodyUniqueIdA = path_planning_input.scene_info->robot_idx;
+        self_collision_args.m_bodyUniqueIdB = path_planning_input.scene_info->robot_idx;
+        for (int i = 0; i < path_planning_input.scene_info->bullet_client->getNumJoints(path_planning_input.scene_info->robot_idx) - 2; i++)
         {
             self_collision_args.m_linkIndexA = i;
-            for (int j = i + 2; j < path_planning_input.scene_info.bullet_client->getNumJoints(path_planning_input.scene_info.robot_idx); j++)
+            for (int j = i + 2; j < path_planning_input.scene_info->bullet_client->getNumJoints(path_planning_input.scene_info->robot_idx); j++)
             {
                 self_collision_args.m_linkIndexB = j;
-                path_planning_input.scene_info.bullet_client->getClosestPoints(self_collision_args, path_planning_input.constraints.safety_distance, &contact_info);
+                path_planning_input.scene_info->bullet_client->getClosestPoints(self_collision_args, path_planning_input.constraints->safety_distance, &contact_info);
                 contacts_amount += contact_info.m_numContactPoints;
             }
         }

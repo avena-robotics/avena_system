@@ -30,6 +30,7 @@ find_package(ompl REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED 
   src/generate_path.cpp
+  src/planner.cpp
 )
 target_include_directories(${PROJECT_NAME} 
   PUBLIC

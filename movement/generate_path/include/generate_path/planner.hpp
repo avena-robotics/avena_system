@@ -23,10 +23,7 @@ namespace generate_path
     Planner();
     virtual ~Planner() = default;
     virtual ReturnCode solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path);
-  
-  private:
-    int _calculateContactPointsAmount(const PathPlanningInput &path_planning_input);
-
+    static int calculateContactPointsAmount(const PathPlanningInput &path_planning_input);
   };
 
 } // namespace generate_path
