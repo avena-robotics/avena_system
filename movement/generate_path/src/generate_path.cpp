@@ -180,11 +180,11 @@ namespace generate_path
             return;
         }
 
-        // Set arm to last config for visualization
-        {
-            auto last_arm_config = out_path.back();
-            _setJointStates(last_arm_config);
-        }
+        // // Set arm to last config for visualization
+        // {
+        //     auto last_arm_config = out_path.back();
+        //     _setJointStates(last_arm_config);
+        // }
 
         // Output processing
         custom_interfaces::msg::GeneratedPath generated_path;

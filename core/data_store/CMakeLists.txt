@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(data_store)
 
 
-# Default to C++14
+# Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
@@ -66,4 +66,7 @@ install(TARGETS
 cam2_insert_pub
   DESTINATION lib/${PROJECT_NAME}
 )
+
+# add other data elements here
+
 ament_package()
