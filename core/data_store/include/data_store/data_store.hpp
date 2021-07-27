@@ -22,9 +22,10 @@ namespace data_store
 
     private:
         helpers::Watchdog::SharedPtr _watchdog;
-        std::unique_ptr<RgbData> _rgb_data_element_ptr;
-        std::unique_ptr<ItemCam1> _item_cam1_element_ptr;
-        std::unique_ptr<ItemCam2> _item_cam2_element_ptr;
+        std::unique_ptr<CamerasData> _cameras_data_element_ptr;
+        std::unique_ptr<Tracker> _tracker_element_ptr;
+        std::unique_ptr<Detectron> _detectron_element_ptr;
+        std::unique_ptr<Items> _items_element_ptr;
         // add other data elements here
     };
 

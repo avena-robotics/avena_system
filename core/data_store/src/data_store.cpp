@@ -13,9 +13,11 @@ namespace data_store
         status = custom_interfaces::msg::Heartbeat::STARTING;
         RCLCPP_INFO(get_logger(), "Initialization of data store.");
         rclcpp::QoS qos_latching = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-        _rgb_data_element_ptr = std::make_unique<RgbData>(shared_from_this(), qos_latching, "rgb_data");
-        _item_cam1_element_ptr = std::make_unique<ItemCam1>(shared_from_this(), qos_latching, "item_cam1");
-        _item_cam2_element_ptr = std::make_unique<ItemCam2>(shared_from_this(), qos_latching, "item_cam2");
+        
+        _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), qos_latching, "tracker");
+        _cameras_data_element_ptr = std::make_unique<CamerasData>(shared_from_this(), qos_latching, "cameras_data");
+        _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), qos_latching, "detectron");
+        _items_element_ptr = std::make_unique<Items>(shared_from_this(), qos_latching, "items");
         // add other data elements here
         status = custom_interfaces::msg::Heartbeat::RUNNING;
     }
