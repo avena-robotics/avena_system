@@ -46,26 +46,6 @@ install(DIRECTORY
 )
 
 
-add_executable(rgb_insert_pub test/src/rgb/insert_pub.cpp)
-ament_target_dependencies(rgb_insert_pub rclcpp custom_interfaces)
-install(TARGETS
-rgb_insert_pub
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-add_executable(cam1_insert_pub test/src/cam1/insert_pub.cpp)
-ament_target_dependencies(cam1_insert_pub rclcpp custom_interfaces)
-install(TARGETS
-cam1_insert_pub
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-add_executable(cam2_insert_pub test/src/cam2/insert_pub.cpp)
-ament_target_dependencies(cam2_insert_pub rclcpp custom_interfaces)
-install(TARGETS
-cam2_insert_pub
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 # add other data elements here
 

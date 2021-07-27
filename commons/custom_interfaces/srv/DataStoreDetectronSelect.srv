@@ -1,0 +1,6 @@
+std_msgs/Float64 time_stamp
+---
+std_msgs/Float64 time_stamp
+std_msgs/String[] items_masks
+std_msgs/String[] items_labels
+
