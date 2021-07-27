@@ -28,6 +28,9 @@ find_package(helpers_vision REQUIRED)
 find_package(bullet_client REQUIRED)
 find_package(ompl REQUIRED)
 
+find_package(urdf REQUIRED)
+find_package(kdl_parser REQUIRED)
+
 add_library(${PROJECT_NAME} SHARED 
   src/generate_path.cpp
   src/planner.cpp
@@ -50,6 +53,8 @@ ament_target_dependencies(${PROJECT_NAME}
   helpers_commons
   helpers_vision
   bullet_client
+  urdf
+  kdl_parser
 )
 rclcpp_components_register_nodes(${PROJECT_NAME} "generate_path::GeneratePath")
 install(

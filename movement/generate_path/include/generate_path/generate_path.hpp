@@ -7,6 +7,14 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <opencv2/opencv.hpp>
 
+
+#include <kdl/tree.hpp>
+#include <kdl_parser/kdl_parser.hpp>
+#include <kdl/chainiksolverpos_nr_jl.hpp>
+#include <kdl/chainiksolvervel_pinv.hpp>
+#include <kdl/chainfksolverpos_recursive.hpp>
+#include <urdf/model.h>
+
 // ___Avena___
 #include <custom_interfaces/action/generate_path_pose.hpp>
 #include <custom_interfaces/msg/generated_path.hpp>
