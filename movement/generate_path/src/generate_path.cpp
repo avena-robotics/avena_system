@@ -60,6 +60,8 @@ namespace generate_path
             return ReturnCode::FAILURE;
         }
 
+        _updateJointLimits();
+
         _scene_info = std::make_shared<SceneInfo>();
         _scene_info->bullet_client = std::make_shared<bullet_client::b3RobotSimulatorClientAPI>();
         bool connected = _scene_info->bullet_client->connect(eCONNECT_SHARED_MEMORY);
@@ -88,6 +90,7 @@ namespace generate_path
         if (_scene_info->bullet_client->isConnected())
             _scene_info->bullet_client->disconnect();
         _scene_info.reset();
+        _ik_joint_limits.clear();
         return ReturnCode::SUCCESS;
     }
 
@@ -113,8 +116,9 @@ namespace generate_path
 
     void GeneratePath::_executePose(const std::shared_ptr<GoalHandleGeneratePathPose> goal_handle)
     {
+        helpers::Timer timer("Generate path to pose", get_logger());
         auto result = std::make_shared<GeneratePathPose::Result>();
-        
+
         // Save current state of joints to prevent data races
         sensor_msgs::msg::JointState::SharedPtr current_joint_states;
         {
@@ -153,7 +157,7 @@ namespace generate_path
         }
 
         auto end_effector_pose = goal_handle.get()->get_goal()->end_effector_pose;
-        path_planning_input.goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose, current_joint_states);
+        path_planning_input.goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
 
         // Check goal state validity
         _setJointStates(path_planning_input.goal_state);
@@ -178,6 +182,9 @@ namespace generate_path
             return;
         }
 
+        // Set joint states back to initial state before planning
+        _setJointStates(current_joint_values);
+
         // // Set arm to last config for visualization
         // {
         //     auto last_arm_config = out_path.back();
@@ -199,8 +206,7 @@ namespace generate_path
         RCLCPP_INFO(get_logger(), "Generate to pose finished");
     }
 
-    ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose,
-                                                                          const sensor_msgs::msg::JointState::SharedPtr & /*current_joint_states*/)
+    ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose)
     {
         b3RobotSimulatorInverseKinematicArgs ik_args;
         ik_args.m_bodyUniqueId = _scene_info->robot_idx;
@@ -221,9 +227,10 @@ namespace generate_path
         ik_args.m_jointDamping.resize(_robot_info.limits.size());
         for (size_t i = 0; i < _robot_info.limits.size(); ++i)
         {
-            ik_args.m_lowerLimits[i] = _robot_info.limits[i].lower;
-            ik_args.m_upperLimits[i] = _robot_info.limits[i].upper;
-            ik_args.m_jointRanges[i] = std::abs(_robot_info.limits[i].lower) + std::abs(_robot_info.limits[i].upper);
+            ik_args.m_lowerLimits[i] = _ik_joint_limits[i].lower;
+            ik_args.m_upperLimits[i] = _ik_joint_limits[i].upper;
+            ik_args.m_jointRanges[i] = std::abs(_ik_joint_limits[i].lower) + std::abs(_ik_joint_limits[i].upper);
+            RCLCPP_WARN_STREAM(get_logger(), ik_args.m_lowerLimits[i] << ", " << ik_args.m_upperLimits[i]);
             ik_args.m_restPoses[i] = 0;
             ik_args.m_jointDamping[i] = 0.1;
         }
@@ -231,13 +238,6 @@ namespace generate_path
 
         ik_args.m_flags |= B3_HAS_IK_TARGET_ORIENTATION;
         ik_args.m_flags |= B3_HAS_NULL_SPACE_VELOCITY;
-
-        // ik_args.m_currentJointPositions.clear();
-        // for (size_t i = 0; i < _robot_info.nr_joints; ++i)
-        //     ik_args.m_currentJointPositions.push_back(current_joint_states->position[i]);
-        // ik_args.m_flags |= B3_HAS_CURRENT_POSITIONS;
-
-        // RCLCPP_ERROR_STREAM(get_logger(), "ik_args.m_flags: " << ik_args.m_flags);
 
         //////////////////////////////////////////////////////////
         // End effector pose visualization
@@ -358,6 +358,31 @@ namespace generate_path
 
         RCLCPP_INFO(get_logger(), "Parameters read successfully...");
         return ReturnCode::SUCCESS;
+    }
+
+    void GeneratePath::_updateJointLimits()
+    {
+        for (auto limit : _robot_info.limits)
+        {
+            RCLCPP_WARN_STREAM(get_logger(), limit.lower << ", " << limit.upper);
+        }
+
+        const double range_tighten_coeff = 0.95; // values from 0.0 - 1.0 representing how much range should be tighten
+        for (size_t i = 0; i < _robot_info.limits.size(); ++i)
+        {
+            auto range_middle = (_robot_info.limits[i].lower + _robot_info.limits[i].upper) / 2.0;
+            auto range_middle_to_limit_dist = _robot_info.limits[i].upper - range_middle;
+            auto offset = (range_middle_to_limit_dist * (1.0 - range_tighten_coeff)) / 2.0;
+            _ik_joint_limits.push_back(Limits(_robot_info.limits[i].lower + offset * 2, _robot_info.limits[i].upper - offset * 2));
+            _robot_info.limits[i].lower += offset;
+            _robot_info.limits[i].upper -= offset;
+        }
+
+        RCLCPP_WARN_STREAM(get_logger(), "---");
+        for (auto limit : _robot_info.limits)
+        {
+            RCLCPP_WARN_STREAM(get_logger(), limit.lower << ", " << limit.upper);
+        }
     }
 
     void GeneratePath::_convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment)

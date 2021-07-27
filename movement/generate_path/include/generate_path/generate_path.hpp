@@ -44,8 +44,9 @@ namespace generate_path
     ArmConfiguration _getJointStatesFromTopic(const sensor_msgs::msg::JointState::SharedPtr &joint_states);
     ReturnCode _getParametersFromServer();
     void _convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment);
-    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose, const sensor_msgs::msg::JointState::SharedPtr &current_joint_states);
+    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose);
     ReturnCode _readSceneInfoFromPhysicsServer();
+    void _updateJointLimits();
     void _setJointStates(const ArmConfiguration &joint_states);
 
     // ___Attributes___
@@ -58,6 +59,11 @@ namespace generate_path
     helpers::commons::RobotInfo _robot_info;
 
     SceneInfo::SharedPtr _scene_info;
+
+    /**
+     * @brief Inverse kinematic limits are tighter than path planning ones just to be sure than planning does not go out of bounds
+     */
+    std::vector<Limits> _ik_joint_limits;
 
     /**
      * @brief ID in physics server of table and all static things which are not changing e.g. camera stands, artificial walls for collisions
