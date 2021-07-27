@@ -136,11 +136,9 @@ namespace generate_path
         path_planning_input.constraints = std::make_shared<Constraints>();
         path_planning_input.constraints->contact_number_allowed = _contact_number_allowed;
         path_planning_input.constraints->safety_distance = _safety_range;
-        for (const auto &bound : _robot_info.bounds)
-        {
-            path_planning_input.constraints->low_bounds.push_back(bound.bounds_low);
-            path_planning_input.constraints->high_bounds.push_back(bound.bounds_high);
-        }
+        for (const auto &limit : _robot_info.limits)
+            path_planning_input.constraints->limits.push_back(Limits(limit.lower, limit.upper));
+
         // Set all obstacles (there should be also all collision items estimated)
         path_planning_input.constraints->obstacles.push_back(_table_idx);
 
@@ -216,16 +214,16 @@ namespace generate_path
         ik_args.m_endEffectorTargetOrientation[3] = end_effector_pose.orientation.w;
         ik_args.m_numDegreeOfFreedom = _robot_info.nr_joints;
 
-        ik_args.m_lowerLimits.resize(_robot_info.bounds.size());
-        ik_args.m_upperLimits.resize(_robot_info.bounds.size());
-        ik_args.m_jointRanges.resize(_robot_info.bounds.size());
-        ik_args.m_restPoses.resize(_robot_info.bounds.size());
-        ik_args.m_jointDamping.resize(_robot_info.bounds.size());
-        for (size_t i = 0; i < _robot_info.bounds.size(); ++i)
+        ik_args.m_lowerLimits.resize(_robot_info.limits.size());
+        ik_args.m_upperLimits.resize(_robot_info.limits.size());
+        ik_args.m_jointRanges.resize(_robot_info.limits.size());
+        ik_args.m_restPoses.resize(_robot_info.limits.size());
+        ik_args.m_jointDamping.resize(_robot_info.limits.size());
+        for (size_t i = 0; i < _robot_info.limits.size(); ++i)
         {
-            ik_args.m_lowerLimits[i] = _robot_info.bounds[i].bounds_low;
-            ik_args.m_upperLimits[i] = _robot_info.bounds[i].bounds_high;
-            ik_args.m_jointRanges[i] = std::abs(_robot_info.bounds[i].bounds_high) + std::abs(_robot_info.bounds[i].bounds_low);
+            ik_args.m_lowerLimits[i] = _robot_info.limits[i].lower;
+            ik_args.m_upperLimits[i] = _robot_info.limits[i].upper;
+            ik_args.m_jointRanges[i] = std::abs(_robot_info.limits[i].lower) + std::abs(_robot_info.limits[i].upper);
             ik_args.m_restPoses[i] = 0;
             ik_args.m_jointDamping[i] = 0.1;
         }
@@ -303,7 +301,6 @@ namespace generate_path
                 {
                     b3JointInfo joint_info;
                     _scene_info->bullet_client->getJointInfo(body_unique_id, joint_idx, &joint_info);
-
                     if (std::strcmp(joint_info.m_linkName, _robot_info.connection.c_str()) == 0)
                         _scene_info->end_effector_idx = joint_idx;
 
