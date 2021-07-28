@@ -5,7 +5,8 @@ namespace rgbd_sync
 {
     RgbdSyncronizer::RgbdSyncronizer(const rclcpp::NodeOptions &options)
         : Node("rgbd_sync", options)
-    {
+    {   
+
         helpers::commons::setLoggerLevelFromParameter(this);
         _cant_touch_this = false;
         rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1));
@@ -32,6 +33,14 @@ namespace rgbd_sync
 
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
         status = Heartbeat::STOPPED;
+
+
+
+    _client = this->create_client<custom_interfaces::srv::DataStoreRgbdSyncInsert>("rgbd_sync_insert");
+
+
+   
+
     }
 
     void RgbdSyncronizer::initNode()
@@ -52,7 +61,7 @@ namespace rgbd_sync
     {
         _action_server = rclcpp_action::create_server<Action>(
             this,
-            "scene_publisher",
+            "rgbd_sync",
             std::bind(&RgbdSyncronizer::_handleGoal, this, std::placeholders::_1, std::placeholders::_2),
             std::bind(&RgbdSyncronizer::_handleCancel, this, std::placeholders::_1),
             std::bind(&RgbdSyncronizer::_handleAccepted, this, std::placeholders::_1));
@@ -101,9 +110,29 @@ namespace rgbd_sync
         }
 
         RCLCPP_INFO(this->get_logger(), "Publishing scene data");
+        _cant_touch_this = true;
         RgbdSync::UniquePtr rgbd_sync= _prepareOutputMessages(_rgb_images_data, _depth_images_data);
-        _rgbd_sync_publisher->publish(std::move(rgbd_sync));
 
+
+
+    auto request = std::make_shared<custom_interfaces::srv::DataStoreRgbdSyncInsert::Request>();
+        while (!_client->wait_for_service(1s)) {
+            if (!rclcpp::ok()) {
+            RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+            }
+            RCLCPP_INFO(this->get_logger(), "service not available, waiting again...");
+        }
+
+    auto data_store_result = _client->async_send_request(request);
+        _rgbd_sync_publisher->publish(std::move(rgbd_sync));
+    // Wait for the result.
+    if (rclcpp::spin_until_future_complete(this->get_node_base_interface() , data_store_result) ==
+        rclcpp::FutureReturnCode::SUCCESS)
+    {
+        RCLCPP_INFO(this->get_logger(), "Data saved in to DataStorage");
+    } else {
+        RCLCPP_ERROR(this->get_logger(), "Failed to save data in to DataStorage");
+    }
         if (rclcpp::ok())
         {
             goal_handle->succeed(result);
@@ -120,7 +149,7 @@ namespace rgbd_sync
         RgbdSync::UniquePtr rgbd_sync = std::make_unique<RgbdSync>();
         rgbd_sync->rgb = *rgb_images;
         rgbd_sync->depth = *depth_images;
-
+        _cant_touch_this = false;
         return rgbd_sync;
     }
 
