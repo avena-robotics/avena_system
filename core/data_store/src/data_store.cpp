@@ -16,8 +16,8 @@ namespace data_store
         
         _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), qos_latching, "tracker");
         _cameras_data_element_ptr = std::make_unique<CamerasData>(shared_from_this(), qos_latching, "cameras_data");
-        _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), qos_latching, "detectron");
-        _items_element_ptr = std::make_unique<Items>(shared_from_this(), qos_latching, "items");
+        _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), qos_latching, "filter_detections");
+        _items_element_ptr = std::make_unique<Items>(shared_from_this(), qos_latching, "compose_items");
         // add other data elements here
         status = custom_interfaces::msg::Heartbeat::RUNNING;
     }
