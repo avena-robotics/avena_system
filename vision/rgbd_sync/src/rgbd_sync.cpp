@@ -3,7 +3,7 @@
 
 namespace rgbd_sync
 {
-    RgbdSyncronizer::RgbdSyncronizer(const rclcpp::NodeOptions &options)
+    RgbdSynchronizer::RgbdSynchronizer(const rclcpp::NodeOptions &options)
         : Node("rgbd_sync", options)
     {   
 
@@ -43,46 +43,46 @@ namespace rgbd_sync
 
     }
 
-    void RgbdSyncronizer::initNode()
+    void RgbdSynchronizer::initNode()
     {
         status = Heartbeat::STARTING;
 
         status = Heartbeat::RUNNING;
     }
 
-    void RgbdSyncronizer::shutDownNode()
+    void RgbdSynchronizer::shutDownNode()
     {
         status = Heartbeat::STOPPING;
 
         status = Heartbeat::STOPPED;
     }
 
-    void RgbdSyncronizer::_initializeServers()
+    void RgbdSynchronizer::_initializeServers()
     {
         _action_server = rclcpp_action::create_server<Action>(
             this,
             "rgbd_sync",
-            std::bind(&RgbdSyncronizer::_handleGoal, this, std::placeholders::_1, std::placeholders::_2),
-            std::bind(&RgbdSyncronizer::_handleCancel, this, std::placeholders::_1),
-            std::bind(&RgbdSyncronizer::_handleAccepted, this, std::placeholders::_1));
+            std::bind(&RgbdSynchronizer::_handleGoal, this, std::placeholders::_1, std::placeholders::_2),
+            std::bind(&RgbdSynchronizer::_handleCancel, this, std::placeholders::_1),
+            std::bind(&RgbdSynchronizer::_handleAccepted, this, std::placeholders::_1));
     }
 
-    rclcpp_action::GoalResponse RgbdSyncronizer::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, Action::Goal::ConstSharedPtr /*goal*/)
+    rclcpp_action::GoalResponse RgbdSynchronizer::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, Action::Goal::ConstSharedPtr /*goal*/)
     {
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     }
 
-    rclcpp_action::CancelResponse RgbdSyncronizer::_handleCancel(const std::shared_ptr<GoalHandle> /*goal_handle*/)
+    rclcpp_action::CancelResponse RgbdSynchronizer::_handleCancel(const std::shared_ptr<GoalHandle> /*goal_handle*/)
     {
         return rclcpp_action::CancelResponse::ACCEPT;
     }
 
-    void RgbdSyncronizer::_handleAccepted(const std::shared_ptr<GoalHandle> goal_handle)
+    void RgbdSynchronizer::_handleAccepted(const std::shared_ptr<GoalHandle> goal_handle)
     {
-        std::thread{std::bind(&RgbdSyncronizer::_execute, this, std::placeholders::_1), goal_handle}.detach();
+        std::thread{std::bind(&RgbdSynchronizer::_execute, this, std::placeholders::_1), goal_handle}.detach();
     }
 
-    void RgbdSyncronizer::_execute(const std::shared_ptr<GoalHandle> goal_handle)
+    void RgbdSynchronizer::_execute(const std::shared_ptr<GoalHandle> goal_handle)
     {
         helpers::Timer timer("Scene publisher action", get_logger());
         auto result = std::make_shared<Action::Result>();
@@ -141,7 +141,7 @@ namespace rgbd_sync
 
     }
 
-    RgbdSync::UniquePtr  RgbdSyncronizer::_prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images)
+    RgbdSync::UniquePtr  RgbdSynchronizer::_prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images)
 {
         std_msgs::msg::Header header;
         header.stamp = now();
@@ -156,4 +156,4 @@ namespace rgbd_sync
 } // namespace 
 
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(rgbd_sync::RgbdSyncronizer)
+RCLCPP_COMPONENTS_REGISTER_NODE(rgbd_sync::RgbdSynchronizer)

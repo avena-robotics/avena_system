@@ -42,7 +42,7 @@ ament_target_dependencies(rgbd_sync
   helpers_vision
   helpers_commons
 )
-rclcpp_components_register_nodes(rgbd_sync "rgbd_sync::RgbdSyncronizer")
+rclcpp_components_register_nodes(rgbd_sync "rgbd_sync::RgbdSynchronizer")
 
 install(
   TARGETS rgbd_sync

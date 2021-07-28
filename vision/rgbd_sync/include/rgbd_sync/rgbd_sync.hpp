@@ -29,10 +29,10 @@ namespace rgbd_sync
 {
   using namespace custom_interfaces::msg; // usage only in this namespace, so not a big problem
 
-  class RgbdSyncronizer : public rclcpp::Node, public helpers::WatchdogInterface
+  class RgbdSynchronizer : public rclcpp::Node, public helpers::WatchdogInterface
   {
   public:
-    explicit RgbdSyncronizer(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+    explicit RgbdSynchronizer(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
 
     using Action = custom_interfaces::action::SimpleAction;
     using GoalHandle = rclcpp_action::ServerGoalHandle<Action>;
