@@ -27,6 +27,10 @@
 #include "generate_path/commons.hpp"
 #include "generate_path/planner.hpp"
 
+
+#include "generate_path/ik_franka.hpp"
+
+
 namespace generate_path
 {
   using GeneratePathPose = custom_interfaces::action::GeneratePathPose;

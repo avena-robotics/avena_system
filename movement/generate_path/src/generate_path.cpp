@@ -157,73 +157,137 @@ namespace generate_path
         }
 
         auto end_effector_pose = goal_handle.get()->get_goal()->end_effector_pose;
-        auto initial_ik = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
-        //////////////////////////////////////////////////////////////////////////
-        std::string urdf_xml = helpers::commons::getRobotDescription();
-        urdf::Model model;
-        if (!model.initString(urdf_xml))
-        {
-            throw std::runtime_error("Unable to initialize urdf::model from robot description");
-        }
+        path_planning_input.goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
 
-        // Initialize the KDL tree
-        KDL::Tree tree;
-        if (!kdl_parser::treeFromUrdfModel(model, tree))
-        {
-            throw std::runtime_error("Failed to extract kdl tree from robot description");
-        }
+        int argc;
+        char **argv;
+        IkSolutionList<IkReal> solutions;
+        std::vector<IkReal> vfree(GetNumFreeParameters());
 
-        KDL::Chain chain;
-        auto root = tree.getRootSegment();
-        if (!tree.getChain(root->first, _robot_info.connection, chain))
-        {
-            throw std::runtime_error("Error getting proper chain");
-        }
+        RCLCPP_WARN_STREAM(get_logger(), "Free parameters: " << vfree.size());
 
-        RCLCPP_WARN_STREAM(get_logger(), chain.getNrOfJoints());
-        for (auto & s : chain.segments)
-        {
-            auto joint = s.getJoint();
-            RCLCPP_WARN_STREAM(get_logger(), s.getName() << ", " << joint.getName() << ", " << joint.getTypeName());
-        }
+        // IkReal eerot[9], eetrans[3];
+        // eerot[0] = atof(argv[1]);
+        // eerot[1] = atof(argv[2]);
+        // eerot[2] = atof(argv[3]);
+        // eetrans[0] = atof(argv[4]);
+        // eerot[3] = atof(argv[5]);
+        // eerot[4] = atof(argv[6]);
+        // eerot[5] = atof(argv[7]);
+        // eetrans[1] = atof(argv[8]);
+        // eerot[6] = atof(argv[9]);
+        // eerot[7] = atof(argv[10]);
+        // eerot[8] = atof(argv[11]);
+        // eetrans[2] = atof(argv[12]);
+        // for (std::size_t i = 0; i < vfree.size(); ++i)
+        //     vfree[i] = atof(argv[13 + i]);
+        // bool bSuccess = ComputeIk(eetrans, eerot, vfree.size() > 0 ? &vfree[0] : NULL, solutions);
 
-        //Creation of the solvers:
-        KDL::ChainFkSolverPos_recursive fk_solver(chain);                            // Forward position solver
-        KDL::ChainIkSolverVel_pinv ik_solver_vel(chain);                            // Inverse velocity solver
-        KDL::JntArray lower_limits(chain.getNrOfJoints());
-        KDL::JntArray upper_limits(chain.getNrOfJoints());
-        KDL::JntArray initial_ik_guess(chain.getNrOfJoints());
+        // if (!bSuccess)
+        // {
+        //     fprintf(stderr, "Failed to get ik solution\n");
+        //     // return -1;
+        //     std::exit(1);
+        // }
 
-        KDL::Vector pos(end_effector_pose.position.x, end_effector_pose.position.y, end_effector_pose.position.z);
-        KDL::Rotation orien = KDL::Rotation::Quaternion(end_effector_pose.orientation.x, end_effector_pose.orientation.y, end_effector_pose.orientation.z, end_effector_pose.orientation.w);
-        KDL::Frame ee_pose(orien, pos);
+        // printf("Found %d ik solutions:\n", (int)solutions.GetNumSolutions());
+        // std::vector<IkReal> solvalues(GetNumJoints());
+        // for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i)
+        // {
+        //     const IkSolutionBase<IkReal> &sol = solutions.GetSolution(i);
+        //     printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
+        //     std::vector<IkReal> vsolfree(sol.GetFree().size());
+        //     sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
+        //     for (std::size_t j = 0; j < solvalues.size(); ++j)
+        //         printf("%.15f, ", solvalues[j]);
+        //     printf("\n");
+        // }
 
-        for (size_t i = 0; i < _robot_info.nr_joints; ++i)
-        {
-            lower_limits(i) = _robot_info.limits[i].lower;
-            upper_limits(i) = _robot_info.limits[i].upper;
-            initial_ik_guess(i) = initial_ik[i];
-        }
+        // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // std::string urdf_xml = helpers::commons::getRobotDescription();
+        // urdf::Model model;
+        // if (!model.initString(urdf_xml))
+        // {
+        //     throw std::runtime_error("Unable to initialize urdf::model from robot description");
+        // }
 
-        KDL::ChainIkSolverPos_NR_JL ik_solver(chain, lower_limits, upper_limits, fk_solver, ik_solver_vel, 100, 1e-5);
-        KDL::JntArray goal_state;
-        int ret = ik_solver.CartToJnt(initial_ik_guess, ee_pose, goal_state);
-        if (ret == KDL::ChainIkSolverPos_NR_JL::E_NOERROR)
-        {
-            RCLCPP_INFO(get_logger(), "IK run successfully");
-            for (auto i = 0; i < goal_state.data.size(); ++i)
-                path_planning_input.goal_state.push_back(goal_state(i));
-        }
-        else
-        {
-            RCLCPP_ERROR_STREAM(get_logger(), "Error occured while running IK. Error: " << ik_solver.strError(ret) << ". Aborting...");
-            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-            goal_handle->abort(result);
-            return;
-        }
+        // // Initialize the KDL tree
+        // KDL::Tree tree;
+        // if (!kdl_parser::treeFromUrdfModel(model, tree))
+        // {
+        //     throw std::runtime_error("Failed to extract kdl tree from robot description");
+        // }
 
-        //////////////////////////////////////////////////////////////////////////
+        // KDL::Chain chain;
+        // auto root = tree.getRootSegment();
+        // if (!tree.getChain(root->first, _robot_info.connection, chain))
+        // {
+        //     throw std::runtime_error("Error getting proper chain");
+        // }
 
+        // RCLCPP_WARN_STREAM(get_logger(), chain.getNrOfJoints());
+        // for (auto &s : chain.segments)
+        // {
+        //     auto joint = s.getJoint();
+        //     RCLCPP_WARN_STREAM(get_logger(), s.getName() << ", " << joint.getName() << ", " << joint.getTypeName());
+        // }
+
+        // // Creation of the solvers
+        // KDL::ChainFkSolverPos_recursive fk_solver(chain); // Forward position solver
+        // KDL::ChainIkSolverVel_pinv ik_solver_vel(chain);  // Inverse velocity solver
+        // KDL::JntArray lower_limits(chain.getNrOfJoints());
+        // KDL::JntArray upper_limits(chain.getNrOfJoints());
+        // KDL::JntArray initial_state(chain.getNrOfJoints());
+        // KDL::JntArray q(chain.getNrOfJoints());
+        // KDL::JntArray goal_state(chain.getNrOfJoints());
+
+        // // Convert ROS pose to KDL pose
+        // KDL::Vector pos(end_effector_pose.position.x, end_effector_pose.position.y, end_effector_pose.position.z);
+        // KDL::Rotation orien = KDL::Rotation::Quaternion(end_effector_pose.orientation.x, end_effector_pose.orientation.y, end_effector_pose.orientation.z, end_effector_pose.orientation.w);
+        // KDL::Frame ee_pose(orien, pos);
+
+        // for (size_t i = 0; i < _robot_info.nr_joints; ++i)
+        // {
+        //     lower_limits(i) = _robot_info.limits[i].lower;
+        //     upper_limits(i) = _robot_info.limits[i].upper;
+        //     // initial_state(i) = initial_ik[i];
+        //     initial_state(i) = (_robot_info.limits[i].upper + _robot_info.limits[i].lower) / 2.0;
+        // }
+
+        // for (size_t i = 0; i < lower_limits.data.size(); ++i)
+        // {
+        //     RCLCPP_WARN_STREAM(get_logger(), lower_limits(i) << ", " << upper_limits(i));
+        // }
+
+        // KDL::ChainIkSolverPos_NR_JL ik_solver(chain, lower_limits, upper_limits, fk_solver, ik_solver_vel, 1, 1e-5);
+
+        // int ret = -1;
+        // auto end_time = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+        // goal_state = initial_state;
+        // while (ret < 0 && std::chrono::steady_clock::now() < end_time)
+        // {
+        //     q = goal_state;
+        //     ret = ik_solver.CartToJnt(q, ee_pose, goal_state);
+        // }
+
+        // if (ret == KDL::SolverI::E_NOERROR)
+        // {
+        //     RCLCPP_INFO(get_logger(), "IK run successfully");
+        //     // for (auto i = 0; i < goal_state.data.size(); ++i)
+        //     //     path_planning_input.goal_state.push_back(goal_state(i));
+        // }
+        // else
+        // {
+        //     RCLCPP_ERROR_STREAM(get_logger(), "Error occured while running IK. Error: " << ik_solver.strError(ret) << ". Aborting...");
+        //     // _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+        //     // goal_handle->abort(result);
+        //     // return;
+        // }
+
+        // for (auto i = 0; i < goal_state.data.size(); ++i)
+        //     path_planning_input.goal_state.push_back(goal_state(i));
+
+        // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // Check goal state validity
         _setJointStates(path_planning_input.goal_state);
@@ -248,14 +312,14 @@ namespace generate_path
             return;
         }
 
-        // Set joint states back to initial state before planning
-        _setJointStates(current_joint_values);
+        // // Set joint states back to initial state before planning
+        // _setJointStates(current_joint_values);
 
-        // // Set arm to last config for visualization
-        // {
-        //     auto last_arm_config = out_path.back();
-        //     _setJointStates(last_arm_config);
-        // }
+        // Set arm to last config for visualization
+        {
+            auto last_arm_config = out_path.back();
+            _setJointStates(last_arm_config);
+        }
 
         // Output processing
         custom_interfaces::msg::GeneratedPath generated_path;

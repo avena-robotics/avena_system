@@ -14,7 +14,7 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
-set(CMAKE_BUILD_TYPE RELEASE)
+set(CMAKE_BUILD_TYPE DEBUG)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -34,6 +34,7 @@ find_package(kdl_parser REQUIRED)
 add_library(${PROJECT_NAME} SHARED 
   src/generate_path.cpp
   src/planner.cpp
+  # src/ik_franka.cpp
 )
 target_include_directories(${PROJECT_NAME} 
   PUBLIC
