@@ -66,11 +66,11 @@ namespace compose_items
                                                                                             _rgb_images_msg = rgb_images_msg;
                                                                                         });
         _depth_images_subscriber = create_subscription<custom_interfaces::msg::DepthImages>("depth_images", qos_settings,
-                                                                                            [this](custom_interfaces::msg::DepthImages::SharedPtr depth_images_msg)
-                                                                                            {
-                                                                                                RCLCPP_DEBUG(get_logger(), "Depth images received message received");
-                                                                                                _depth_images_msg = depth_images_msg;
-                                                                                            });
+                                                                                        [this](custom_interfaces::msg::DepthImages::SharedPtr depth_images_msg)
+                                                                                        {
+                                                                                            RCLCPP_DEBUG(get_logger(), "Depth images received message received");
+                                                                                            _depth_images_msg = depth_images_msg;
+                                                                                        });
     }
 
     rclcpp_action::GoalResponse ComposeItems::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const ComposeItemsAction::Goal> /*goal*/)
