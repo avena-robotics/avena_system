@@ -48,20 +48,23 @@ bool LaunchFile::terminate()
     if (pid_ > 0)
     {
         int killing_result = killAllChildProcessPids(pid_);
-        if (killing_result == 0)
+        if (killing_result != 0)
         {
-            pid_ = 0;
-            if (fs::remove(pid_file_path_))
-            {
-                std::cout << "Sucessfully stoped launch file and removed pid file" << std::endl;
-                return true;
-            }
-            else
-            {
-                std::cout << "Can not delete pid file: " << pid_file_path_ << std::endl;
-                return false;
-            }
+            std::cout << "Kill processes returned: " << killing_result << std::endl;
         }
+
+        pid_ = 0;
+        if (fs::remove(pid_file_path_))
+        {
+            std::cout << "Sucessfully stoped launch file and removed pid file" << std::endl;
+            return true;
+        }
+        else
+        {
+            std::cout << "Can not delete pid file: " << pid_file_path_ << std::endl;
+            return false;
+        }
+        return true;
     }
     else
     {
@@ -72,14 +75,13 @@ bool LaunchFile::terminate()
 
 bool LaunchFile::isRunning()
 {
-    return pid_ == 0;
+    return pid_ > 0;
 }
 
 void LaunchFileManager::addLaunch(const std::string &launch_name)
 {
     launch_files_.insert({launch_name, std::make_shared<LaunchFile>(launch_name)});
 }
-
 
 bool LaunchFileManager::terminateLaunch(const std::string &launch_name)
 {
@@ -112,7 +114,7 @@ bool LaunchFileManager::removeLaunch(const std::string &launch_name)
 
     if (terminating_result)
     {
-        if(launch_files_.erase(it->first)==1)
+        if (launch_files_.erase(it->first) == 1)
             return true;
         else
         {

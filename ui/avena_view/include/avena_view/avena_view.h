@@ -221,12 +221,7 @@ namespace avena_view
         std::shared_ptr<QGraphicsScene> arm_control_graphics_scene_;
         std::shared_ptr<QGraphicsScene> pick_place_graphics_scene_;
 
-        // QList<QTreeWidgetItem*> parameters;
-
-        QProcess *launch_file_process_;
-        qint64 launch_file_pid_;
-        std::string pid_file_name_;
-
+        std::shared_ptr<LaunchFile> pick_place_launch_file_;
         std::shared_ptr<LaunchFile> cameras_launch_file_;
 
         QProcess *calibrate_launch_file_process_;

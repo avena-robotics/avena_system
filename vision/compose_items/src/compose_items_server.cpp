@@ -13,14 +13,14 @@ namespace compose_items
         status = custom_interfaces::msg::Heartbeat::STOPPED;
         RCLCPP_INFO(this->get_logger(), "started Node");
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
+        helpers::commons::setLoggerLevelFromParameter(this);
+        _getCamerasParameters();
     }
 
 
     void ComposeItems::initNode()
     {
         status = custom_interfaces::msg::Heartbeat::STARTING;
-        helpers::commons::setLoggerLevelFromParameter(this);
-        _getCamerasParameters();
         RCLCPP_INFO(this->get_logger(), "Initialization of compose items action server.");
         rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)); //.transient_local().reliable();
         _publisher = this->create_publisher<custom_interfaces::msg::Items>("compose_items", qos_settings);
