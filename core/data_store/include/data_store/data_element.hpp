@@ -10,7 +10,8 @@ namespace data_store
     class DataElement
     {
     private:
-        std::unordered_map<double, typename SELECT::Response> _data_element_container;
+        // std::unordered_map<double, typename SELECT::Response> _data_element_container;
+        std::map<double, typename SELECT::Response> _data_element_container;
 
         void _select(const std::shared_ptr<typename SELECT::Request> request,
                      std::shared_ptr<typename SELECT::Response> response);
