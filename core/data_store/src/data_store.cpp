@@ -15,7 +15,7 @@ namespace data_store
         rclcpp::QoS qos_latching = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
         
         _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), qos_latching, "tracker");
-        _cameras_data_element_ptr = std::make_unique<CamerasData>(shared_from_this(), qos_latching, "cameras_data");
+        _cameras_data_element_ptr = std::make_unique<RgbdSync>(shared_from_this(), qos_latching, "rgbd_sync");
         _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), qos_latching, "filter_detections");
         _items_element_ptr = std::make_unique<Items>(shared_from_this(), qos_latching, "compose_items");
         // add other data elements here
