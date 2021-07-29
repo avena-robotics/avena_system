@@ -22,15 +22,15 @@ def generate_launch_description():
     """Generate launch description component."""
 
     container = ComposableNodeContainer(
-            name='scene_publisher_container',
+            name='rgbd_sync_container',
             namespace='',
             package='rclcpp_components',
             executable='component_container',
             composable_node_descriptions=[
                 ComposableNode(
-                    package='scene_publisher',
-                    plugin='scene_publisher::ScenePublisher',
-                    name='scene_publisher',
+                    package='rgbd_sync',
+                    plugin='rgbd_sync::RgbdSynchronizer',
+                    name='rgbd_sync',
                 ),
             ],
             output='screen',

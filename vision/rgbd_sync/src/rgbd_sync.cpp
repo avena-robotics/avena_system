@@ -9,35 +9,36 @@ namespace rgbd_sync
 
         helpers::commons::setLoggerLevelFromParameter(this);
         _cant_touch_this = false;
-        rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1));
+        rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable();
 
-        _rgb_images_sub = create_subscription<RgbImages>("rgb_images", qos_settings,
-                                                                                       [this](const RgbImages::SharedPtr rgb_image_msg) {
+        _rgb_images_sub = create_subscription<custom_interfaces::msg::RgbImages>("rgb_images_stream", qos_settings,
+                                                                                       [this](const custom_interfaces::msg::RgbImages::SharedPtr rgb_image_msg) {
                                                                                            if(_cant_touch_this)
                                                                                              return;
+                                                                                            //  std::cout << "cam1" <<std::endl;
                                                                                            _rgb_images_data = rgb_image_msg;
                                                                                        });        
                                                                                        
-        _depth_images_sub = create_subscription<DepthImages>("depth_images", qos_settings,
-                                                                                       [this](const DepthImages::SharedPtr depth_image_msg) {
+        _depth_images_sub = create_subscription<custom_interfaces::msg::DepthImages>("depth_images_stream", qos_settings,
+                                                                                       [this](const custom_interfaces::msg::DepthImages::SharedPtr depth_image_msg) {
                                                                                            if(_cant_touch_this)
                                                                                              return;
+                                                                                            //  std::cout << "cam2" <<std::endl;
                                                                                            _depth_images_data = depth_image_msg;
                                                                                        });
 
-
-        qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)); //.transient_local();
-        _rgbd_sync_publisher = create_publisher<RgbdSync>("rgbd_sync", qos_settings);
+        qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+        _rgbd_sync_publisher = create_publisher<Response>("rgbd_sync", qos_settings);
    
         _initializeServers();
 
-        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
-        status = Heartbeat::STOPPED;
 
 
 
     _client = this->create_client<custom_interfaces::srv::DataStoreRgbdSyncInsert>("rgbd_sync_insert");
 
+        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
+        status = Heartbeat::STOPPED;
 
    
 
@@ -95,7 +96,7 @@ namespace rgbd_sync
         // auto request_timestamp = goal_handle->get_goal()->timestamp;
         auto abortReturn = [this, &goal_handle, &result]()
         {
-            _rgbd_sync_publisher->publish(RgbdSync());
+            _rgbd_sync_publisher->publish(Response());
 
             goal_handle->abort(result);
         };
@@ -111,9 +112,7 @@ namespace rgbd_sync
 
         RCLCPP_INFO(this->get_logger(), "Publishing scene data");
         _cant_touch_this = true;
-        RgbdSync::UniquePtr rgbd_sync= _prepareOutputMessages(_rgb_images_data, _depth_images_data);
-
-
+        Response::SharedPtr response_msg = _prepareOutputMessages(_rgb_images_data, _depth_images_data);
 
     auto request = std::make_shared<custom_interfaces::srv::DataStoreRgbdSyncInsert::Request>();
         while (!_client->wait_for_service(1s)) {
@@ -123,16 +122,16 @@ namespace rgbd_sync
             RCLCPP_INFO(this->get_logger(), "service not available, waiting again...");
         }
 
-    auto data_store_result = _client->async_send_request(request);
-        _rgbd_sync_publisher->publish(std::move(rgbd_sync));
-    // Wait for the result.
-    if (rclcpp::spin_until_future_complete(this->get_node_base_interface() , data_store_result) ==
-        rclcpp::FutureReturnCode::SUCCESS)
-    {
-        RCLCPP_INFO(this->get_logger(), "Data saved in to DataStorage");
-    } else {
-        RCLCPP_ERROR(this->get_logger(), "Failed to save data in to DataStorage");
+    _rgbd_sync_publisher->publish(*response_msg);
+
+    while (rclcpp::ok()) {
+        size_t size = _rgbd_sync_publisher->get_queue_size();
+        if(size > 0)
+            break;
     }
+
+    auto data_store_result = _client->async_send_request(request);
+    data_store_result.wait_for(5s);
         if (rclcpp::ok())
         {
             goal_handle->succeed(result);
@@ -141,16 +140,16 @@ namespace rgbd_sync
 
     }
 
-    RgbdSync::UniquePtr  RgbdSynchronizer::_prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images)
-{
-        std_msgs::msg::Header header;
-        header.stamp = now();
+    Response::SharedPtr RgbdSynchronizer::_prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images)
+    {
+        Response::SharedPtr response_msg = std::make_shared<Response>();
+        response_msg->rgbdsync.header.stamp = now();
+        response_msg->rgbdsync.rgb = *rgb_images;
+        response_msg->rgbdsync.depth = *depth_images;
 
-        RgbdSync::UniquePtr rgbd_sync = std::make_unique<RgbdSync>();
-        rgbd_sync->rgb = *rgb_images;
-        rgbd_sync->depth = *depth_images;
+
         _cant_touch_this = false;
-        return rgbd_sync;
+        return response_msg;
     }
 
 } // namespace 

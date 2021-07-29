@@ -126,12 +126,12 @@ namespace compose_items
         {
             _depth_images_msg = std::make_shared<custom_interfaces::msg::DepthImages>();
             _rgb_images_msg = std::make_shared<custom_interfaces::msg::RgbImages>();
-            _depth_images_msg->cam1_depth = rgbd_sync_result.get()->cam1_depth;
-            _depth_images_msg->cam2_depth = rgbd_sync_result.get()->cam2_depth;
-            _depth_images_msg->header.stamp = rgbd_sync_result.get()->cam1_depth.header.stamp;
-            _rgb_images_msg->cam1_rgb = rgbd_sync_result.get()->cam1_rgb;
-            _rgb_images_msg->cam2_rgb = rgbd_sync_result.get()->cam2_rgb;
-            _rgb_images_msg->header.stamp = rgbd_sync_result.get()->cam1_rgb.header.stamp;
+            _depth_images_msg->cam1_depth = rgbd_sync_result.get()->rgbdsync.depth.cam1_depth;
+            _depth_images_msg->cam2_depth = rgbd_sync_result.get()->rgbdsync.depth.cam2_depth;
+            _depth_images_msg->header.stamp = rgbd_sync_result.get()->rgbdsync.header.stamp;
+            _rgb_images_msg->cam1_rgb = rgbd_sync_result.get()->rgbdsync.rgb.cam1_rgb;
+            _rgb_images_msg->cam2_rgb = rgbd_sync_result.get()->rgbdsync.rgb.cam2_rgb;
+            _rgb_images_msg->header.stamp = rgbd_sync_result.get()->rgbdsync.header.stamp;
             // _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(data_store_result.get()->detections);
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
@@ -359,6 +359,7 @@ namespace compose_items
         {
             RCLCPP_ERROR(this->get_logger(), "Failed to save data in to DataStorage");
         }
+        return 0;
     }
 
     int ComposeItems::_readLabels()
