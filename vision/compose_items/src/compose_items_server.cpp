@@ -22,7 +22,7 @@ namespace compose_items
         status = custom_interfaces::msg::Heartbeat::STARTING;
         RCLCPP_INFO(this->get_logger(), "Initialization of compose items action server.");
         rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)); //.transient_local().reliable();
-        _publisher = this->create_publisher<custom_interfaces::msg::Items>("compose_items", qos_settings);
+        _publisher = this->create_publisher<Response>("compose_items", qos_settings);
         // _initializeSubscribers(qos_settings);
         _readLabels();
         _readAreasParameters();
@@ -101,8 +101,7 @@ namespace compose_items
 
         auto detectron_result = _detectron_client->async_send_request(detectron_request);
         // Wait for the result.
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), detectron_result) ==
-            rclcpp::FutureReturnCode::SUCCESS)
+        if (detectron_result.wait_for(5s) == std::future_status::ready)
         {
             _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(detectron_result.get()->detections);
             _detect_msg->header = detectron_result.get()->detections.header;
@@ -121,8 +120,7 @@ namespace compose_items
 
         auto rgbd_sync_result = _rgbd_sync_client->async_send_request(rgbd_sync_request);
         // Wait for the result.
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), rgbd_sync_result) ==
-            rclcpp::FutureReturnCode::SUCCESS)
+        if (rgbd_sync_result.wait_for(5s) == std::future_status::ready)
         {
             _depth_images_msg = std::make_shared<custom_interfaces::msg::DepthImages>();
             _rgb_images_msg = std::make_shared<custom_interfaces::msg::RgbImages>();
@@ -132,7 +130,6 @@ namespace compose_items
             _rgb_images_msg->cam1_rgb = rgbd_sync_result.get()->rgbdsync.rgb.cam1_rgb;
             _rgb_images_msg->cam2_rgb = rgbd_sync_result.get()->rgbdsync.rgb.cam2_rgb;
             _rgb_images_msg->header.stamp = rgbd_sync_result.get()->rgbdsync.header.stamp;
-            // _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(data_store_result.get()->detections);
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
     }
@@ -235,9 +232,9 @@ namespace compose_items
         _create_ptcld->setCameraParams(camera_transform, camera_parameters);
     }
 
-    int ComposeItems::_saveComposedData(custom_interfaces::msg::Items::UniquePtr &compose_msg)
-    {
-        compose_msg->items.resize(_items_to_save.size());
+    int ComposeItems::_saveComposedData(Response::SharedPtr &compose_msg)
+    {   
+        compose_msg->items.items.resize(_items_to_save.size());
 
         std::vector<size_t> empty_items;
         for (size_t i = 0; i < _items_to_save.size(); i++)
@@ -245,8 +242,8 @@ namespace compose_items
             size_t elements_clouds_size = 0;
 
             uint32_t id = _items_to_save[i].item_id;
-            compose_msg->items[i].id = _items_to_save[i].item_id;
-            compose_msg->items[i].label = _items_to_save[i].label;
+            compose_msg->items.items[i].id = _items_to_save[i].item_id;
+            compose_msg->items.items[i].label = _items_to_save[i].label;
 
             //TODO there should be no items without element - if there is no matching element - something went wrong and we should catch it here.
             std::vector<element_t>::iterator el_it = std::find_if(_elements_to_save.begin(), _elements_to_save.end(), [id](const element_t &el)
@@ -283,7 +280,7 @@ namespace compose_items
                 // if (el_it->element_depth_2)
                 //     helpers::converters::cvMatToRos(*(el_it->element_depth_2), element.cam2_depth);
 
-                compose_msg->items[i].item_elements.push_back(element);
+                compose_msg->items.items[i].item_elements.push_back(element);
                 _elements_to_save.erase(el_it);
                 if (el_it == _elements_to_save.end())
                     break;
@@ -296,10 +293,10 @@ namespace compose_items
 
         std::sort(empty_items.begin(), empty_items.end(), std::greater<size_t>());
         for (auto &idx : empty_items)
-            compose_msg->items.erase(compose_msg->items.begin() + idx);
+            compose_msg->items.items.erase(compose_msg->items.items.begin() + idx);
 
-        compose_msg->header.stamp = now();
-        compose_msg->header.frame_id = "world";
+        compose_msg->items.header.stamp = now();
+        compose_msg->items.header.frame_id = "world";
 
         return 0;
     }
@@ -314,7 +311,7 @@ namespace compose_items
         if (_validateInputs(_detect_msg, _depth_images_msg))
         {
             RCLCPP_ERROR(this->get_logger(), "Invalid input message. Goal failed.");
-            _publisher->publish(custom_interfaces::msg::Items());
+            _publisher->publish(Response());
             goal_handle->abort(result);
             return;
         }
@@ -326,16 +323,22 @@ namespace compose_items
         //main functionality
         composeItemsData();
         //output data
-        custom_interfaces::msg::Items::UniquePtr compose_msg(new custom_interfaces::msg::Items);
-        _saveComposedData(compose_msg);
 
-        _sendDataToDB(compose_msg);
+        // custom_interfaces::msg::Items::UniquePtr compose_msg(new custom_interfaces::msg::Items);
+       Response::SharedPtr compose_msg(new Response);
+       
+       _saveComposedData(compose_msg);
+        if(_sendDataToDB(compose_msg) == 0){
+            goal_handle->succeed(result);
+            RCLCPP_INFO(this->get_logger(), "Goal succeeded");
+        }else{
+           _publisher->publish(Response());
+            goal_handle->abort(result);
+        }
 
-        goal_handle->succeed(result);
-        RCLCPP_INFO(this->get_logger(), "Goal succeeded");
     }
 
-    int ComposeItems::_sendDataToDB(custom_interfaces::msg::Items::UniquePtr &compose_msg)
+    int ComposeItems::_sendDataToDB(Response::SharedPtr &compose_msg)
     {
         auto request = std::make_shared<custom_interfaces::srv::DataStoreItemsInsert::Request>();
         while (!_items_client->wait_for_service(1s))
@@ -347,19 +350,22 @@ namespace compose_items
             RCLCPP_INFO(this->get_logger(), "service not available, waiting again...");
         }
 
-        auto data_store_result = _items_client->async_send_request(request);
-        _publisher->publish(std::move(compose_msg));
+        _publisher->publish(*compose_msg);
+
+        while (rclcpp::ok())
+        {
+            size_t size = _publisher->get_queue_size();
+            if (size > 0)
+                break;
+        }
         // Wait for the result.
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), data_store_result) ==
-            rclcpp::FutureReturnCode::SUCCESS)
+        auto data_store_result = _items_client->async_send_request(request);
+        if (rclcpp::ok() && data_store_result.wait_for(5s) == std::future_status::ready)
         {
-            RCLCPP_INFO(this->get_logger(), "Data saved in to DataStorage");
+            return 0;
         }
-        else
-        {
-            RCLCPP_ERROR(this->get_logger(), "Failed to save data in to DataStorage");
-        }
-        return 0;
+
+        return 1;
     }
 
     int ComposeItems::_readLabels()
