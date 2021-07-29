@@ -17,7 +17,6 @@ namespace compose_items
         _getCamerasParameters();
     }
 
-
     void ComposeItems::initNode()
     {
         status = custom_interfaces::msg::Heartbeat::STARTING;
@@ -34,8 +33,9 @@ namespace compose_items
             std::bind(&ComposeItems::_handleCancel, this, std::placeholders::_1),
             std::bind(&ComposeItems::_handleAccepted, this, std::placeholders::_1));
 
-
         _detectron_client = this->create_client<custom_interfaces::srv::DataStoreDetectronSelect>("detectron_select");
+        _rgbd_sync_client = this->create_client<custom_interfaces::srv::DataStoreRgbdSyncSelect>("rgbd_sync_select");
+        _items_client = this->create_client<custom_interfaces::srv::DataStoreItemsInsert>("items_insert");
 
         RCLCPP_INFO(this->get_logger(), "Compose items action server Inicialized.");
         status = custom_interfaces::msg::Heartbeat::RUNNING;
@@ -80,47 +80,50 @@ namespace compose_items
                                                                                             _rgb_images_msg = rgb_images_msg;
                                                                                         });
         _depth_images_subscriber = create_subscription<custom_interfaces::msg::DepthImages>("depth_images", qos_settings,
-                                                                                        [this](custom_interfaces::msg::DepthImages::SharedPtr depth_images_msg)
-                                                                                        {
-                                                                                            RCLCPP_DEBUG(get_logger(), "Depth images received message received");
-                                                                                            _depth_images_msg = depth_images_msg;
-                                                                                        });
+                                                                                            [this](custom_interfaces::msg::DepthImages::SharedPtr depth_images_msg)
+                                                                                            {
+                                                                                                RCLCPP_DEBUG(get_logger(), "Depth images received message received");
+                                                                                                _depth_images_msg = depth_images_msg;
+                                                                                            });
     }
     void ComposeItems::_getData()
     {
 
-          auto detectron_request = std::make_shared<custom_interfaces::srv::DataStoreDetectronSelect::Request>();
-        while (!_detectron_client->wait_for_service(1s)) {
-            if (!rclcpp::ok()) {
-            RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+        auto detectron_request = std::make_shared<custom_interfaces::srv::DataStoreDetectronSelect::Request>();
+        while (!_detectron_client->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
             }
             RCLCPP_INFO(this->get_logger(), "DataStore Detectron service not available, waiting again...");
         }
 
         auto detectron_result = _detectron_client->async_send_request(detectron_request);
         // Wait for the result.
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface() , detectron_result) ==
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), detectron_result) ==
             rclcpp::FutureReturnCode::SUCCESS)
-        {   
+        {
             _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(detectron_result.get()->detections);
             _detect_msg->header = detectron_result.get()->detections.header;
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
 
-
-          auto rgbd_sync_request = std::make_shared<custom_interfaces::srv::DataStoreRgbdSyncSelect::Request>();
-        while (!_rgbd_sync_client->wait_for_service(1s)) {
-            if (!rclcpp::ok()) {
-            RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+        auto rgbd_sync_request = std::make_shared<custom_interfaces::srv::DataStoreRgbdSyncSelect::Request>();
+        while (!_rgbd_sync_client->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
             }
             RCLCPP_INFO(this->get_logger(), "DataStore RgbdSync service not available, waiting again...");
         }
 
         auto rgbd_sync_result = _rgbd_sync_client->async_send_request(rgbd_sync_request);
         // Wait for the result.
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface() , rgbd_sync_result) ==
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), rgbd_sync_result) ==
             rclcpp::FutureReturnCode::SUCCESS)
-        {   
+        {
             _depth_images_msg = std::make_shared<custom_interfaces::msg::DepthImages>();
             _rgb_images_msg = std::make_shared<custom_interfaces::msg::RgbImages>();
             _depth_images_msg->cam1_depth = rgbd_sync_result.get()->cam1_depth;
@@ -132,9 +135,6 @@ namespace compose_items
             // _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(data_store_result.get()->detections);
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
-
-
-
     }
 
     rclcpp_action::GoalResponse ComposeItems::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const ComposeItemsAction::Goal> /*goal*/)
@@ -329,10 +329,36 @@ namespace compose_items
         custom_interfaces::msg::Items::UniquePtr compose_msg(new custom_interfaces::msg::Items);
         _saveComposedData(compose_msg);
 
-        _publisher->publish(std::move(compose_msg));
+        _sendDataToDB(compose_msg);
 
         goal_handle->succeed(result);
         RCLCPP_INFO(this->get_logger(), "Goal succeeded");
+    }
+
+    int ComposeItems::_sendDataToDB(custom_interfaces::msg::Items::UniquePtr &compose_msg)
+    {
+        auto request = std::make_shared<custom_interfaces::srv::DataStoreItemsInsert::Request>();
+        while (!_items_client->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+            }
+            RCLCPP_INFO(this->get_logger(), "service not available, waiting again...");
+        }
+
+        auto data_store_result = _items_client->async_send_request(request);
+        _publisher->publish(std::move(compose_msg));
+        // Wait for the result.
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), data_store_result) ==
+            rclcpp::FutureReturnCode::SUCCESS)
+        {
+            RCLCPP_INFO(this->get_logger(), "Data saved in to DataStorage");
+        }
+        else
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to save data in to DataStorage");
+        }
     }
 
     int ComposeItems::_readLabels()

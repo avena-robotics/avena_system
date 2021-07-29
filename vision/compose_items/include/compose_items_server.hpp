@@ -37,6 +37,7 @@
 #include "custom_interfaces/msg/rgb_images.hpp"
 #include "custom_interfaces/srv/data_store_detectron_select.hpp"
 #include "custom_interfaces/srv/data_store_rgbd_sync_select.hpp"
+#include "custom_interfaces/srv/data_store_items_insert.hpp"
 // #include "custom_interfaces"
 
 using namespace std::chrono_literals;
@@ -121,6 +122,7 @@ namespace compose_items
     //ROS
     rclcpp::Client<custom_interfaces::srv::DataStoreDetectronSelect>::SharedPtr _detectron_client;
     rclcpp::Client<custom_interfaces::srv::DataStoreRgbdSyncSelect>::SharedPtr _rgbd_sync_client;
+    rclcpp::Client<custom_interfaces::srv::DataStoreItemsInsert>::SharedPtr _items_client;
 
     rclcpp_action::Server<ComposeItemsAction>::SharedPtr _action_server;
     rclcpp::Publisher<custom_interfaces::msg::Items>::SharedPtr _publisher;
@@ -133,6 +135,8 @@ namespace compose_items
     custom_interfaces::msg::RgbImages::SharedPtr _rgb_images_msg;
 
     void _getCamerasParameters();
+    int _sendDataToDB(custom_interfaces::msg::Items::UniquePtr &compose_msg);
+
     int _saveComposedData(custom_interfaces::msg::Items::UniquePtr &compose_msg);
     rclcpp_action::GoalResponse _handleGoal(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const ComposeItemsAction::Goal> goal);
     rclcpp_action::CancelResponse _handleCancel(const std::shared_ptr<GoalHandleComposeItems> goal_handle);
