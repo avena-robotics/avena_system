@@ -35,8 +35,11 @@
 #include "custom_interfaces/msg/depth_images.hpp"
 #include "custom_interfaces/msg/items.hpp"
 #include "custom_interfaces/msg/rgb_images.hpp"
-
+#include "custom_interfaces/srv/data_store_detectron_select.hpp"
+#include "custom_interfaces/srv/data_store_rgbd_sync_select.hpp"
 // #include "custom_interfaces"
+
+using namespace std::chrono_literals;
 
 namespace compose_items
 {
@@ -67,6 +70,8 @@ namespace compose_items
 
   private:
     helpers::Watchdog::SharedPtr _watchdog;
+    void _getData();
+
     int _readLabels();
     int _assignData(custom_interfaces::msg::Detections::SharedPtr &detect_msg, custom_interfaces::msg::DepthImages::SharedPtr &depth_images_msg);
     int _assignElement(std::string label, detected_item_t &item, std::vector<element_t> &out_elements);
@@ -114,6 +119,8 @@ namespace compose_items
     WorkspaceArea _workspace_area;
 
     //ROS
+    rclcpp::Client<custom_interfaces::srv::DataStoreDetectronSelect>::SharedPtr _detectron_client;
+    rclcpp::Client<custom_interfaces::srv::DataStoreRgbdSyncSelect>::SharedPtr _rgbd_sync_client;
 
     rclcpp_action::Server<ComposeItemsAction>::SharedPtr _action_server;
     rclcpp::Publisher<custom_interfaces::msg::Items>::SharedPtr _publisher;

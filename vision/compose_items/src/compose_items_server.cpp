@@ -24,7 +24,7 @@ namespace compose_items
         RCLCPP_INFO(this->get_logger(), "Initialization of compose items action server.");
         rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)); //.transient_local().reliable();
         _publisher = this->create_publisher<custom_interfaces::msg::Items>("compose_items", qos_settings);
-        _initializeSubscribers(qos_settings);
+        // _initializeSubscribers(qos_settings);
         _readLabels();
         _readAreasParameters();
         this->_action_server = rclcpp_action::create_server<ComposeItemsAction>(
@@ -33,6 +33,9 @@ namespace compose_items
             std::bind(&ComposeItems::_handleGoal, this, std::placeholders::_1, std::placeholders::_2),
             std::bind(&ComposeItems::_handleCancel, this, std::placeholders::_1),
             std::bind(&ComposeItems::_handleAccepted, this, std::placeholders::_1));
+
+
+        _detectron_client = this->create_client<custom_interfaces::srv::DataStoreDetectronSelect>("detectron_select");
 
         RCLCPP_INFO(this->get_logger(), "Compose items action server Inicialized.");
         status = custom_interfaces::msg::Heartbeat::RUNNING;
@@ -50,6 +53,17 @@ namespace compose_items
         shutDownNode();
     }
 
+    /**
+     * @brief this function is a tribute to our ever changing approach about data transfers in system.
+     * live long and prosper ros2 subsribers!
+     * 
+     *      (\
+     *      .'.
+     *      | |
+     *      | |
+     *      |_| 29.07.2021
+     * @param qos_settings 
+     */
 
     void ComposeItems::_initializeSubscribers(const rclcpp::QoS &qos_settings)
     {
@@ -71,6 +85,56 @@ namespace compose_items
                                                                                             RCLCPP_DEBUG(get_logger(), "Depth images received message received");
                                                                                             _depth_images_msg = depth_images_msg;
                                                                                         });
+    }
+    void ComposeItems::_getData()
+    {
+
+          auto detectron_request = std::make_shared<custom_interfaces::srv::DataStoreDetectronSelect::Request>();
+        while (!_detectron_client->wait_for_service(1s)) {
+            if (!rclcpp::ok()) {
+            RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+            }
+            RCLCPP_INFO(this->get_logger(), "DataStore Detectron service not available, waiting again...");
+        }
+
+        auto detectron_result = _detectron_client->async_send_request(detectron_request);
+        // Wait for the result.
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface() , detectron_result) ==
+            rclcpp::FutureReturnCode::SUCCESS)
+        {   
+            _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(detectron_result.get()->detections);
+            _detect_msg->header = detectron_result.get()->detections.header;
+            RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
+        }
+
+
+          auto rgbd_sync_request = std::make_shared<custom_interfaces::srv::DataStoreRgbdSyncSelect::Request>();
+        while (!_rgbd_sync_client->wait_for_service(1s)) {
+            if (!rclcpp::ok()) {
+            RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+            }
+            RCLCPP_INFO(this->get_logger(), "DataStore RgbdSync service not available, waiting again...");
+        }
+
+        auto rgbd_sync_result = _rgbd_sync_client->async_send_request(rgbd_sync_request);
+        // Wait for the result.
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface() , rgbd_sync_result) ==
+            rclcpp::FutureReturnCode::SUCCESS)
+        {   
+            _depth_images_msg = std::make_shared<custom_interfaces::msg::DepthImages>();
+            _rgb_images_msg = std::make_shared<custom_interfaces::msg::RgbImages>();
+            _depth_images_msg->cam1_depth = rgbd_sync_result.get()->cam1_depth;
+            _depth_images_msg->cam2_depth = rgbd_sync_result.get()->cam2_depth;
+            _depth_images_msg->header.stamp = rgbd_sync_result.get()->cam1_depth.header.stamp;
+            _rgb_images_msg->cam1_rgb = rgbd_sync_result.get()->cam1_rgb;
+            _rgb_images_msg->cam2_rgb = rgbd_sync_result.get()->cam2_rgb;
+            _rgb_images_msg->header.stamp = rgbd_sync_result.get()->cam1_rgb.header.stamp;
+            // _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(data_store_result.get()->detections);
+            RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
+        }
+
+
+
     }
 
     rclcpp_action::GoalResponse ComposeItems::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const ComposeItemsAction::Goal> /*goal*/)
@@ -246,6 +310,7 @@ namespace compose_items
         RCLCPP_INFO(this->get_logger(), "Executing goal");
         auto result = std::make_shared<ComposeItemsAction::Result>();
 
+        _getData();
         if (_validateInputs(_detect_msg, _depth_images_msg))
         {
             RCLCPP_ERROR(this->get_logger(), "Invalid input message. Goal failed.");
