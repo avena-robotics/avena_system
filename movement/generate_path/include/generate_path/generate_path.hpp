@@ -55,8 +55,10 @@ namespace generate_path
     ReturnCode _shutdown();
     ArmConfiguration _getJointStatesFromTopic(const sensor_msgs::msg::JointState::SharedPtr &joint_states);
     ReturnCode _getParametersFromServer();
+    ReturnCode _validateJointStates(const ArmConfiguration &joint_states, const std::vector<Limits> &joint_limits);
+    ReturnCode _validateEndEffectorPose(const Eigen::Affine3d &goal_end_effector_pose, const double &error_threshold);
     void _convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment);
-    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const geometry_msgs::msg::Pose &end_effector_pose);
+    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const Eigen::Affine3d &end_effector_pose);
     ReturnCode _readSceneInfoFromPhysicsServer();
     void _updateJointLimits();
     void _setJointStates(const ArmConfiguration &joint_states);

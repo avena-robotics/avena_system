@@ -297,6 +297,12 @@ namespace helpers
     int geometryToEigenAffine(const geometry_msgs::msg::Transform &ros_pose, Eigen::Affine3f &out_eigen_aff);
     int geometryToEigenAffine(const geometry_msgs::msg::Pose &ros_pose, Eigen::Affine3f &out_eigen_aff);
 
+    int eigenAffineToGeometry(const Eigen::Affine3d &eigen_aff, geometry_msgs::msg::Pose &out_ros_pose);
+    int eigenAffineToGeometry(const Eigen::Affine3d &eigen_aff, geometry_msgs::msg::Transform &out_ros_pose);
+
+    int geometryToEigenAffine(const geometry_msgs::msg::Transform &ros_pose, Eigen::Affine3d &out_eigen_aff);
+    int geometryToEigenAffine(const geometry_msgs::msg::Pose &ros_pose, Eigen::Affine3d &out_eigen_aff);
+
     int iostreamToString(std::shared_ptr<std::iostream> &stream, std::string &out_string);
 
   } // namespace converters

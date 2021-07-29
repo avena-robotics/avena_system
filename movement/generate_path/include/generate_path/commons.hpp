@@ -6,11 +6,14 @@
 
 // ___Avena___
 #include <bullet_client/b3RobotSimulatorClientAPI.h>
+#include <helpers_commons/helpers_commons.hpp>
+
 
 namespace generate_path
 {
   using ArmConfiguration = std::vector<double>;
   using Path = std::vector<ArmConfiguration>;
+  using Limits = helpers::commons::Limits;
 
   enum class ReturnCode
   {
@@ -26,15 +29,6 @@ namespace generate_path
     std::vector<int> joint_handles;
 
     using SharedPtr = std::shared_ptr<SceneInfo>;
-  };
-
-  struct Limits
-  {
-    Limits() = default;
-    Limits(const double &lower, const double &upper)
-        : lower(lower), upper(upper) {}
-    double lower;
-    double upper;
   };
 
   struct Constraints
