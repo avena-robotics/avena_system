@@ -55,14 +55,24 @@ def main(args=None):
     node.get_logger().info('Waiting for action server...')
     action_client.wait_for_server()
 
+    success_cnt = 0
+    all_poses_cnt = 0
     for camera_name, camera_poses in camera_poses.items():
         node.get_logger().info(f'Processing camera poses for "{camera_name}"')
         for i, camera_pose in enumerate(camera_poses):
+            all_poses_cnt += 1
             node.get_logger().info(f'Pose {i + 1}/{len(camera_poses)}')
             if send_single_camera_pose(node, action_client, camera_pose):
                 node.get_logger().info('Goal succeeded')
+                success_cnt += 1
             else:
-                node.get_logger().info('Goal rejected')
+                node.get_logger().error('Goal failed')
+            # input('Press any key to continue...')
+
+    if success_cnt != all_poses_cnt:
+        node.get_logger().error(f'Test for IK failed: {success_cnt}/{all_poses_cnt} succeeded')
+    else:
+        node.get_logger().info(f'Test for IK succeeded: {success_cnt}/{all_poses_cnt} succeeded')
 
     action_client.destroy()
     node.destroy_node()

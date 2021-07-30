@@ -80,9 +80,9 @@ namespace bullet_client
 			b3CalculateInverseKinematicsSetCurrentPositions(command, args.m_numDegreeOfFreedom, &args.m_currentJointPositions[0]);
 		}
 
-		b3CalculateInverseKinematicsSetResidualThreshold(command, 1e-4);
+		b3CalculateInverseKinematicsSetResidualThreshold(command, 1e-3);
 		b3CalculateInverseKinematicsSetMaxNumIterations(command, 1000);
-		b3CalculateInverseKinematicsSelectSolver(command, IK_SDLS);
+		b3CalculateInverseKinematicsSelectSolver(command, IK_DLS);
 
 		b3SharedMemoryStatusHandle statusHandle;
 		statusHandle = b3SubmitClientCommandAndWaitStatus(m_data->m_physicsClientHandle, command);

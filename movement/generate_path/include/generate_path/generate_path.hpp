@@ -11,6 +11,8 @@
 #include <kdl/tree.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/chainiksolverpos_nr_jl.hpp>
+#include <kdl/chainiksolverpos_nr.hpp>
+#include <kdl/chainiksolverpos_lma.hpp>
 #include <kdl/chainiksolvervel_pinv.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <urdf/model.h>
@@ -56,12 +58,16 @@ namespace generate_path
     ArmConfiguration _getJointStatesFromTopic(const sensor_msgs::msg::JointState::SharedPtr &joint_states);
     ReturnCode _getParametersFromServer();
     ReturnCode _validateJointStates(const ArmConfiguration &joint_states, const std::vector<Limits> &joint_limits);
-    ReturnCode _validateEndEffectorPose(const Eigen::Affine3d &goal_end_effector_pose, const double &error_threshold);
+    double _calculateDistanceEndEffectorPosToGoalPos(const Eigen::Affine3d &goal_end_effector_pose);
+    double _calculateDistanceEndEffectorOrienToGoalOrien(const Eigen::Affine3d &goal_end_effector_pose);
     void _convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment);
     ArmConfiguration _calculateGoalStateFromEndEffectorPose(const Eigen::Affine3d &end_effector_pose);
     ReturnCode _readSceneInfoFromPhysicsServer();
     void _updateJointLimits();
     void _setJointStates(const ArmConfiguration &joint_states);
+    void _drawCoordinateAxes(const Eigen::Affine3d &pose);
+
+    ArmConfiguration _calculateIKWithKDL(const ArmConfiguration &initial_state, const Eigen::Affine3d &end_effector_pose);
 
     // ___Attributes___
     helpers::Watchdog::SharedPtr _watchdog;
@@ -88,6 +94,8 @@ namespace generate_path
 
     const float _safety_range = 0.003;
     const int _contact_number_allowed = 1;
+    const double _end_effector_position_offset = 0.005; // In meters; distance from calculated end effector position to goal end effector
+    const double _end_effector_orientation_offset = -1; // In radians; sum of all axes
   };
 
 } // namespace generate_path

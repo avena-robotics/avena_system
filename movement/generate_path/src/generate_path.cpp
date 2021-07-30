@@ -159,8 +159,23 @@ namespace generate_path
         auto end_effector_pose_ros = goal_handle.get()->get_goal()->end_effector_pose;
         Eigen::Affine3d end_effector_pose;
         helpers::converters::geometryToEigenAffine(end_effector_pose_ros, end_effector_pose);
-        path_planning_input.goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
+        // //////////////////////////////////////////////////////////////////////////////////////////////
+        // BULLET START
+        // path_planning_input.goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
+        // BULLET END
+        // //////////////////////////////////////////////////////////////////////////////////////////////
 
+        // {
+        //     RCLCPP_ERROR(get_logger(), "Aborting...");
+        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+        //     goal_handle->abort(result);
+        //     return;
+        // }
+
+        _drawCoordinateAxes(end_effector_pose);
+
+        // //////////////////////////////////////////////////////////////////////////////////////////////
+        // // IK FAST START
         // // int argc;
         // // char **argv;
         // std::vector<IkReal> vfree = {0};
@@ -169,9 +184,9 @@ namespace generate_path
         // RCLCPP_WARN_STREAM(get_logger(), "Value: " << vfree[0]);
 
         // IkReal eerot[9];
-        // Eigen::Affine3f ee_aff;
-        // helpers::converters::geometryToEigenAffine(end_effector_pose, ee_aff);
-        // auto quat = Eigen::Quaternionf(ee_aff.rotation());
+        // // Eigen::Affine3d ee_aff;
+        // // helpers::converters::geometryToEigenAffine(end_effector_pose, ee_aff);
+        // auto quat = Eigen::Quaterniond(end_effector_pose.rotation());
         // // auto quat = Eigen::Quaternionf::Identity();
         // quat.normalize();
         // auto rot_matrix = quat.toRotationMatrix();
@@ -184,7 +199,7 @@ namespace generate_path
         // RCLCPP_WARN_STREAM(get_logger(), "---");
 
         // IkReal eetrans[3];
-        // auto trans_vec = Eigen::Vector3f(ee_aff.translation());
+        // auto trans_vec = Eigen::Vector3d(end_effector_pose.translation());
         // for (size_t i = 0; i < 3; ++i)
         //     eetrans[i] = trans_vec(i);
         // eetrans[0] -= 0.18;
@@ -203,9 +218,9 @@ namespace generate_path
         // if (!success)
         // {
         //     RCLCPP_ERROR(get_logger(), "Cannot calculate IK. Aborting...");
-        //     // _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-        //     // goal_handle->abort(result);
-        //     // return;
+        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+        //     goal_handle->abort(result);
+        //     return;
         // }
         // else
         // {
@@ -220,6 +235,7 @@ namespace generate_path
         //         for (std::size_t j = 0; j < solvalues.size(); ++j)
         //             printf("%.15f, ", solvalues[j]);
 
+        //         path_planning_input.goal_state = solvalues;
         //         _setJointStates(solvalues);
 
         //         cv::Mat img = cv::Mat::ones(100, 100, CV_8UC1) * 255;
@@ -236,12 +252,22 @@ namespace generate_path
         //         printf("\n");
         //     }
         // }
+        // // IK FAST END
+        // //////////////////////////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // KDL START
+        auto initial_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
+        path_planning_input.goal_state = _calculateIKWithKDL(initial_state, end_effector_pose);
+
+        // KDL END
+        //////////////////////////////////////////////////////////////////////////
 
         // Check goal state validity
         _setJointStates(path_planning_input.goal_state);
 
-        cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
-        cv::waitKey();
+        // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
+        // cv::waitKey();
 
         if (_validateJointStates(path_planning_input.goal_state, _robot_info.limits) != ReturnCode::SUCCESS)
         {
@@ -251,13 +277,27 @@ namespace generate_path
             return;
         }
 
-        if (_validateEndEffectorPose(end_effector_pose, 0.01) != ReturnCode::SUCCESS)
+        // Validate position
+        auto distance_ee_to_goal = _calculateDistanceEndEffectorPosToGoalPos(end_effector_pose);
+        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal position: " << distance_ee_to_goal << " [m]");
+        if (distance_ee_to_goal > _end_effector_position_offset)
         {
-            RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Aborting...");
+            RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal: " << distance_ee_to_goal << " [m]. Aborting...");
             _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
             goal_handle->abort(result);
             return;
         }
+
+        // // TODO: Validate orientation
+        // auto distance_ee_to_goal_orien = _calculateDistanceEndEffectorOrienToGoalOrien(end_effector_pose);
+        // RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal orientation: " << distance_ee_to_goal_orien << " [rad]");
+        // if (distance_ee_to_goal_orien > 0.01)
+        // {
+        //     RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal orientation: " << distance_ee_to_goal_orien << " [rad]. Aborting...");
+        //     // _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+        //     // goal_handle->abort(result);
+        //     // return;
+        // }
 
         if (Planner::calculateContactPointsAmount(path_planning_input) > _contact_number_allowed)
         {
@@ -303,29 +343,123 @@ namespace generate_path
         RCLCPP_INFO(get_logger(), "Generate to pose finished");
     }
 
+    ArmConfiguration GeneratePath::_calculateIKWithKDL(const ArmConfiguration &initial_state, const Eigen::Affine3d &end_effector_pose)
+    {
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // KDL START
+        std::string urdf_xml = helpers::commons::getRobotDescription();
+        urdf::Model model;
+        if (!model.initString(urdf_xml))
+        {
+            throw std::runtime_error("Unable to initialize urdf::model from robot description");
+        }
+
+        // Initialize the KDL tree
+        KDL::Tree tree;
+        if (!kdl_parser::treeFromUrdfModel(model, tree))
+        {
+            throw std::runtime_error("Failed to extract kdl tree from robot description");
+        }
+
+        KDL::Chain chain;
+        auto root = tree.getRootSegment();
+        if (!tree.getChain(root->first, _robot_info.connection, chain))
+        {
+            throw std::runtime_error("Error getting proper chain");
+        }
+
+        RCLCPP_WARN_STREAM(get_logger(), "getNrOfJoints: " << chain.getNrOfJoints());
+        // for (auto &s : chain.segments)
+        // {
+        //     auto joint = s.getJoint();
+        //     RCLCPP_WARN_STREAM(get_logger(), s.getName() << ", " << joint.getName() << ", " << joint.getTypeName());
+        // }
+
+        //Creation of the solvers:
+        KDL::ChainFkSolverPos_recursive fk_solver(chain); // Forward position solver
+        KDL::ChainIkSolverVel_pinv ik_solver_vel(chain);  // Inverse velocity solver
+        KDL::JntArray lower_limits(chain.getNrOfJoints());
+        KDL::JntArray upper_limits(chain.getNrOfJoints());
+        KDL::JntArray initial_ik_guess(chain.getNrOfJoints());
+
+        Eigen::Vector3d end_effector_position(end_effector_pose.translation());
+        Eigen::Quaterniond end_effector_orientation(end_effector_pose.rotation());
+        KDL::Vector pos(end_effector_position.x() - 0.18, end_effector_position.y() + 0.35, end_effector_position.z()); // TODO: 
+        end_effector_orientation.normalize();
+        KDL::Rotation orien = KDL::Rotation::Quaternion(end_effector_orientation.x(), end_effector_orientation.y(), end_effector_orientation.z(), end_effector_orientation.w());
+        KDL::Frame ee_pose(orien, pos);
+        KDL::JntArray goal_state(chain.getNrOfJoints());
+        for (size_t i = 0; i < _robot_info.nr_joints; ++i)
+        {
+            lower_limits(i) = _robot_info.limits[i].lower;
+            upper_limits(i) = _robot_info.limits[i].upper;
+            // goal_state(i) = (upper_limits(i) + lower_limits(i)) / 2;;
+            goal_state(i) = initial_state[i];
+            // initial_ik_guess(i) = (upper_limits(i) + lower_limits(i)) / 2;
+            // initial_ik_guess(i) = initial_ik[i];
+        }
+
+        // size_t i = 0;
+        // while (i++ < 10)
+        // {
+            for (size_t i = 0; i < _robot_info.nr_joints; ++i)
+                initial_ik_guess(i) = goal_state(i);
+
+            // KDL::ChainIkSolverPos_NR_JL ik_solver(chain, lower_limits, upper_limits, fk_solver, ik_solver_vel, 1000, 1e-3);
+            // KDL::ChainIkSolverPos_LMA ik_solver();
+            // int ret = ik_solver.CartToJnt(initial_ik_guess, ee_pose, goal_state);
+        // }
+        ArmConfiguration joint_goal_state;
+        // if (ret == KDL::ChainIkSolverPos_NR_JL::E_NOERROR)
+        // {
+        RCLCPP_INFO(get_logger(), "IK run successfully");
+        for (auto i = 0; i < goal_state.data.size(); ++i)
+            joint_goal_state.push_back(goal_state(i));
+        // }
+        // KDL END
+        //////////////////////////////////////////////////////////////////////////
+        return joint_goal_state;
+    }
+
     ReturnCode GeneratePath::_validateJointStates(const ArmConfiguration &joint_states, const std::vector<Limits> &joint_limits)
     {
+        RCLCPP_DEBUG(get_logger(), "Check whether joint states are in limits");
         if (joint_states.size() != joint_limits.size())
         {
             RCLCPP_WARN_STREAM(get_logger(), "Amount of joint states (" << joint_states.size() << ") is different than amount of joint limits (" << joint_limits.size() << ")");
             return ReturnCode::FAILURE;
         }
+        ReturnCode code = ReturnCode::SUCCESS;
         for (auto i = 0; i < joint_states.size(); ++i)
+        {
+            // RCLCPP_DEBUG_STREAM(get_logger(), joint_states[i] * M_PI / 180.0);
             if (joint_states[i] < joint_limits[i].lower || joint_states[i] > joint_limits[i].upper)
-                return ReturnCode::FAILURE;
-        return ReturnCode::SUCCESS;
+            {
+                RCLCPP_DEBUG_STREAM(get_logger(), "Joint: " << i + 1 << ": value: " << joint_states[i] << ", limits: (" << joint_limits[i].lower << ", " << joint_limits[i].upper << ") [outside of limits]");
+                code = ReturnCode::FAILURE;
+            }
+            else
+                RCLCPP_DEBUG_STREAM(get_logger(), "Joint: " << i + 1 << ": value: " << joint_states[i] << ", limits: (" << joint_limits[i].lower << ", " << joint_limits[i].upper << ")");
+        }
+        return code;
     }
 
-    ReturnCode GeneratePath::_validateEndEffectorPose(const Eigen::Affine3d &goal_end_effector_pose, const double &error_threshold)
+    double GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(const Eigen::Affine3d &goal_end_effector_pose)
     {
         b3LinkState link_state;
         if (!_scene_info->bullet_client->getLinkState(_scene_info->robot_idx, _scene_info->end_effector_idx, 0, 0, &link_state))
-            return ReturnCode::FAILURE;
+            return -1;
 
         Eigen::Vector3d ee_position(link_state.m_worldLinkFramePosition[0], link_state.m_worldLinkFramePosition[1], link_state.m_worldLinkFramePosition[2]);
         Eigen::Vector3d goal_ee_position(goal_end_effector_pose.translation());
         auto ee_position_dist = (ee_position - goal_ee_position).norm();
-        return ee_position_dist < error_threshold ? ReturnCode::SUCCESS : ReturnCode::FAILURE;
+        return ee_position_dist;
+    }
+
+    double GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(const Eigen::Affine3d &/*goal_end_effector_pose*/)
+    {
+        // TODO: Implement
+        return 0;
     }
 
     ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const Eigen::Affine3d &end_effector_pose)
@@ -353,58 +487,35 @@ namespace generate_path
         {
             ik_args.m_lowerLimits[i] = _ik_joint_limits[i].lower;
             ik_args.m_upperLimits[i] = _ik_joint_limits[i].upper;
-            ik_args.m_jointRanges[i] = std::abs(_ik_joint_limits[i].lower) + std::abs(_ik_joint_limits[i].upper);
+            ik_args.m_jointRanges[i] = _ik_joint_limits[i].upper - _ik_joint_limits[i].lower;
             // RCLCPP_WARN_STREAM(get_logger(), ik_args.m_lowerLimits[i] << ", " << ik_args.m_upperLimits[i]);
-            ik_args.m_restPoses[i] = 0;
-            // ik_args.m_jointDamping[i] = 0.1;
+            ik_args.m_restPoses[i] = (_ik_joint_limits[i].upper + _ik_joint_limits[i].lower) / 2;
+            ik_args.m_jointDamping[i] = 0;
         }
         // ik_args.m_jointDamping[5] = 1;
 
         ik_args.m_flags |= B3_HAS_IK_TARGET_ORIENTATION;
         ik_args.m_flags |= B3_HAS_NULL_SPACE_VELOCITY;
+        ik_args.m_flags |= B3_HAS_JOINT_DAMPING;
 
+        size_t i = 0;
         b3RobotSimulatorInverseKinematicsResults ik_results;
-        _scene_info->bullet_client->calculateIK(ik_args, ik_results);
+        // while (i++ < 10)
+        // {
+        std::cout << "\n\ncalculate IK" << std::endl;
+        if (!_scene_info->bullet_client->calculateIK(ik_args, ik_results))
+            RCLCPP_WARN(get_logger(), "Calculate IK function failed");
+        // ArmConfiguration current_joint_states(_robot_info.nr_joints);
+        // for (size_t i = 0; i < current_joint_states.size(); i++)
+        //     current_joint_states[i] = ik_results.m_calculatedJointPositions[i];
+        // _setJointStates(current_joint_states);
+
+        std::cout << std::flush;
+        // }
 
         ArmConfiguration goal_configuration(_robot_info.nr_joints);
         for (size_t i = 0; i < goal_configuration.size(); i++)
             goal_configuration[i] = ik_results.m_calculatedJointPositions[i];
-
-        //////////////////////////////////////////////////////////
-        // End effector pose visualization
-        // Eigen::Affine3f ee_aff;
-        // auto ros_ee_aff = end_effector_pose;
-        // helpers::converters::geometryToEigenAffine(ros_ee_aff, ee_aff);
-
-        // Eigen::Vector3f ee_pos(ee_aff.translation());
-        // Eigen::Quaternionf ee_quat(ee_aff.rotation());
-        Eigen::Vector3d x_shift = end_effector_orientation.toRotationMatrix().col(0) * 0.2;
-        Eigen::Vector3d ee_pos_x = end_effector_position + x_shift;
-
-        Eigen::Vector3d y_shift = end_effector_orientation.toRotationMatrix().col(1) * 0.2;
-        Eigen::Vector3d ee_pos_y = end_effector_position + y_shift;
-
-        Eigen::Vector3d z_shift = end_effector_orientation.toRotationMatrix().col(2) * 0.2;
-        Eigen::Vector3d ee_pos_z = end_effector_position + z_shift;
-
-        b3RobotSimulatorAddUserDebugLineArgs LINE_ARGS;
-        LINE_ARGS.m_colorRGB[0] = 1;
-        LINE_ARGS.m_colorRGB[1] = 0;
-        LINE_ARGS.m_colorRGB[2] = 0;
-        btVector3 from(end_effector_position.x(), end_effector_position.y(), end_effector_position.z());
-        btVector3 to_x(ee_pos_x.x(), ee_pos_x.y(), ee_pos_x.z());
-        _scene_info->bullet_client->addUserDebugLine(from, to_x, LINE_ARGS);
-        LINE_ARGS.m_colorRGB[0] = 0;
-        LINE_ARGS.m_colorRGB[1] = 1;
-        LINE_ARGS.m_colorRGB[2] = 0;
-        btVector3 to_y(ee_pos_y.x(), ee_pos_y.y(), ee_pos_y.z());
-        _scene_info->bullet_client->addUserDebugLine(from, to_y, LINE_ARGS);
-        LINE_ARGS.m_colorRGB[0] = 0;
-        LINE_ARGS.m_colorRGB[1] = 0;
-        LINE_ARGS.m_colorRGB[2] = 1;
-        btVector3 to_z(ee_pos_z.x(), ee_pos_z.y(), ee_pos_z.z());
-        _scene_info->bullet_client->addUserDebugLine(from, to_z, LINE_ARGS);
-        //////////////////////////////////////////////////////////
 
         return goal_configuration;
     }
@@ -517,6 +628,38 @@ namespace generate_path
         {
             path_segment.points[i].positions = std::vector<double>(path[i].begin(), path[i].end());
         }
+    }
+
+    void GeneratePath::_drawCoordinateAxes(const Eigen::Affine3d &pose)
+    {
+        Eigen::Vector3d position(pose.translation());
+        Eigen::Quaterniond orientation(pose.rotation());
+        Eigen::Vector3d x_shift = orientation.toRotationMatrix().col(0) * 0.2;
+        Eigen::Vector3d pos_x = position + x_shift;
+
+        Eigen::Vector3d y_shift = orientation.toRotationMatrix().col(1) * 0.2;
+        Eigen::Vector3d pos_y = position + y_shift;
+
+        Eigen::Vector3d z_shift = orientation.toRotationMatrix().col(2) * 0.2;
+        Eigen::Vector3d pos_z = position + z_shift;
+
+        b3RobotSimulatorAddUserDebugLineArgs LINE_ARGS;
+        LINE_ARGS.m_colorRGB[0] = 1;
+        LINE_ARGS.m_colorRGB[1] = 0;
+        LINE_ARGS.m_colorRGB[2] = 0;
+        btVector3 from(position.x(), position.y(), position.z());
+        btVector3 to_x(pos_x.x(), pos_x.y(), pos_x.z());
+        _scene_info->bullet_client->addUserDebugLine(from, to_x, LINE_ARGS);
+        LINE_ARGS.m_colorRGB[0] = 0;
+        LINE_ARGS.m_colorRGB[1] = 1;
+        LINE_ARGS.m_colorRGB[2] = 0;
+        btVector3 to_y(pos_y.x(), pos_y.y(), pos_y.z());
+        _scene_info->bullet_client->addUserDebugLine(from, to_y, LINE_ARGS);
+        LINE_ARGS.m_colorRGB[0] = 0;
+        LINE_ARGS.m_colorRGB[1] = 0;
+        LINE_ARGS.m_colorRGB[2] = 1;
+        btVector3 to_z(pos_z.x(), pos_z.y(), pos_z.z());
+        _scene_info->bullet_client->addUserDebugLine(from, to_z, LINE_ARGS);
     }
 
 } // namespace generate_path
