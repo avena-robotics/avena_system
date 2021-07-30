@@ -10,7 +10,7 @@ from pycocotools import mask
 from detectron2.projects import point_rend
 
 
-class DetectronInference():
+class DetectronInference:
     """
     This class instantiates detectron. As long as it exists, each call to detect() will be done on the same instance, thus
     reducingin initilization time.
