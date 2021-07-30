@@ -4,9 +4,16 @@
   <name>detect_server</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="g.a.pogorzelski@gmail.com">root</maintainer>
+  <maintainer email="g.a.pogorzelski@gmail.com">avena</maintainer>
   <license>TODO: License declaration</license>
 
+  <buildtool_depend>ament_python</buildtool_depend>
+  <build_depend>rosidl_default_generators</build_depend>
+  <member_of_group>rosidl_interface_packages</member_of_group>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <depend>rclpy</depend>
+
+  <exec_depend>custom_interfaces</exec_depend>
   <export>
     <build_type>ament_python</build_type>
   </export>
