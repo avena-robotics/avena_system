@@ -86,6 +86,8 @@ namespace rgbd_sync
     void RgbdSynchronizer::_execute(const std::shared_ptr<GoalHandle> goal_handle)
     {
         helpers::Timer timer("Scene publisher action", get_logger());
+
+        
         auto result = std::make_shared<Action::Result>();
         if (status != Heartbeat::RUNNING)
         {
