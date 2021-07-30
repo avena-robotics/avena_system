@@ -7,7 +7,7 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <opencv2/opencv.hpp>
 
-
+// ___KDL___
 #include <kdl/tree.hpp>
 #include <kdl_parser/kdl_parser.hpp>
 #include <kdl/chainiksolverpos_nr_jl.hpp>
@@ -16,6 +16,18 @@
 #include <kdl/chainiksolvervel_pinv.hpp>
 #include <kdl/chainfksolverpos_recursive.hpp>
 #include <urdf/model.h>
+
+// ___OMPL___
+#include <ompl/base/SpaceInformation.h>
+#include <ompl/base/spaces/SE3StateSpace.h>
+#include <ompl/geometric/planners/rrt/RRTConnect.h>
+#include <ompl/geometric/planners/rrt/RRT.h>
+#include <ompl/geometric/SimpleSetup.h>
+#include <ompl/config.h>
+#include <ompl/base/goals/GoalLazySamples.h>
+#include <ompl/geometric/GeneticSearch.h>
+
+
 
 // ___Avena___
 #include <custom_interfaces/action/generate_path_pose.hpp>
@@ -29,9 +41,7 @@
 #include "generate_path/commons.hpp"
 #include "generate_path/planner.hpp"
 
-
-#include "generate_path/ik_franka.hpp"
-
+// #include "generate_path/ik_franka.hpp"
 
 namespace generate_path
 {
