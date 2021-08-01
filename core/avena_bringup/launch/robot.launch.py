@@ -20,7 +20,8 @@ def launch_setup(context, *args, **kwargs):
         p = subprocess.Popen(['xacro', xacro_file, xacro_arguments], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         p = subprocess.Popen(['xacro', xacro_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    robot_desc, _ = p.communicate()
+    robot_desc, error_msg = p.communicate()
+    print(error_msg.decode())
     params = {'robot_description': robot_desc.decode('utf-8')}
 
     return [
