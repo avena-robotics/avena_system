@@ -3,6 +3,7 @@
 
 // ___CPP___
 #include <vector>
+#include <Eigen/Dense>
 
 // ___Avena___
 #include <bullet_client/b3RobotSimulatorClientAPI.h>
@@ -47,6 +48,7 @@ namespace generate_path
     Constraints::SharedPtr constraints;
     ArmConfiguration start_state;
     ArmConfiguration goal_state;
+    Eigen::Affine3d goal_end_effector_pose;
   };
 
 } // namespace generate_path

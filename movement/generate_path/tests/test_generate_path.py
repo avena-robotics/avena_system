@@ -67,7 +67,7 @@ def main(args=None):
                 success_cnt += 1
             else:
                 node.get_logger().error('Goal failed')
-            # input('Press any key to continue...')
+            input('Press any key to continue...')
 
     if success_cnt != all_poses_cnt:
         node.get_logger().error(f'Test for IK failed: {success_cnt}/{all_poses_cnt} succeeded')

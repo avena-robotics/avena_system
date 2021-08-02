@@ -23,6 +23,7 @@ namespace generate_path
   class Planner
   {
   public:
+
     Planner();
     virtual ~Planner() = default;
     virtual ReturnCode solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path);
