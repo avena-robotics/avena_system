@@ -35,7 +35,7 @@ namespace helpers
             return link_names;
         }
 
-        RobotInfo getRobotInfo(const std::string &side)
+        RobotInfo getRobotInfo(const std::string &/*side*/)
         {
             RobotInfo robot_info;
 
@@ -43,11 +43,6 @@ namespace helpers
             urdf::ModelInterfaceSharedPtr model = urdf::parseURDF(robot_urdf);
 
             robot_info.robot_name = model->getName();
-            //////////////////////////////////////////////////////////////////
-            // TODO: This also should not be hardcoded like this but when there will be only Avena arm, it will not be a problem
-            robot_info.robot_prefix = side + "_" + robot_info.robot_name;
-            //////////////////////////////////////////////////////////////////
-            robot_info.connection = robot_info.robot_prefix + "_gripper_connection";
 
             // Get links
             for (auto &[link_name, link_info] : model->links_)
@@ -78,6 +73,20 @@ namespace helpers
             }
             robot_info.nr_joints = robot_info.joint_names.size();
             robot_info.nr_fixed_joints = robot_info.fixed_joint_names.size();
+
+            if (robot_info.link_names.size() == 0)
+                std::runtime_error("URDF is ill formed. There is no links in it. Fix URDF");
+
+            // Extract working side
+            std::string working_side;
+            if (robot_info.link_names[0].find("left") != std::string::npos)
+                working_side = "left";
+            else if (robot_info.link_names[0].find("right") != std::string::npos)
+                working_side = "right";
+            else
+                std::runtime_error("URDF is ill formed. There is no working side in links names. Fix URDF");
+            robot_info.robot_prefix = working_side + "_" + robot_info.robot_name;
+            robot_info.connection = robot_info.robot_prefix + "_gripper_connection";
 
             return robot_info;
 
