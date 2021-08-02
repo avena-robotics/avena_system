@@ -3,14 +3,14 @@
 namespace data_store
 {
     template <typename SELECT, typename INSERT, typename GETLIST, typename DELETE>
-    DataElement<SELECT, INSERT, GETLIST, DELETE>::DataElement(rclcpp::Node::SharedPtr node_ptr, const rclcpp::QoS qos, const std::string data_element_name)
+    // DataElement<SELECT, INSERT, GETLIST, DELETE>::DataElement(rclcpp::Node::SharedPtr node_ptr, const rclcpp::QoS qos, const std::string data_element_name)
+    DataElement<SELECT, INSERT, GETLIST, DELETE>::DataElement(rclcpp::Node::SharedPtr node_ptr, const std::string data_element_name)
     {
-        using namespace std::placeholders;
-        _insert_sub = node_ptr->create_subscription<typename SELECT::Response>(data_element_name, qos, std::bind(&DataElement::_insert_cb, this, _1));
-        _select_server = node_ptr->create_service<SELECT>(data_element_name + "_select", std::bind(&DataElement::_select, this, _1, _2));
-        _insert_server = node_ptr->create_service<INSERT>(data_element_name + "_insert", std::bind(&DataElement::_insert, this, _1, _2));
-        _get_list_server = node_ptr->create_service<GETLIST>(data_element_name + "_get_list", std::bind(&DataElement::_getList, this, _1, _2));
-        _delete_server = node_ptr->create_service<DELETE>(data_element_name + "_delete", std::bind(&DataElement::_delete, this, _1, _2));
+        // _insert_sub = node_ptr->create_subscription<typename SELECT::Response>(data_element_name, qos, std::bind(&DataElement::_insert_cb, this, std::placeholders::_1));
+        _select_server = node_ptr->create_service<SELECT>(data_element_name + "_select", std::bind(&DataElement::_select, this, std::placeholders::_1, std::placeholders::_2));
+        _insert_server = node_ptr->create_service<INSERT>(data_element_name + "_insert", std::bind(&DataElement::_insert, this, std::placeholders::_1, std::placeholders::_2));
+        _get_list_server = node_ptr->create_service<GETLIST>(data_element_name + "_get_list", std::bind(&DataElement::_getList, this, std::placeholders::_1, std::placeholders::_2));
+        _delete_server = node_ptr->create_service<DELETE>(data_element_name + "_delete", std::bind(&DataElement::_delete, this, std::placeholders::_1, std::placeholders::_2));
     }
     template <typename SELECT, typename INSERT, typename GETLIST, typename DELETE>
     void DataElement<SELECT, INSERT, GETLIST, DELETE>::_insert(const std::shared_ptr<typename INSERT::Request> request,
@@ -21,16 +21,18 @@ namespace data_store
             auto result_msg = std_msgs::msg::Bool();
             try
             {
-                if (_msg)
+                // if (_msg)
+                if (request)
                 {
                     // ******************temporary*************************** //
                     _data_element_container.clear();
-                    _data_element_container.insert_or_assign(0.0, _msg.value());
+                    // _data_element_container.insert_or_assign(0.0, _msg.value());
+                    // _data_element_container.insert_or_assign(0.0, *request);
                     // ******************temporary*************************** //
                     // _data_element_container.insert_or_assign(_msg.value().time_stamp.data, _msg.value());
                     result_msg.data = true;
                     response->result = result_msg;
-                    _msg.reset();
+                    // _msg.reset();
                 }
                 else
                 {
@@ -114,14 +116,14 @@ namespace data_store
             }
         }
     }
-    template <typename SELECT, typename INSERT, typename GETLIST, typename DELETE>
-    void DataElement<SELECT, INSERT, GETLIST, DELETE>::_insert_cb(const typename SELECT::Response::SharedPtr input_msg_ptr)
-    {
-        if (input_msg_ptr)
-        {
-            _msg = *input_msg_ptr;
-        }
-    }
+    // template <typename SELECT, typename INSERT, typename GETLIST, typename DELETE>
+    // void DataElement<SELECT, INSERT, GETLIST, DELETE>::_insert_cb(const typename SELECT::Response::SharedPtr input_msg_ptr)
+    // {
+    //     if (input_msg_ptr)
+    //     {
+    //         _msg = *input_msg_ptr;
+    //     }
+    // }
 
 } // end of data_store
 
