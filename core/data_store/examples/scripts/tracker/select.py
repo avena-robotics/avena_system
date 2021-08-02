@@ -7,14 +7,14 @@ from rclpy.node import Node
 class MinimalClientAsync(Node):
 
     def __init__(self):
-        super().__init__('rgb_delete_client_async')
+        super().__init__('tracker_select_client_async')
         self.cli = self.create_client(DataStoreTrackerSelect, 'tracker_select')
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
         self.req = DataStoreTrackerSelect.Request()
 
     def send_request(self):
-        self.req.time_stamp.data = 0.0
+        # self.req.time_stamp.data = 1.0
         self.future = self.cli.call_async(self.req)
 
 

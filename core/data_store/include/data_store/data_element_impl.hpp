@@ -30,7 +30,7 @@ namespace data_store
                     // ******************temporary*************************** //
                     _data_element_container.clear();
                     // _data_element_container.insert_or_assign(0.0, _msg.value());
-                    _data_element_container.insert_or_assign(0.0, container_element);
+                    _data_element_container.insert_or_assign(1.0, container_element);
                     // ******************temporary*************************** //
                     // _data_element_container.insert_or_assign(request->time_stamp.data, container_element);
                     // _data_element_container.insert_or_assign(_msg.value().time_stamp.data, _msg.value());
@@ -108,7 +108,7 @@ namespace data_store
                 if (response)
                 {
                     // ******************temporary*************************** //
-                    *response = _data_element_container.at(0.0);
+                    *response = _data_element_container.at(1.0);
                     // ******************temporary*************************** //
                     // *response = _data_element_container.at(request->time_stamp.data);
                 }

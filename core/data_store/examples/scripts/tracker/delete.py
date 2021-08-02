@@ -14,7 +14,7 @@ class MinimalClientAsync(Node):
         self.req = DataStoreTrackerDelete.Request()
 
     def send_request(self):
-        self.req.time_stamp.data = 0.0
+        self.req.time_stamp.data = 1.0
         self.future = self.cli.call_async(self.req)
 
 
