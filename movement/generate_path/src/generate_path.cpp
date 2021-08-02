@@ -274,24 +274,20 @@ namespace generate_path
         // char **argv;
         std::vector<IkReal> vfree = {6};
 
-        RCLCPP_WARN_STREAM(get_logger(), "Free parameters: " << vfree.size());
-        RCLCPP_WARN_STREAM(get_logger(), "Value: " << vfree[0]);
+        RCLCPP_DEBUG_STREAM(get_logger(), "Free parameters: " << vfree.size());
+        RCLCPP_DEBUG_STREAM(get_logger(), "Value: " << vfree[0]);
 
         IkReal eerot[9];
         auto quat = Eigen::Quaterniond(goal_end_effector_pose.rotation());
-        // Eigen::Quaternionf rotation_double = helpers::vision::rotateAroundAxis("z", -M_PI_4);
-        // Eigen::Quaterniond rotation(rotation_double.w(), rotation_double.x(), rotation_double.y(), rotation_double.z());
-        // quat = quat * rotation;
-        // auto quat = Eigen::Quaternionf::Identity();
+
+        auto ee_rot_matrix = quat.normalized().toRotationMatrix();
+        auto rotation_z = Eigen::AngleAxisd(-M_PI_4, ee_rot_matrix.col(2));
+        auto rotation_y = Eigen::AngleAxisd(M_PI_2, ee_rot_matrix.col(1));
+        auto rotation_x = Eigen::AngleAxisd(-M_PI_2, ee_rot_matrix.col(0));
+
+        quat = rotation_x * rotation_y * rotation_z * quat;
         auto rot_matrix = quat.normalized().toRotationMatrix();
-        auto rotation = Eigen::AngleAxisd(-M_PI_4, rot_matrix.col(2));
-        quat = rotation * quat;
-        rot_matrix = quat.normalized().toRotationMatrix();
-        // for (size_t i = 0; i < 9; ++i)
-        // {
-        //     eerot[i] = rot_matrix(i);
-        //     RCLCPP_WARN_STREAM(get_logger(), eerot[i]);
-        // }
+
         eerot[0] = rot_matrix(0);
         eerot[1] = rot_matrix(3);
         eerot[2] = rot_matrix(6);
@@ -304,26 +300,17 @@ namespace generate_path
         eerot[7] = rot_matrix(5);
         eerot[8] = rot_matrix(8);
 
-        RCLCPP_WARN_STREAM(get_logger(), "---");
-
         IkReal eetrans[3];
         auto trans_vec = Eigen::Vector3d(goal_end_effector_pose.translation());
-        for (size_t i = 0; i < 3; ++i)
-            eetrans[i] = trans_vec(i);
         // TODO: Read this from TF
-        eetrans[0] -= 0.18;
-        eetrans[1] += 0.35;
+        eetrans[0] = trans_vec(0) - 0.18;
+        eetrans[1] = trans_vec(1) + 0.35;
+        eetrans[2] = trans_vec(2);
 
-        for (size_t i = 0; i < 3; ++i)
-        {
-            RCLCPP_WARN_STREAM(get_logger(), eetrans[i]);
-        }
-
-        // for (std::size_t i = 0; i < vfree.size(); ++i)
-        //     vfree[i] = atof(argv[13 + i]);
         IkSolutionList<IkReal> solutions;
         bool success = ComputeIk(eetrans, eerot, vfree.size() > 0 ? &vfree[0] : NULL, solutions);
 
+        bool found_valid_configuration = false;
         if (!success)
         {
             RCLCPP_ERROR(get_logger(), "Cannot calculate IK. Aborting...");
@@ -333,35 +320,68 @@ namespace generate_path
         }
         else
         {
-            printf("Found %d ik solutions:\n", (int)solutions.GetNumSolutions());
+            RCLCPP_DEBUG_STREAM(get_logger(), "Found " << solutions.GetNumSolutions() << " IK solutions");
             std::vector<IkReal> solvalues(GetNumJoints());
             for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i)
             {
                 const IkSolutionBase<IkReal> &sol = solutions.GetSolution(i);
-                printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
                 std::vector<IkReal> vsolfree(sol.GetFree().size());
                 sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
-                for (std::size_t j = 0; j < solvalues.size(); ++j)
-                    printf("%.15f, ", solvalues[j]);
 
+                // Fix the last joint state
+
+                solvalues[vfree[0]] -= 2 * M_PI;
+                // Validate position
+                _setJointStates(solvalues);
+                auto end_effector_pose = _getEndEffectorPose();
+                auto distance_ee_to_goal = GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(end_effector_pose, goal_end_effector_pose);
+                RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal position: " << distance_ee_to_goal << " [m]");
+                
+                
+                int num_joints = _scene_info->bullet_client->getNumJoints(_scene_info->robot_idx);
+                for (int joint_idx = 0; joint_idx < num_joints; ++joint_idx)
+                {
+                    b3JointSensorState joint_state;
+                    _scene_info->bullet_client->getJointState(_scene_info->robot_idx, joint_idx, &joint_state);
+                    RCLCPP_WARN_STREAM(get_logger(), "id: " << joint_idx << ", m_jointPosition: " << joint_state.m_jointPosition);
+                }
+
+                
+                // Validate orientation
+                auto distance_ee_to_goal_orien = GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(end_effector_pose, goal_end_effector_pose);
+                RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal orientation: " << distance_ee_to_goal_orien << " [rad]");
+
+                if (_validateJointStates(solvalues, _robot_info.limits) != ReturnCode::SUCCESS)
+                {
+                    RCLCPP_ERROR(get_logger(), "Invalid final state. Joint states are outside of limits. Checking another configuration...");
+                    continue;
+                }
+                if (distance_ee_to_goal > _end_effector_position_offset)
+                {
+                    RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal: " << distance_ee_to_goal << " [m]. Checking another configuration...");
+                    continue;
+                }
+                if (distance_ee_to_goal_orien > _end_effector_orientation_offset)
+                {
+                    RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal orientation: " << distance_ee_to_goal_orien << " [rad]. Checking another configuration...");
+                    continue;
+                }
                 path_planning_input.goal_state = solvalues;
-                _setJointStates(path_planning_input.goal_state);
-                _validateJointStates(path_planning_input.goal_state, _robot_info.limits);                
+                found_valid_configuration = true;
+                break;
 
-                cv::Mat img = cv::Mat::ones(100, 100, CV_8UC1) * 255;
-
-                cv::putText(img,                         //target image
-                            std::to_string(i),            //text
-                            cv::Point(10, img.rows / 2), //top-left position
-                            cv::FONT_HERSHEY_DUPLEX,
-                            1.0,
-                            CV_RGB(118, 185, 0), //font color
-                            2);
-                cv::imshow("kek", img);
-                cv::waitKey();
-                printf("\n");
+                // cv::Mat img = cv::Mat::ones(100, 100, CV_8UC1) * 255;
+                // cv::putText(img,                         //target image
+                //             std::to_string(i),            //text
+                //             cv::Point(10, img.rows / 2), //top-left position
+                //             cv::FONT_HERSHEY_DUPLEX,
+                //             1.0,
+                //             CV_RGB(118, 185, 0), //font color
+                //             2);
+                // cv::imshow("kek", img);
+                // cv::waitKey();
+                // printf("\n");
             }
-            std::cout << std::flush;
         }
         // IK FAST END
         //////////////////////////////////////////////////////////////////////////////////////////////
@@ -373,80 +393,88 @@ namespace generate_path
         // // KDL END
         // //////////////////////////////////////////////////////////////////////////////////////////////
 
-        // Check goal state validity
-        _setJointStates(path_planning_input.goal_state);
+        // // Check goal state validity
+        // _setJointStates(path_planning_input.goal_state);
 
         // // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
         // // cv::waitKey();
 
-        // Validate position
-        auto end_effector_pose = _getEndEffectorPose();
-        auto distance_ee_to_goal = GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(end_effector_pose, goal_end_effector_pose);
-        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal position: " << distance_ee_to_goal << " [m]");
+        // // Validate position
+        // auto end_effector_pose = _getEndEffectorPose();
+        // auto distance_ee_to_goal = GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(end_effector_pose, goal_end_effector_pose);
+        // RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal position: " << distance_ee_to_goal << " [m]");
 
-        // Validate orientation
-        auto distance_ee_to_goal_orien = GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(end_effector_pose, goal_end_effector_pose);
-        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal orientation: " << distance_ee_to_goal_orien << " [rad]");
+        // // Validate orientation
+        // auto distance_ee_to_goal_orien = GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(end_effector_pose, goal_end_effector_pose);
+        // RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal orientation: " << distance_ee_to_goal_orien << " [rad]");
 
-        // Exit when position or orientation are out of specified threshold or joints are out of limits
-        if (_validateJointStates(path_planning_input.goal_state, _robot_info.limits) != ReturnCode::SUCCESS)
-        {
-            RCLCPP_ERROR(get_logger(), "Invalid final state. Joint states are outside of limits. Aborting...");
-            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-            goal_handle->abort(result);
-            return;
-        }
-        if (distance_ee_to_goal > _end_effector_position_offset)
-        {
-            RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal: " << distance_ee_to_goal << " [m]. Aborting...");
-            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-            goal_handle->abort(result);
-            return;
-        }
-        if (distance_ee_to_goal_orien > _end_effector_orientation_offset)
-        {
-            RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal orientation: " << distance_ee_to_goal_orien << " [rad]. Aborting...");
-            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-            goal_handle->abort(result);
-            return;
-        }
-
-        // if (Planner::calculateContactPointsAmount(path_planning_input) > _contact_number_allowed)
+        // // Exit when position or orientation are out of specified threshold or joints are out of limits
+        // if (_validateJointStates(path_planning_input.goal_state, _robot_info.limits) != ReturnCode::SUCCESS)
         // {
-        //     RCLCPP_ERROR(get_logger(), "Invalid final state. Robot is in collision with scene or itself. Aborting...");
+        //     RCLCPP_ERROR(get_logger(), "Invalid final state. Joint states are outside of limits. Aborting...");
         //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
         //     goal_handle->abort(result);
         //     return;
         // }
+        // if (distance_ee_to_goal > _end_effector_position_offset)
+        // {
+        //     RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal: " << distance_ee_to_goal << " [m]. Aborting...");
+        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+        //     goal_handle->abort(result);
+        //     return;
+        // }
+        // if (distance_ee_to_goal_orien > _end_effector_orientation_offset)
+        // {
+        //     RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal orientation: " << distance_ee_to_goal_orien << " [rad]. Aborting...");
+        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+        //     goal_handle->abort(result);
+        //     return;
+        // }
+
+        if (!found_valid_configuration)
+        {
+            RCLCPP_ERROR(get_logger(), "Could not find valid arm configuration for set end effector pose. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
+
+        if (Planner::calculateContactPointsAmount(path_planning_input) > _contact_number_allowed)
+        {
+            RCLCPP_ERROR(get_logger(), "Invalid final state. Robot is in collision with scene or itself. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
+
+        // Set joint states back to initial state before planning
+        _setJointStates(current_joint_values);
+
+        Path out_path;
+        Planner planer;
+        if (planer.solve(path_planning_input, out_path) != ReturnCode::SUCCESS)
+        {
+            RCLCPP_ERROR(get_logger(), "Error occured while planning path. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
 
         // // Set joint states back to initial state before planning
         // _setJointStates(current_joint_values);
 
-        // Path out_path;
-        // Planner planer;
-        // if (planer.solve(path_planning_input, out_path) != ReturnCode::SUCCESS)
-        // {
-        //     RCLCPP_ERROR(get_logger(), "Error occured while planning path. Aborting...");
-        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-        //     goal_handle->abort(result);
-        //     return;
-        // }
+        // Set arm to last config for visualization
+        {
+            auto last_arm_config = out_path.back();
+            _setJointStates(last_arm_config);
+        }
 
-        // // // Set joint states back to initial state before planning
-        // // _setJointStates(current_joint_values);
+        // Output processing
+        result->generated_path.header.stamp = now();
+        result->generated_path.path_segments.resize(1);
+        _convertPathSegmentToTrajectoryMsg(out_path, result->generated_path.path_segments[0]);
 
-        // // Set arm to last config for visualization
-        // {
-        //     auto last_arm_config = out_path.back();
-        //     _setJointStates(last_arm_config);
-        // }
-
-        // // Output processing
-        // result->generated_path.header.stamp = now();
-        // result->generated_path.path_segments.resize(1);
-        // _convertPathSegmentToTrajectoryMsg(out_path, result->generated_path.path_segments[0]);
-
-        // _generated_path_pub->publish(result->generated_path);
+        _generated_path_pub->publish(result->generated_path);
         if (rclcpp::ok())
         {
             goal_handle->succeed(result);
