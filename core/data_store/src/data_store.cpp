@@ -14,7 +14,7 @@ namespace data_store
         RCLCPP_INFO(get_logger(), "Initialization of data store.");
         // rclcpp::QoS qos_latching = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
         // _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), qos_latching, "tracker");
-        // _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), "tracker");
+        _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), "tracker");
         _cameras_data_element_ptr = std::make_unique<RgbdSync>(shared_from_this(), "rgbd_sync");
         _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), "filter_detections");
         _items_element_ptr = std::make_unique<Items>(shared_from_this(), "compose_items");
