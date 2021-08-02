@@ -1,4 +1,4 @@
-from custom_interfaces.srv import DataStoreItemCam1GetList
+from custom_interfaces.srv import DataStoreTrackerGetList
 import rclpy
 from rclpy.node import Node
 
@@ -6,11 +6,11 @@ from rclpy.node import Node
 class MinimalClientAsync(Node):
 
     def __init__(self):
-        super().__init__('rgb_delete_client_async')
-        self.cli = self.create_client(DataStoreItemCam1GetList, 'item_cam_1_get_list')
+        super().__init__('tracker_get_list_client_async')
+        self.cli = self.create_client(DataStoreTrackerGetList, 'tracker_get_list')
         while not self.cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        self.req = DataStoreItemCam1GetList.Request()
+            self.get_logger().info('service not available, waiting again...')item_status
+        self.req = DataStoreTrackerGetList.Request()
 
     def send_request(self):
         self.future = self.cli.call_async(self.req)

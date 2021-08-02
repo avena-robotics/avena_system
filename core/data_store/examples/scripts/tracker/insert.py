@@ -1,5 +1,6 @@
 import sys
-from custom_interfaces.srv import DataStoreItemCam1Insert
+from custom_interfaces.srv import DataStoreTrackerInsert
+from std_msgs.msg import UInt8,String
 import rclpy
 from rclpy.node import Node
 
@@ -8,12 +9,14 @@ class MinimalClientAsync(Node):
 
     def __init__(self):
         super().__init__('rgb_delete_client_async')
-        self.cli = self.create_client(DataStoreItemCam1Insert, 'item_cam_1_insert')
+        self.cli = self.create_client(DataStoreTrackerInsert, 'tracker_insert')
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
-        self.req = DataStoreItemCam1Insert.Request()
+        self.req = DataStoreTrackerInsert.Request()
 
     def send_request(self):
+        self.req.data.item_id = UInt8(data=2)
+        self.req.data.item_label = String(data="orange")
         self.future = self.cli.call_async(self.req)
 
 
