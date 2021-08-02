@@ -1,2 +1,4 @@
+std_msgs/Float64 time_stamp
+custom_interfaces/RgbdSync data
 ---
 std_msgs/Bool result

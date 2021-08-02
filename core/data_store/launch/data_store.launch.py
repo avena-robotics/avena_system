@@ -4,7 +4,7 @@ from launch_ros.descriptions import ComposableNode
 
 def generate_launch_description():
     container = ComposableNodeContainer(
-        name='logic_bt_container',
+        name='data_store_container',
         namespace='',
         package='rclcpp_components',
         executable='component_container',

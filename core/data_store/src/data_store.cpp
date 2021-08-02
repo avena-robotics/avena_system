@@ -4,7 +4,7 @@ namespace data_store
     DataStore::DataStore(const rclcpp::NodeOptions &options) : Node("DataStore", options)
     {
         status = custom_interfaces::msg::Heartbeat::STOPPED;
-        RCLCPP_INFO(this->get_logger(), "started Node");
+        RCLCPP_INFO(this->get_logger(), "started DataStore Node");
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
     }
 
@@ -12,12 +12,12 @@ namespace data_store
     {
         status = custom_interfaces::msg::Heartbeat::STARTING;
         RCLCPP_INFO(get_logger(), "Initialization of data store.");
-        rclcpp::QoS qos_latching = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-        
-        _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), qos_latching, "tracker");
-        _cameras_data_element_ptr = std::make_unique<RgbdSync>(shared_from_this(), qos_latching, "rgbd_sync");
-        _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), qos_latching, "filter_detections");
-        _items_element_ptr = std::make_unique<Items>(shared_from_this(), qos_latching, "compose_items");
+        // rclcpp::QoS qos_latching = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+        // _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), qos_latching, "tracker");
+        _tracker_element_ptr = std::make_unique<Tracker>(shared_from_this(), "tracker");
+        _cameras_data_element_ptr = std::make_unique<RgbdSync>(shared_from_this(), "rgbd_sync");
+        _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), "filter_detections");
+        _items_element_ptr = std::make_unique<Items>(shared_from_this(), "compose_items");
         // add other data elements here
         status = custom_interfaces::msg::Heartbeat::RUNNING;
     }

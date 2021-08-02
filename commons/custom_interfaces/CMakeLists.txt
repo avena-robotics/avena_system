@@ -52,6 +52,7 @@ set(msg_files
   "msg/ModuleCommand.msg"
   "msg/GuiBtMessage.msg"
   "msg/RgbdSync.msg"
+  "msg/Tracker.msg"
 )
 
 set(srv_files
