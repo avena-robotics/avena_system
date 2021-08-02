@@ -256,9 +256,9 @@ namespace generate_path
         //////////////////////////////////////////////////////////////////////////////////////////////
 
         // //////////////////////////////////////////////////////////////////////////////////////////////
-        // BULLET START
+        // // BULLET START
         // path_planning_input.goal_state = _calculateGoalStateFromEndEffectorPose(goal_end_effector_pose);
-        // BULLET END
+        // // BULLET END
         // //////////////////////////////////////////////////////////////////////////////////////////////
 
         // {
@@ -268,95 +268,110 @@ namespace generate_path
         //     return;
         // }
 
-        // //////////////////////////////////////////////////////////////////////////////////////////////
-        // // IK FAST START
-        // // int argc;
-        // // char **argv;
-        // std::vector<IkReal> vfree = {0};
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // IK FAST START
+        // int argc;
+        // char **argv;
+        std::vector<IkReal> vfree = {6};
 
-        // RCLCPP_WARN_STREAM(get_logger(), "Free parameters: " << vfree.size());
-        // RCLCPP_WARN_STREAM(get_logger(), "Value: " << vfree[0]);
+        RCLCPP_WARN_STREAM(get_logger(), "Free parameters: " << vfree.size());
+        RCLCPP_WARN_STREAM(get_logger(), "Value: " << vfree[0]);
 
-        // IkReal eerot[9];
-        // // Eigen::Affine3d ee_aff;
-        // // helpers::converters::geometryToEigenAffine(goal_end_effector_pose, ee_aff);
-        // auto quat = Eigen::Quaterniond(goal_end_effector_pose.rotation());
-        // // auto quat = Eigen::Quaternionf::Identity();
-        // quat.normalize();
-        // auto rot_matrix = quat.toRotationMatrix();
+        IkReal eerot[9];
+        auto quat = Eigen::Quaterniond(goal_end_effector_pose.rotation());
+        // Eigen::Quaternionf rotation_double = helpers::vision::rotateAroundAxis("z", -M_PI_4);
+        // Eigen::Quaterniond rotation(rotation_double.w(), rotation_double.x(), rotation_double.y(), rotation_double.z());
+        // quat = quat * rotation;
+        // auto quat = Eigen::Quaternionf::Identity();
+        auto rot_matrix = quat.normalized().toRotationMatrix();
+        auto rotation = Eigen::AngleAxisd(-M_PI_4, rot_matrix.col(2));
+        quat = rotation * quat;
+        rot_matrix = quat.normalized().toRotationMatrix();
         // for (size_t i = 0; i < 9; ++i)
         // {
         //     eerot[i] = rot_matrix(i);
         //     RCLCPP_WARN_STREAM(get_logger(), eerot[i]);
         // }
+        eerot[0] = rot_matrix(0);
+        eerot[1] = rot_matrix(3);
+        eerot[2] = rot_matrix(6);
 
-        // RCLCPP_WARN_STREAM(get_logger(), "---");
+        eerot[3] = rot_matrix(1);
+        eerot[4] = rot_matrix(4);
+        eerot[5] = rot_matrix(7);
 
-        // IkReal eetrans[3];
-        // auto trans_vec = Eigen::Vector3d(goal_end_effector_pose.translation());
-        // for (size_t i = 0; i < 3; ++i)
-        //     eetrans[i] = trans_vec(i);
-        // eetrans[0] -= 0.18;
-        // eetrans[1] += 0.35;
+        eerot[6] = rot_matrix(2);
+        eerot[7] = rot_matrix(5);
+        eerot[8] = rot_matrix(8);
 
-        // for (size_t i = 0; i < 3; ++i)
-        // {
-        //     RCLCPP_WARN_STREAM(get_logger(), eetrans[i]);
-        // }
+        RCLCPP_WARN_STREAM(get_logger(), "---");
 
-        // // for (std::size_t i = 0; i < vfree.size(); ++i)
-        // //     vfree[i] = atof(argv[13 + i]);
-        // IkSolutionList<IkReal> solutions;
-        // bool success = ComputeIk(eetrans, eerot, vfree.size() > 0 ? &vfree[0] : NULL, solutions);
+        IkReal eetrans[3];
+        auto trans_vec = Eigen::Vector3d(goal_end_effector_pose.translation());
+        for (size_t i = 0; i < 3; ++i)
+            eetrans[i] = trans_vec(i);
+        // TODO: Read this from TF
+        eetrans[0] -= 0.18;
+        eetrans[1] += 0.35;
 
-        // if (!success)
-        // {
-        //     RCLCPP_ERROR(get_logger(), "Cannot calculate IK. Aborting...");
-        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-        //     goal_handle->abort(result);
-        //     return;
-        // }
-        // else
-        // {
-        //     printf("Found %d ik solutions:\n", (int)solutions.GetNumSolutions());
-        //     std::vector<IkReal> solvalues(GetNumJoints());
-        //     for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i)
-        //     {
-        //         const IkSolutionBase<IkReal> &sol = solutions.GetSolution(i);
-        //         printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
-        //         std::vector<IkReal> vsolfree(sol.GetFree().size());
-        //         sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
-        //         for (std::size_t j = 0; j < solvalues.size(); ++j)
-        //             printf("%.15f, ", solvalues[j]);
+        for (size_t i = 0; i < 3; ++i)
+        {
+            RCLCPP_WARN_STREAM(get_logger(), eetrans[i]);
+        }
 
-        //         path_planning_input.goal_state = solvalues;
-        //         _setJointStates(solvalues);
+        // for (std::size_t i = 0; i < vfree.size(); ++i)
+        //     vfree[i] = atof(argv[13 + i]);
+        IkSolutionList<IkReal> solutions;
+        bool success = ComputeIk(eetrans, eerot, vfree.size() > 0 ? &vfree[0] : NULL, solutions);
 
-        //         cv::Mat img = cv::Mat::ones(100, 100, CV_8UC1) * 255;
+        if (!success)
+        {
+            RCLCPP_ERROR(get_logger(), "Cannot calculate IK. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
+        else
+        {
+            printf("Found %d ik solutions:\n", (int)solutions.GetNumSolutions());
+            std::vector<IkReal> solvalues(GetNumJoints());
+            for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i)
+            {
+                const IkSolutionBase<IkReal> &sol = solutions.GetSolution(i);
+                printf("sol%d (free=%d): ", (int)i, (int)sol.GetFree().size());
+                std::vector<IkReal> vsolfree(sol.GetFree().size());
+                sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
+                for (std::size_t j = 0; j < solvalues.size(); ++j)
+                    printf("%.15f, ", solvalues[j]);
 
-        //         cv::putText(img,                         //target image
-        //                     std::to_string(i),            //text
-        //                     cv::Point(10, img.rows / 2), //top-left position
-        //                     cv::FONT_HERSHEY_DUPLEX,
-        //                     1.0,
-        //                     CV_RGB(118, 185, 0), //font color
-        //                     2);
-        //         cv::imshow("kek", img);
-        //         cv::waitKey();
-        //         printf("\n");
-        //     }
-        // }
-        // // IK FAST END
-        // //////////////////////////////////////////////////////////////////////////////////////////////
+                path_planning_input.goal_state = solvalues;
+                _setJointStates(path_planning_input.goal_state);
+                _validateJointStates(path_planning_input.goal_state, _robot_info.limits);                
+
+                cv::Mat img = cv::Mat::ones(100, 100, CV_8UC1) * 255;
+
+                cv::putText(img,                         //target image
+                            std::to_string(i),            //text
+                            cv::Point(10, img.rows / 2), //top-left position
+                            cv::FONT_HERSHEY_DUPLEX,
+                            1.0,
+                            CV_RGB(118, 185, 0), //font color
+                            2);
+                cv::imshow("kek", img);
+                cv::waitKey();
+                printf("\n");
+            }
+            std::cout << std::flush;
+        }
+        // IK FAST END
+        //////////////////////////////////////////////////////////////////////////////////////////////
 
         // //////////////////////////////////////////////////////////////////////////////////////////////
         // // KDL START
         // auto initial_state = _calculateGoalStateFromEndEffectorPose(goal_end_effector_pose);
         // path_planning_input.goal_state = _calculateIKWithKDL(initial_state, goal_end_effector_pose);
-
         // // KDL END
         // //////////////////////////////////////////////////////////////////////////////////////////////
-        RCLCPP_DEBUG(get_logger(), "After IK genetic search");
 
         // Check goal state validity
         _setJointStates(path_planning_input.goal_state);
@@ -364,6 +379,16 @@ namespace generate_path
         // // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
         // // cv::waitKey();
 
+        // Validate position
+        auto end_effector_pose = _getEndEffectorPose();
+        auto distance_ee_to_goal = GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(end_effector_pose, goal_end_effector_pose);
+        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal position: " << distance_ee_to_goal << " [m]");
+
+        // Validate orientation
+        auto distance_ee_to_goal_orien = GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(end_effector_pose, goal_end_effector_pose);
+        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal orientation: " << distance_ee_to_goal_orien << " [rad]");
+
+        // Exit when position or orientation are out of specified threshold or joints are out of limits
         if (_validateJointStates(path_planning_input.goal_state, _robot_info.limits) != ReturnCode::SUCCESS)
         {
             RCLCPP_ERROR(get_logger(), "Invalid final state. Joint states are outside of limits. Aborting...");
@@ -371,29 +396,20 @@ namespace generate_path
             goal_handle->abort(result);
             return;
         }
-
-        // Validate position
-        auto end_effector_pose = _getEndEffectorPose();
-        auto distance_ee_to_goal = GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(end_effector_pose, goal_end_effector_pose);
-        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal position: " << distance_ee_to_goal << " [m]");
-        // if (distance_ee_to_goal > _end_effector_position_offset)
-        // {
-        //     RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal: " << distance_ee_to_goal << " [m]. Aborting...");
-        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-        //     goal_handle->abort(result);
-        //     return;
-        // }
-
-        // Validate orientation
-        auto distance_ee_to_goal_orien = GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(end_effector_pose, goal_end_effector_pose);
-        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal orientation: " << distance_ee_to_goal_orien << " [rad]");
-        // if (distance_ee_to_goal_orien > _end_effector_orientation_offset)
-        // {
-        //     RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal orientation: " << distance_ee_to_goal_orien << " [rad]. Aborting...");
-        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-        //     goal_handle->abort(result);
-        //     return;
-        // }
+        if (distance_ee_to_goal > _end_effector_position_offset)
+        {
+            RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal: " << distance_ee_to_goal << " [m]. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
+        if (distance_ee_to_goal_orien > _end_effector_orientation_offset)
+        {
+            RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal orientation: " << distance_ee_to_goal_orien << " [rad]. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
 
         // if (Planner::calculateContactPointsAmount(path_planning_input) > _contact_number_allowed)
         // {
@@ -603,11 +619,10 @@ namespace generate_path
         ik_args.m_flags |= B3_HAS_NULL_SPACE_VELOCITY;
         ik_args.m_flags |= B3_HAS_JOINT_DAMPING;
 
-        size_t i = 0;
+        // size_t i = 0;
         b3RobotSimulatorInverseKinematicsResults ik_results;
         // while (i++ < 10)
         // {
-        std::cout << "\n\ncalculate IK" << std::endl;
         if (!_scene_info->bullet_client->calculateIK(ik_args, ik_results))
             RCLCPP_WARN(get_logger(), "Calculate IK function failed");
         // ArmConfiguration current_joint_states(_robot_info.nr_joints);
@@ -615,7 +630,7 @@ namespace generate_path
         //     current_joint_states[i] = ik_results.m_calculatedJointPositions[i];
         // _setJointStates(current_joint_states);
 
-        std::cout << std::flush;
+        // std::cout << std::flush;
         // }
 
         ArmConfiguration goal_configuration(_robot_info.nr_joints);

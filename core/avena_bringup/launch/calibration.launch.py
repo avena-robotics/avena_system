@@ -41,10 +41,10 @@ def launch_setup(context, *args, **kwargs):
             PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
                 'generate_trajectory'), 'launch', 'generate_trajectory.launch.py'))
         ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-                'generate_path'), 'launch', 'generate_path.launch.py'))
-        ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+        #         'generate_path'), 'launch', 'generate_path.launch.py'))
+        # ),
     ]
 
 
