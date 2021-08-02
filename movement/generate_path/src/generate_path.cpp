@@ -2,68 +2,42 @@
 
 namespace generate_path
 {
-    class MyGoalRegion : public ob::GoalRegion
-    {
-    public:
-        MyGoalRegion(const ob::SpaceInformationPtr &si, const PathPlanningInput &path_planning_input)
-            : ob::GoalRegion(si),
-              _path_planning_input(path_planning_input)
-        {
-            setThreshold(1e-2);
-        }
-
-        double distanceGoal(const ob::State *state) const override
-        {
-            // Set robot to current position
-            for (size_t i = 0; i < _path_planning_input.scene_info->joint_handles.size(); i++)
-                _path_planning_input.scene_info->bullet_client->resetJointState(_path_planning_input.scene_info->robot_idx, i, state->as<ompl::base::RealVectorStateSpace::StateType>()->values[i]);
-
-            // Read position and orientation of end effector
-            b3LinkState ee_current_state;
-            _path_planning_input.scene_info->bullet_client->getLinkState(_path_planning_input.scene_info->robot_idx, _path_planning_input.scene_info->end_effector_idx, 0, 0, &ee_current_state);
-
-            Eigen::Vector3d ee_goal_position(_path_planning_input.end_effector_pose.translation());
-            // Eigen::Quaternionf ee_goal_orientation(_path_planning_input.end_effector_pose.rotation());
-
-            Eigen::Vector3d ee_current_position(ee_current_state.m_worldLinkFramePosition[0], ee_current_state.m_worldLinkFramePosition[1], ee_current_state.m_worldLinkFramePosition[2]);
-            double d = (ee_goal_position - ee_current_position).norm();
-
-            return d;
-        }
-
-    private:
-        PathPlanningInput _path_planning_input;
-    };
-
-    // // Goal regions such as the one above cannot be sampled, so
-    // // bi-directional trees cannot be used for solving. However, we can
-    // // transform such goal regions into ones that can be sampled. The
-    // // caveat is that it should be possible to find states in this region
-    // // with some other algorithm. Genetic algorithms that essentially
-    // // perform inverse kinematics in the general sense can be used:
-    // bool regionSamplingWithGS(const ob::SpaceInformationPtr &si, const ob::ProblemDefinitionPtr &pd, const ob::GoalRegion *region, const ob::GoalLazySamples *gls, ob::State *result)
+    // class MyGoalRegion : public ompl::base::GoalRegion
     // {
-    //     og::GeneticSearch g(si);
+    // public:
+    //     MyGoalRegion(const ompl::base::SpaceInformationPtr &si, const PathPlanningInput &path_planning_input,
+    //                  std::function<double(const Eigen::Affine3d &, const Eigen::Affine3d &)> dist_position,
+    //                  std::function<double(const Eigen::Affine3d &, const Eigen::Affine3d &)> dist_orientation)
+    //         : ompl::base::GoalRegion(si),
+    //           _path_planning_input(path_planning_input),
+    //           _dist_position(dist_position),
+    //           _dist_orientation(dist_orientation) {}
 
-    //     // we can use a larger time duration for solve(), but we want to demo the ability
-    //     // of GeneticSearch to continue from where it left off
-    //     bool cont = false;
-    //     for (int i = 0; i < 100; ++i)
-    //         if (g.solve(0.05, *region, result))
-    //         {
-    //             cont = true;
-    //             break;
-    //         }
-
-    //     if (cont)
+    //     double distanceGoal(const ompl::base::State *state) const override
     //     {
-    //         std::cout << "Found goal state: " << std::endl;
-    //         si->printState(result);
+    //         // Set robot to current position
+    //         for (size_t i = 0; i < _path_planning_input.scene_info->joint_handles.size(); i++)
+    //             _path_planning_input.scene_info->bullet_client->resetJointState(_path_planning_input.scene_info->robot_idx, i, state->as<ompl::base::RealVectorStateSpace::StateType>()->values[i]);
+
+    //         // Read position and orientation of end effector
+    //         b3LinkState ee_current_state;
+    //         _path_planning_input.scene_info->bullet_client->getLinkState(_path_planning_input.scene_info->robot_idx, _path_planning_input.scene_info->end_effector_idx, 0, 0, &ee_current_state);
+
+    //         Eigen::Translation3d ee_current_position(ee_current_state.m_worldLinkFramePosition[0], ee_current_state.m_worldLinkFramePosition[1], ee_current_state.m_worldLinkFramePosition[2]);
+    //         Eigen::Quaterniond ee_current_orientation(ee_current_state.m_worldLinkFrameOrientation[3], ee_current_state.m_worldLinkFrameOrientation[0], ee_current_state.m_worldLinkFrameOrientation[1], ee_current_state.m_worldLinkFrameOrientation[2]);
+    //         Eigen::Affine3d ee_current_pose = ee_current_position * ee_current_orientation;
+
+    //         double distance_position = _dist_position(ee_current_pose, _path_planning_input.goal_end_effector_pose);
+    //         double distance_orientation = _dist_orientation(ee_current_pose, _path_planning_input.goal_end_effector_pose);
+    //         return distance_position;
+    //         // return distance_orientation;
     //     }
 
-    //     // we continue sampling while we are able to find solutions, we have found not more than 2 previous solutions and we have not yet solved the problem
-    //     return cont && gls->maxSampleCount() < 3 && !pd->hasSolution();
-    // }
+    // private:
+    //     PathPlanningInput _path_planning_input;
+    //     std::function<double(const Eigen::Affine3d &, const Eigen::Affine3d &)> _dist_position;
+    //     std::function<double(const Eigen::Affine3d &, const Eigen::Affine3d &)> _dist_orientation;
+    // };
 
     GeneratePath::GeneratePath(const rclcpp::NodeOptions &options)
         : Node("generate_path", options)
@@ -106,7 +80,7 @@ namespace generate_path
                                                                              [this](const sensor_msgs::msg::JointState::SharedPtr joint_states_msg)
                                                                              {
                                                                                  std::lock_guard<std::mutex> lg(_current_joint_states_mtx);
-                                                                                 //  RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received joint states [message throttles with 0.1 sec]");
+                                                                                 //   RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received joint states [message throttles with 0.1 sec]");
                                                                                  _current_joint_states = joint_states_msg;
                                                                              });
         _generated_path_pub = create_publisher<custom_interfaces::msg::GeneratedPath>("generated_path", latching_qos);
@@ -178,6 +152,7 @@ namespace generate_path
 
     void GeneratePath::_executePose(const std::shared_ptr<GoalHandleGeneratePathPose> goal_handle)
     {
+        RCLCPP_INFO(get_logger(), "start");
         helpers::Timer timer("Generate path to pose", get_logger());
         auto result = std::make_shared<GeneratePathPose::Result>();
 
@@ -218,104 +193,71 @@ namespace generate_path
             return;
         }
 
-        auto end_effector_pose_ros = goal_handle.get()->get_goal()->end_effector_pose;
-        Eigen::Affine3d end_effector_pose;
-        helpers::converters::geometryToEigenAffine(end_effector_pose_ros, end_effector_pose);
-        _drawCoordinateAxes(end_effector_pose);
+        auto goal_end_effector_pose_ros = goal_handle.get()->get_goal()->end_effector_pose;
+        Eigen::Affine3d goal_end_effector_pose;
+        helpers::converters::geometryToEigenAffine(goal_end_effector_pose_ros, goal_end_effector_pose);
+        path_planning_input.goal_end_effector_pose = goal_end_effector_pose;
+        _drawCoordinateAxes(goal_end_effector_pose);
 
         //////////////////////////////////////////////////////////////////////////////////////////////
         // OMPL GENETIC START
-        path_planning_input.end_effector_pose = end_effector_pose;
 
-      
+        // // // construct the state space we are planning in
+        // auto state_space = std::make_shared<ompl::base::RealVectorStateSpace>(path_planning_input.scene_info->joint_handles.size());
 
-        // // construct the state space we are planning in
-        auto space = std::make_shared<ompl::base::RealVectorStateSpace>(path_planning_input.scene_info->joint_handles.size());
-
-        // // set the bounds
-        ompl::base::RealVectorBounds bounds(path_planning_input.scene_info->joint_handles.size());
-        for (size_t i = 0; i < path_planning_input.constraints->limits.size(); ++i)
-        {
-            bounds.setLow(i, path_planning_input.constraints->limits[i].lower);
-            bounds.setHigh(i, path_planning_input.constraints->limits[i].upper);
-        }
-        space->setBounds(bounds);
-        auto si = std::make_shared<ob::SpaceInformation>(space);
-
-        og::GeneticSearch gs(si);
-        // ompl::GoalReg
-        MyGoalRegion region(si, path_planning_input);
-        ompl::base::ScopedState<> ik_result(space);
-
-        bool success = gs.solve(3, region, ik_result.get());
-        if (success)
-        {
-            RCLCPP_DEBUG(get_logger(), "Generated IK successfully");
-        }
-        else
-        {
-            RCLCPP_DEBUG(get_logger(), "Failed to IK");
-        }
-
-        // // define a simple setup class
-        // og::SimpleSetup ss(space);
-
-        // // create a random start state
-        // // ob::ScopedState<ob::SE3StateSpace> start(space);
-        // ompl::base::ScopedState<> start(space);
-        // for (size_t i = 0; i < path_planning_input.start_state.size(); ++i)
-        //     start[i] = path_planning_input.start_state[i];
-        // ss.addStartState(start);
-
-        // // define our goal region
-        // MyGoalRegion region(ss.getSpaceInformation(), path_planning_input);
-
-        // // bind a sampling function that fills its argument with a sampled state
-        // // and returns true while it can produce new samples we don't need to
-        // // check if new samples are different from ones previously computed as
-        // // this is pefromed automatically by GoalLazySamples
-        // ob::GoalSamplingFn samplingFunction = [&ss, &region](const ob::GoalLazySamples *gls, ob::State *result)
+        // // // set the bounds
+        // ompl::base::RealVectorBounds bounds(path_planning_input.scene_info->joint_handles.size());
+        // for (size_t i = 0; i < path_planning_input.constraints->limits.size(); ++i)
         // {
-        //     return regionSamplingWithGS(ss.getSpaceInformation(), ss.getProblemDefinition(), &region, gls, result);
-        // };
-
-        // // create an instance of GoalLazySamples:
-        // auto goal = std::make_shared<ob::GoalLazySamples>(ss.getSpaceInformation(), samplingFunction);
-
-        // // we set a goal that is sampleable, but it in fact corresponds to a region that is not sampleable by default
-        // ss.setGoal(goal);
-
-        // ompl::base::PlannerPtr planner(new ompl::geometric::RRTConnect(ss.getSpaceInformation()));
-        // ss.setPlanner(planner);
-
-        // RCLCPP_DEBUG(get_logger(), "Before solve called");
-        // // attempt to solve the problem
-        // ob::PlannerStatus solved = ss.solve(3.0);
-
-        // // the region variable will now go out of scope. To make sure it is not used in the sampling function any more
-        // // (i.e., the sampling thread was able to terminate), we make sure sampling has terminated
-        // goal->as<ob::GoalLazySamples>()->stopSampling();
-
-        // RCLCPP_DEBUG(get_logger(), "After solve called");
-
-        // if (solved)
-        // {
-        //     RCLCPP_DEBUG(get_logger(), "Found solution:");
-        //     std::cout << "Found solution:" << std::endl;
-        //     // print the path to screen
-        //     ss.simplifySolution();
-        //     ss.getSolutionPath().print(std::cout);
+        //     bounds.setLow(i, path_planning_input.constraints->limits[i].lower);
+        //     bounds.setHigh(i, path_planning_input.constraints->limits[i].upper);
         // }
-        // else
-        //     RCLCPP_ERROR(get_logger(), "No solution found");
+        // state_space->setBounds(bounds);
 
+        // // Space information
+        // auto si = std::make_shared<ompl::base::SpaceInformation>(state_space);
+        // si->setup();
+        // si->printSettings(std::cout);
+        // std::cout << std::flush;
+
+        // ompl::geometric::GeneticSearch gs(si);
+        // MyGoalRegion goal_region(si, path_planning_input, &GeneratePath::_calculateDistanceEndEffectorPosToGoalPos, &GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien);
+        // // goal_region.setThreshold(_end_effector_position_offset);
+        // goal_region.setThreshold(_end_effector_orientation_offset);
+        // // goal_region.setThreshold(_end_effector_position_offset + _end_effector_orientation_offset);
+
+        // // gs.setValidityCheck(true);
+        // gs.setTryImprove(true);
+        // gs.setMaxImproveSteps(100);
+        // gs.setRange(0.001);
+        // ompl::base::ScopedState<ompl::base::RealVectorStateSpace> ik_result(si);
+
+        // bool ik_success_result = false;
+        // size_t ik_iter = 0;
+        // while (ik_iter++ < 100)
+        // {
+        //     bool success = gs.solve(0.01, goal_region, ik_result.get());
+        //     if (success)
+        //     {
+        //         ik_success_result = true;
+        //         break;
+        //     }
+        // }
+
+        // if (ik_success_result)
+        //     RCLCPP_DEBUG(get_logger(), "Generated IK successfully");
+        // else
+        //     RCLCPP_ERROR(get_logger(), "Failed to IK");
+
+        // for (size_t i = 0; i < _robot_info.nr_joints; ++i)
+        //     path_planning_input.goal_state.push_back(ik_result->values[i]);
 
         // OMPL GENETIC end
         //////////////////////////////////////////////////////////////////////////////////////////////
 
         // //////////////////////////////////////////////////////////////////////////////////////////////
         // BULLET START
-        // path_planning_input.goal_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
+        // path_planning_input.goal_state = _calculateGoalStateFromEndEffectorPose(goal_end_effector_pose);
         // BULLET END
         // //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -337,8 +279,8 @@ namespace generate_path
 
         // IkReal eerot[9];
         // // Eigen::Affine3d ee_aff;
-        // // helpers::converters::geometryToEigenAffine(end_effector_pose, ee_aff);
-        // auto quat = Eigen::Quaterniond(end_effector_pose.rotation());
+        // // helpers::converters::geometryToEigenAffine(goal_end_effector_pose, ee_aff);
+        // auto quat = Eigen::Quaterniond(goal_end_effector_pose.rotation());
         // // auto quat = Eigen::Quaternionf::Identity();
         // quat.normalize();
         // auto rot_matrix = quat.toRotationMatrix();
@@ -351,7 +293,7 @@ namespace generate_path
         // RCLCPP_WARN_STREAM(get_logger(), "---");
 
         // IkReal eetrans[3];
-        // auto trans_vec = Eigen::Vector3d(end_effector_pose.translation());
+        // auto trans_vec = Eigen::Vector3d(goal_end_effector_pose.translation());
         // for (size_t i = 0; i < 3; ++i)
         //     eetrans[i] = trans_vec(i);
         // eetrans[0] -= 0.18;
@@ -409,30 +351,31 @@ namespace generate_path
 
         // //////////////////////////////////////////////////////////////////////////////////////////////
         // // KDL START
-        // auto initial_state = _calculateGoalStateFromEndEffectorPose(end_effector_pose);
-        // path_planning_input.goal_state = _calculateIKWithKDL(initial_state, end_effector_pose);
+        // auto initial_state = _calculateGoalStateFromEndEffectorPose(goal_end_effector_pose);
+        // path_planning_input.goal_state = _calculateIKWithKDL(initial_state, goal_end_effector_pose);
 
         // // KDL END
         // //////////////////////////////////////////////////////////////////////////////////////////////
         RCLCPP_DEBUG(get_logger(), "After IK genetic search");
 
-        // // Check goal state validity
-        // _setJointStates(path_planning_input.goal_state);
+        // Check goal state validity
+        _setJointStates(path_planning_input.goal_state);
 
         // // cv::imshow("kek", cv::Mat::ones(100, 100, CV_8UC1) * 255);
         // // cv::waitKey();
 
-        // if (_validateJointStates(path_planning_input.goal_state, _robot_info.limits) != ReturnCode::SUCCESS)
-        // {
-        //     RCLCPP_ERROR(get_logger(), "Invalid final state. Joint states are outside of limits. Aborting...");
-        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-        //     goal_handle->abort(result);
-        //     return;
-        // }
+        if (_validateJointStates(path_planning_input.goal_state, _robot_info.limits) != ReturnCode::SUCCESS)
+        {
+            RCLCPP_ERROR(get_logger(), "Invalid final state. Joint states are outside of limits. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
 
-        // // Validate position
-        // auto distance_ee_to_goal = _calculateDistanceEndEffectorPosToGoalPos(end_effector_pose);
-        // RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal position: " << distance_ee_to_goal << " [m]");
+        // Validate position
+        auto end_effector_pose = _getEndEffectorPose();
+        auto distance_ee_to_goal = GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(end_effector_pose, goal_end_effector_pose);
+        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal position: " << distance_ee_to_goal << " [m]");
         // if (distance_ee_to_goal > _end_effector_position_offset)
         // {
         //     RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal: " << distance_ee_to_goal << " [m]. Aborting...");
@@ -441,16 +384,16 @@ namespace generate_path
         //     return;
         // }
 
-        // // // TODO: Validate orientation
-        // // auto distance_ee_to_goal_orien = _calculateDistanceEndEffectorOrienToGoalOrien(end_effector_pose);
-        // // RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal orientation: " << distance_ee_to_goal_orien << " [rad]");
-        // // if (distance_ee_to_goal_orien > 0.01)
-        // // {
-        // //     RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal orientation: " << distance_ee_to_goal_orien << " [rad]. Aborting...");
-        // //     // _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
-        // //     // goal_handle->abort(result);
-        // //     // return;
-        // // }
+        // Validate orientation
+        auto distance_ee_to_goal_orien = GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(end_effector_pose, goal_end_effector_pose);
+        RCLCPP_DEBUG_STREAM(get_logger(), "Distance from end effector to goal orientation: " << distance_ee_to_goal_orien << " [rad]");
+        // if (distance_ee_to_goal_orien > _end_effector_orientation_offset)
+        // {
+        //     RCLCPP_ERROR_STREAM(get_logger(), "Invalid final state. End effector is in invalid position. Distance to goal orientation: " << distance_ee_to_goal_orien << " [rad]. Aborting...");
+        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+        //     goal_handle->abort(result);
+        //     return;
+        // }
 
         // if (Planner::calculateContactPointsAmount(path_planning_input) > _contact_number_allowed)
         // {
@@ -597,22 +540,31 @@ namespace generate_path
         return code;
     }
 
-    double GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(const Eigen::Affine3d &goal_end_effector_pose)
+    Eigen::Affine3d GeneratePath::_getEndEffectorPose()
     {
         b3LinkState link_state;
         if (!_scene_info->bullet_client->getLinkState(_scene_info->robot_idx, _scene_info->end_effector_idx, 0, 0, &link_state))
-            return -1;
+            return Eigen::Translation3d(std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), std::numeric_limits<double>::max()) * Eigen::Quaterniond::Identity();
 
-        Eigen::Vector3d ee_position(link_state.m_worldLinkFramePosition[0], link_state.m_worldLinkFramePosition[1], link_state.m_worldLinkFramePosition[2]);
+        Eigen::Translation3d ee_position(link_state.m_worldLinkFramePosition[0], link_state.m_worldLinkFramePosition[1], link_state.m_worldLinkFramePosition[2]);
+        Eigen::Quaterniond ee_orientation(link_state.m_worldLinkFrameOrientation[3], link_state.m_worldLinkFrameOrientation[0], link_state.m_worldLinkFrameOrientation[1], link_state.m_worldLinkFrameOrientation[2]);
+        return ee_position * ee_orientation;
+    }
+
+    double GeneratePath::_calculateDistanceEndEffectorPosToGoalPos(const Eigen::Affine3d &end_effector_pose, const Eigen::Affine3d &goal_end_effector_pose)
+    {
+        Eigen::Vector3d ee_position(end_effector_pose.translation());
         Eigen::Vector3d goal_ee_position(goal_end_effector_pose.translation());
         auto ee_position_dist = (ee_position - goal_ee_position).norm();
         return ee_position_dist;
     }
 
-    double GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(const Eigen::Affine3d & /*goal_end_effector_pose*/)
+    double GeneratePath::_calculateDistanceEndEffectorOrienToGoalOrien(const Eigen::Affine3d &end_effector_pose, const Eigen::Affine3d &goal_end_effector_pose)
     {
-        // TODO: Implement
-        return 0;
+        Eigen::Quaterniond ee_orientation(end_effector_pose.rotation());
+        Eigen::Quaterniond goal_ee_orientation(goal_end_effector_pose.rotation());
+        auto angle = ee_orientation.angularDistance(goal_ee_orientation);
+        return std::abs(angle);
     }
 
     ArmConfiguration GeneratePath::_calculateGoalStateFromEndEffectorPose(const Eigen::Affine3d &end_effector_pose)
