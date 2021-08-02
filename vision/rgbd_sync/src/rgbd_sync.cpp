@@ -145,9 +145,9 @@ namespace rgbd_sync
     Response::SharedPtr RgbdSynchronizer::_prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images)
     {
         Response::SharedPtr response_msg = std::make_shared<Response>();
-        response_msg->rgbdsync.header.stamp = now();
-        response_msg->rgbdsync.rgb = *rgb_images;
-        response_msg->rgbdsync.depth = *depth_images;
+        response_msg->data.header.stamp = now();
+        response_msg->data.rgb = *rgb_images;
+        response_msg->data.depth = *depth_images;
 
 
         _cant_touch_this = false;

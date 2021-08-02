@@ -69,7 +69,7 @@ namespace estimate_shape
         if (items_result.wait_for(5s) == std::future_status::ready)
         {
 
-            _compose_items_msg = std::make_shared<custom_interfaces::msg::Items>(items_result.get()->items);
+            _compose_items_msg = std::make_shared<custom_interfaces::msg::Items>(items_result.get()->data);
 
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
@@ -196,14 +196,14 @@ namespace estimate_shape
     int EstimateShape::_convertStructuresToTopicData(const std::vector<Item> &item_results, Response::SharedPtr &out_estimate_shape)
     {
 
-        for (auto topic_item_it = out_estimate_shape->items.items.begin(); topic_item_it != out_estimate_shape->items.items.end();)
+        for (auto topic_item_it = out_estimate_shape->data.items.begin(); topic_item_it != out_estimate_shape->data.items.end();)
         {
             auto item_result_iter = std::find_if(item_results.begin(), item_results.end(), [topic_item_it](const Item &item_result)
                                                  { return item_result.id == topic_item_it->id; });
             if (!item_result_iter->isEstimationValid)
             {
                 LOG_DEBUG_STREAM("Item with ID " << item_result_iter->id << " has not valid estimation and will not be published.");
-                topic_item_it = out_estimate_shape->items.items.erase(topic_item_it);
+                topic_item_it = out_estimate_shape->data.items.erase(topic_item_it);
                 continue;
             }
 
@@ -233,9 +233,9 @@ namespace estimate_shape
     Response::UniquePtr EstimateShape::_prepareOutputData(const ItemsMsg::SharedPtr &input_items)
     {
         Response::UniquePtr estimate_shape_data = std::make_unique<Response>();
-        estimate_shape_data->items.items = input_items->items;
-        estimate_shape_data->items.header.frame_id = "world";
-        estimate_shape_data->items.header.stamp = now();
+        estimate_shape_data->data.items = input_items->items;
+        estimate_shape_data->data.header.frame_id = "world";
+        estimate_shape_data->data.header.stamp = now();
         return estimate_shape_data;
     }
 

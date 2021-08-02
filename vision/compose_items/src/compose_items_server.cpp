@@ -103,8 +103,8 @@ namespace compose_items
         // Wait for the result.
         if (detectron_result.wait_for(5s) == std::future_status::ready)
         {
-            _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(detectron_result.get()->detections);
-            _detect_msg->header = detectron_result.get()->detections.header;
+            _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(detectron_result.get()->data);
+            _detect_msg->header = detectron_result.get()->data.header;
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
 
@@ -124,12 +124,12 @@ namespace compose_items
         {
             _depth_images_msg = std::make_shared<custom_interfaces::msg::DepthImages>();
             _rgb_images_msg = std::make_shared<custom_interfaces::msg::RgbImages>();
-            _depth_images_msg->cam1_depth = rgbd_sync_result.get()->rgbdsync.depth.cam1_depth;
-            _depth_images_msg->cam2_depth = rgbd_sync_result.get()->rgbdsync.depth.cam2_depth;
-            _depth_images_msg->header.stamp = rgbd_sync_result.get()->rgbdsync.header.stamp;
-            _rgb_images_msg->cam1_rgb = rgbd_sync_result.get()->rgbdsync.rgb.cam1_rgb;
-            _rgb_images_msg->cam2_rgb = rgbd_sync_result.get()->rgbdsync.rgb.cam2_rgb;
-            _rgb_images_msg->header.stamp = rgbd_sync_result.get()->rgbdsync.header.stamp;
+            _depth_images_msg->cam1_depth = rgbd_sync_result.get()->data.depth.cam1_depth;
+            _depth_images_msg->cam2_depth = rgbd_sync_result.get()->data.depth.cam2_depth;
+            _depth_images_msg->header.stamp = rgbd_sync_result.get()->data.header.stamp;
+            _rgb_images_msg->cam1_rgb = rgbd_sync_result.get()->data.rgb.cam1_rgb;
+            _rgb_images_msg->cam2_rgb = rgbd_sync_result.get()->data.rgb.cam2_rgb;
+            _rgb_images_msg->header.stamp = rgbd_sync_result.get()->data.header.stamp;
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
     }
@@ -234,7 +234,7 @@ namespace compose_items
 
     int ComposeItems::_saveComposedData(Response::SharedPtr &compose_msg)
     {   
-        compose_msg->items.items.resize(_items_to_save.size());
+        compose_msg->data.items.resize(_items_to_save.size());
 
         std::vector<size_t> empty_items;
         for (size_t i = 0; i < _items_to_save.size(); i++)
@@ -242,8 +242,8 @@ namespace compose_items
             size_t elements_clouds_size = 0;
 
             uint32_t id = _items_to_save[i].item_id;
-            compose_msg->items.items[i].id = _items_to_save[i].item_id;
-            compose_msg->items.items[i].label = _items_to_save[i].label;
+            compose_msg->data.items[i].id = _items_to_save[i].item_id;
+            compose_msg->data.items[i].label = _items_to_save[i].label;
 
             //TODO there should be no items without element - if there is no matching element - something went wrong and we should catch it here.
             std::vector<element_t>::iterator el_it = std::find_if(_elements_to_save.begin(), _elements_to_save.end(), [id](const element_t &el)
@@ -280,7 +280,7 @@ namespace compose_items
                 // if (el_it->element_depth_2)
                 //     helpers::converters::cvMatToRos(*(el_it->element_depth_2), element.cam2_depth);
 
-                compose_msg->items.items[i].item_elements.push_back(element);
+                compose_msg->data.items[i].item_elements.push_back(element);
                 _elements_to_save.erase(el_it);
                 if (el_it == _elements_to_save.end())
                     break;
@@ -293,10 +293,10 @@ namespace compose_items
 
         std::sort(empty_items.begin(), empty_items.end(), std::greater<size_t>());
         for (auto &idx : empty_items)
-            compose_msg->items.items.erase(compose_msg->items.items.begin() + idx);
+            compose_msg->data.items.erase(compose_msg->data.items.begin() + idx);
 
-        compose_msg->items.header.stamp = now();
-        compose_msg->items.header.frame_id = "world";
+        compose_msg->data.header.stamp = now();
+        compose_msg->data.header.frame_id = "world";
 
         return 0;
     }

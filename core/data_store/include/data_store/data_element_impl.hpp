@@ -24,11 +24,15 @@ namespace data_store
                 // if (_msg)
                 if (request)
                 {
+                    auto container_element = typename SELECT::Response();
+                    container_element.time_stamp = request->time_stamp;
+                    container_element.data = request->data;
                     // ******************temporary*************************** //
                     _data_element_container.clear();
                     // _data_element_container.insert_or_assign(0.0, _msg.value());
-                    // _data_element_container.insert_or_assign(0.0, *request);
+                    _data_element_container.insert_or_assign(0.0, container_element);
                     // ******************temporary*************************** //
+                    // _data_element_container.insert_or_assign(request->time_stamp.data, container_element);
                     // _data_element_container.insert_or_assign(_msg.value().time_stamp.data, _msg.value());
                     result_msg.data = true;
                     response->result = result_msg;
