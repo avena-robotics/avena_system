@@ -307,7 +307,7 @@ void SimpleController::init()
     _i_clamp_l.resize(_joints_number);
     _c_friction_val.resize(_joints_number);
 
-    std::string urdf_path = "/home/avena/avena_system/src/avena_system/avena_bringup/urdf/v4.urdf.xacro";
+    std::string urdf_path = "/home/avena/avena_system/src/avena_system/core/avena_bringup/urdf/v4.urdf.xacro";
 
     //initialize ID
     RCLCPP_INFO_STREAM(_node->get_logger(), "Loading robot model from: " << urdf_path);
