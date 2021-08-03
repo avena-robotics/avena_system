@@ -35,13 +35,19 @@
 #include "custom_interfaces/msg/depth_images.hpp"
 #include "custom_interfaces/msg/items.hpp"
 #include "custom_interfaces/msg/rgb_images.hpp"
-
+#include "custom_interfaces/srv/data_store_detectron_select.hpp"
+#include "custom_interfaces/srv/data_store_rgbd_sync_select.hpp"
+#include "custom_interfaces/srv/data_store_items_insert.hpp"
+#include "custom_interfaces/srv/data_store_items_select.hpp"
 // #include "custom_interfaces"
+
+using namespace std::chrono_literals;
 
 namespace compose_items
 {
 
   using json = nlohmann::json;
+  using Response = custom_interfaces::srv::DataStoreItemsSelect::Response;
 
   typedef std::chrono::system_clock::time_point TimeVar;
 #define duration(a) std::chrono::duration_cast<std::chrono::milliseconds>(a).count()
@@ -67,6 +73,8 @@ namespace compose_items
 
   private:
     helpers::Watchdog::SharedPtr _watchdog;
+    void _getData();
+
     int _readLabels();
     int _assignData(custom_interfaces::msg::Detections::SharedPtr &detect_msg, custom_interfaces::msg::DepthImages::SharedPtr &depth_images_msg);
     int _assignElement(std::string label, detected_item_t &item, std::vector<element_t> &out_elements);
@@ -114,9 +122,12 @@ namespace compose_items
     WorkspaceArea _workspace_area;
 
     //ROS
+    rclcpp::Client<custom_interfaces::srv::DataStoreDetectronSelect>::SharedPtr _detectron_client;
+    rclcpp::Client<custom_interfaces::srv::DataStoreRgbdSyncSelect>::SharedPtr _rgbd_sync_client;
+    rclcpp::Client<custom_interfaces::srv::DataStoreItemsInsert>::SharedPtr _items_client;
 
     rclcpp_action::Server<ComposeItemsAction>::SharedPtr _action_server;
-    rclcpp::Publisher<custom_interfaces::msg::Items>::SharedPtr _publisher;
+    rclcpp::Publisher<Response>::SharedPtr _publisher;
     rclcpp::Subscription<custom_interfaces::msg::Detections>::SharedPtr _new_masks_subscriber;
     rclcpp::Subscription<custom_interfaces::msg::RgbImages>::SharedPtr _rgb_images_subscriber;
     rclcpp::Subscription<custom_interfaces::msg::DepthImages>::SharedPtr _depth_images_subscriber;
@@ -126,7 +137,9 @@ namespace compose_items
     custom_interfaces::msg::RgbImages::SharedPtr _rgb_images_msg;
 
     void _getCamerasParameters();
-    int _saveComposedData(custom_interfaces::msg::Items::UniquePtr &compose_msg);
+    int _sendDataToDB(Response::SharedPtr &compose_msg);
+
+    int _saveComposedData(Response::SharedPtr  &compose_msg);
     rclcpp_action::GoalResponse _handleGoal(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const ComposeItemsAction::Goal> goal);
     rclcpp_action::CancelResponse _handleCancel(const std::shared_ptr<GoalHandleComposeItems> goal_handle);
     void _handleAccepted(const std::shared_ptr<GoalHandleComposeItems> goal_handle);

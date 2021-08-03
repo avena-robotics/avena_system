@@ -51,6 +51,8 @@ set(msg_files
   # "msg/DetectionsTracking.msg"
   "msg/ModuleCommand.msg"
   "msg/GuiBtMessage.msg"
+  "msg/RgbdSync.msg"
+  "msg/Tracker.msg"
 )
 
 set(srv_files
@@ -83,10 +85,10 @@ set(srv_files
   "srv/DataStoreItemsInsert.srv"
   "srv/DataStoreItemsGetList.srv"
   "srv/DataStoreItemsSelect.srv"
-  "srv/DataStoreCamerasDataDelete.srv"
-  "srv/DataStoreCamerasDataInsert.srv"
-  "srv/DataStoreCamerasDataGetList.srv"
-  "srv/DataStoreCamerasDataSelect.srv"
+  "srv/DataStoreRgbdSyncDelete.srv"
+  "srv/DataStoreRgbdSyncInsert.srv"
+  "srv/DataStoreRgbdSyncGetList.srv"
+  "srv/DataStoreRgbdSyncSelect.srv"
 )
 
 set(action_files

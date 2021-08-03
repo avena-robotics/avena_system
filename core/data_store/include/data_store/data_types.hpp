@@ -20,11 +20,11 @@
 #include "custom_interfaces/srv/data_store_items_select.hpp"
 #include "custom_interfaces/srv/data_store_items_get_list.hpp"
 
-//cameras_data
-#include "custom_interfaces/srv/data_store_cameras_data_insert.hpp"
-#include "custom_interfaces/srv/data_store_cameras_data_delete.hpp"
-#include "custom_interfaces/srv/data_store_cameras_data_select.hpp"
-#include "custom_interfaces/srv/data_store_cameras_data_get_list.hpp"
+//rgbd_sync
+#include "custom_interfaces/srv/data_store_rgbd_sync_insert.hpp"
+#include "custom_interfaces/srv/data_store_rgbd_sync_delete.hpp"
+#include "custom_interfaces/srv/data_store_rgbd_sync_select.hpp"
+#include "custom_interfaces/srv/data_store_rgbd_sync_get_list.hpp"
 
 // add other data elements here
 
@@ -38,12 +38,12 @@ namespace data_store
     using TrackerGetList = custom_interfaces::srv::DataStoreTrackerGetList;
     using Tracker = DataElement<TrackerSelect, TrackerInsert, TrackerGetList, TrackerDelete>;
 
-    //cameras_data
-    using CamerasDataInsert = custom_interfaces::srv::DataStoreCamerasDataInsert;
-    using CamerasDataDelete = custom_interfaces::srv::DataStoreCamerasDataDelete;
-    using CamerasDataSelect = custom_interfaces::srv::DataStoreCamerasDataSelect;
-    using CamerasDataGetList = custom_interfaces::srv::DataStoreCamerasDataGetList;
-    using CamerasData = DataElement<CamerasDataSelect, CamerasDataInsert, CamerasDataGetList, CamerasDataDelete>;
+    //rgbd_sync
+    using RgbdSyncInsert = custom_interfaces::srv::DataStoreRgbdSyncInsert;
+    using RgbdSyncDelete = custom_interfaces::srv::DataStoreRgbdSyncDelete;
+    using RgbdSyncSelect = custom_interfaces::srv::DataStoreRgbdSyncSelect;
+    using RgbdSyncGetList = custom_interfaces::srv::DataStoreRgbdSyncGetList;
+    using RgbdSync = DataElement<RgbdSyncSelect, RgbdSyncInsert, RgbdSyncGetList, RgbdSyncDelete>;
 
     //detectron
     using DetectronInsert = custom_interfaces::srv::DataStoreDetectronInsert;
