@@ -105,7 +105,7 @@ def main(args=None):
                 node.get_logger().error('Goal failed')
             elapsed_time_ms = (time.perf_counter() - start_time) * 1000
             node.get_logger().info(f'Elapsed time: {elapsed_time_ms:.2f} [ms]')
-            input('Press any key to continue...')
+            # input('Press any key to continue...')
             time.sleep(0.01)
 
     if success_cnt != all_poses_cnt:

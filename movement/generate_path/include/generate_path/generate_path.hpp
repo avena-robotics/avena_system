@@ -7,16 +7,6 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <opencv2/opencv.hpp>
 
-// ___KDL___
-#include <kdl/tree.hpp>
-#include <kdl_parser/kdl_parser.hpp>
-#include <kdl/chainiksolverpos_nr_jl.hpp>
-#include <kdl/chainiksolverpos_nr.hpp>
-#include <kdl/chainiksolverpos_lma.hpp>
-#include <kdl/chainiksolvervel_pinv.hpp>
-#include <kdl/chainfksolverpos_recursive.hpp>
-#include <urdf/model.h>
-
 // ___OMPL___
 #include <ompl/base/SpaceInformation.h>
 #include <ompl/base/spaces/SE3StateSpace.h>
@@ -26,8 +16,6 @@
 #include <ompl/config.h>
 #include <ompl/base/goals/GoalLazySamples.h>
 #include <ompl/geometric/GeneticSearch.h>
-
-
 
 // ___Avena___
 #include <custom_interfaces/action/generate_path_pose.hpp>
@@ -40,7 +28,6 @@
 #include "generate_path/visibility_control.h"
 #include "generate_path/commons.hpp"
 #include "generate_path/planner.hpp"
-
 #include "generate_path/ik_franka.hpp"
 
 namespace generate_path
@@ -78,9 +65,6 @@ namespace generate_path
     void _setJointStates(const ArmConfiguration &joint_states);
     void _drawCoordinateAxes(const Eigen::Affine3d &pose);
     ReturnCode _validateConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message);
-    // ReturnCode _
-
-    // ArmConfiguration _calculateIKWithKDL(const ArmConfiguration &initial_state, const Eigen::Affine3d &end_effector_pose);
 
     // ___Attributes___
     helpers::Watchdog::SharedPtr _watchdog;
@@ -93,11 +77,6 @@ namespace generate_path
     SceneInfo::SharedPtr _scene_info;
     geometry_msgs::msg::TransformStamped _robot_base_tf;
      
-    // /**
-    //  * @brief Inverse kinematic limits are tighter than path planning ones just to be sure than planning does not go out of bounds
-    //  */
-    // std::vector<Limits> _ik_joint_limits;
-
     /**
      * @brief ID in physics server of table and all static things which are not changing e.g. camera stands, artificial walls for collisions
      * The reason to keep it separately and not as an generic obstacle is to easily keep track of changing obstacles when new moving items

@@ -5,40 +5,80 @@
 namespace generate_trajectory
 {
     GenerateTrajectory::GenerateTrajectory(const rclcpp::NodeOptions &options)
-        : Node("generate_trajectory_action", options),
-          _parameters_read(false)
+        : Node("generate_trajectory", options)
+    {
+        status = custom_interfaces::msg::Heartbeat::STOPPED;
+        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
+    }
+
+    GenerateTrajectory::~GenerateTrajectory()
+    {
+        shutDownNode();
+    }
+
+    void GenerateTrajectory::initNode()
+    {
+        RCLCPP_DEBUG(get_logger(), "Initializing node");
+        status = custom_interfaces::msg::Heartbeat::STARTING;
+        if (_initialize() != ReturnCode::SUCCESS)
+        {
+            RCLCPP_WARN(get_logger(), "Error occured while initializing node");
+            return;
+        }
+        status = custom_interfaces::msg::Heartbeat::RUNNING;
+    }
+
+    void GenerateTrajectory::shutDownNode()
+    {
+        RCLCPP_DEBUG(get_logger(), "Shutting down node");
+        status = custom_interfaces::msg::Heartbeat::STOPPING;
+        if (_shutdown() != ReturnCode::SUCCESS)
+            RCLCPP_ERROR(get_logger(), "Error occured when shutting down node");
+        status = custom_interfaces::msg::Heartbeat::STOPPED;
+    }
+
+    ReturnCode GenerateTrajectory::_initialize()
     {
         RCLCPP_INFO(get_logger(), "Initialization of ROS2 trajectory generator.");
         rclcpp::QoS qos_latching = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
 
-        auto getPathCallback = [this](const GeneratedPath::SharedPtr path_msg) -> void
+        _generated_path_sub = create_subscription<GeneratedPath>("generated_path", qos_latching,
+                                                                 [this](const GeneratedPath::SharedPtr current_generated_path) -> void
+                                                                 {
+                                                                     std::lock_guard<std::mutex> lg(_current_generated_path_mtx);
+                                                                     _current_generated_path = current_generated_path;
+                                                                 });
+        _trajectory_pub = create_publisher<trajectory_msgs::msg::JointTrajectory>("trajectory", qos_latching);
+        _action_server_generate = rclcpp_action::create_server<custom_interfaces::action::SimpleAction>(
+            this, "generate_trajectory",
+            std::bind(&GenerateTrajectory::_handleGoal, this, std::placeholders::_1, std::placeholders::_2),
+            std::bind(&GenerateTrajectory::_handleCancel, this, std::placeholders::_1),
+            std::bind(&GenerateTrajectory::_handleAccepted, this, std::placeholders::_1));
+
+        if (_getParametersFromServer() != ReturnCode::SUCCESS)
         {
-            if (path_msg != nullptr)
-                _path_data = path_msg;
-            else
-                RCLCPP_INFO(get_logger(), "Path topic is empty.");
-        };
+            RCLCPP_WARN(get_logger(), "Cannot read parameters from server");
+            return ReturnCode::FAILURE;
+        }
 
-        _sub_path = this->create_subscription<GeneratedPath>("generated_path", qos_latching, getPathCallback);
-        _pub_trajectory = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("trajectory", qos_latching);
-
-        _action_server_generate = rclcpp_action::create_server<custom_interfaces::action::SimpleAction>(this, "generate_trajectory",
-                                                                                                        std::bind(&GenerateTrajectory::_handleGoal, this, std::placeholders::_1, std::placeholders::_2),
-                                                                                                        std::bind(&GenerateTrajectory::_handleCancel, this, std::placeholders::_1),
-                                                                                                        std::bind(&GenerateTrajectory::_handleAccepted, this, std::placeholders::_1));
-        _getParametersFromServer();
+        return ReturnCode::SUCCESS;
     }
 
-    int GenerateTrajectory::_getParametersFromServer()
+    ReturnCode GenerateTrajectory::_shutdown()
+    {
+        _action_server_generate.reset();
+        _generated_path_sub.reset();
+        _trajectory_pub.reset();
+        return ReturnCode::SUCCESS;
+    }
+
+    ReturnCode GenerateTrajectory::_getParametersFromServer()
     {
         RCLCPP_INFO_ONCE(get_logger(), "Reading parameters from the server");
 
-        if (_parameters_read)
-            return 0;
-
         nlohmann::json parameters = helpers::commons::getParameter("robot");
         if (parameters.empty())
-            return 1;
+            return ReturnCode::FAILURE;
 
         const std::string working_side = parameters["working_side"];
         _robot_info = helpers::commons::getRobotInfo(working_side);
@@ -47,47 +87,54 @@ namespace generate_trajectory
         RCLCPP_INFO_STREAM(get_logger(), "Trajectories generated for controller working with " << controller_frequency << " Hz");
         _time_step = 1.0 / controller_frequency;
 
-        _parameters_read = true;
         RCLCPP_INFO(get_logger(), "Parameters read successfully...");
-        return 0;
+        return ReturnCode::SUCCESS;
     }
 
-    rclcpp_action::GoalResponse GenerateTrajectory::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const GenerateTraj::Goal> /*goal*/)
+    rclcpp_action::GoalResponse GenerateTrajectory::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const GenerateTrajectoryAction::Goal> /*goal*/)
     {
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     }
 
-    rclcpp_action::CancelResponse GenerateTrajectory::_handleCancel(const std::shared_ptr<GoalHandleGenerateTraj> /*goal_handle*/)
+    rclcpp_action::CancelResponse GenerateTrajectory::_handleCancel(const std::shared_ptr<GoalHandleGenerateTrajectory> /*goal_handle*/)
     {
-        RCLCPP_INFO(this->get_logger(), "Goal canceled");
+        RCLCPP_INFO(get_logger(), "Goal canceled");
         return rclcpp_action::CancelResponse::ACCEPT;
     }
 
-    void GenerateTrajectory::_handleAccepted(const std::shared_ptr<GoalHandleGenerateTraj> goal_handle)
+    void GenerateTrajectory::_handleAccepted(const std::shared_ptr<GoalHandleGenerateTrajectory> goal_handle)
     {
-        RCLCPP_INFO(this->get_logger(), "Goal accepted");
-        _execute(goal_handle);
+        RCLCPP_INFO(get_logger(), "Goal accepted");
+        std::thread(std::bind(&GenerateTrajectory::_execute, this, std::placeholders::_1), goal_handle).detach();
     }
 
-    void GenerateTrajectory::_execute(const std::shared_ptr<GoalHandleGenerateTraj> goal_handle)
+    void GenerateTrajectory::_execute(const std::shared_ptr<GoalHandleGenerateTrajectory> goal_handle)
     {
-        auto result = std::make_shared<GenerateTraj::Result>();
+        auto result = std::make_shared<GenerateTrajectoryAction::Result>();
 
-        if (_getParametersFromServer())
+        // Save current state of joints to prevent data races
+        GeneratedPath::SharedPtr current_generated_path;
         {
-            RCLCPP_WARN(get_logger(), "Error occured when reading parameters from server. Aborting...");
-            goal_handle->abort(result);
-            return;
+            std::lock_guard<std::mutex> lg(_current_generated_path_mtx);
+            if (!_current_generated_path)
+            {
+                RCLCPP_ERROR(get_logger(), "There is no generated path data coming to module. Aborting...");
+                _trajectory_pub->publish(trajectory_msgs::msg::JointTrajectory());
+                goal_handle->abort(result);
+                return;
+            }
+            current_generated_path = std::make_shared<GeneratedPath>(*_current_generated_path);
+            _current_generated_path.reset();
         }
 
-        if (!_path_data || _path_data->path_segments.size() == 0)
+        if (current_generated_path->path_segments.size() == 0)
         {
             RCLCPP_WARN(get_logger(), "Empty generated path message. Aborting...");
             goal_handle->abort(result);
             return;
         }
 
-        auto generated_trajectory = _generateTrajectoryFromPath(_path_data);
+        auto generated_trajectory = _generateTrajectoryFromPath(current_generated_path);
         if (!generated_trajectory)
         {
             RCLCPP_WARN(get_logger(), "Error occured when generating trajectory. Aborting...");
@@ -107,12 +154,11 @@ namespace generate_trajectory
         //     RCLCPP_INFO_STREAM(get_logger(), "i: " << std::setw(5) << i << ": " << std::setw(10) << ts << ", diff: " << std::setw(10) << diff);
         // }
 
-        _pub_trajectory->publish(std::move(generated_trajectory));
-
+        _trajectory_pub->publish(std::move(generated_trajectory));
         if (rclcpp::ok())
         {
             goal_handle->succeed(result);
-            RCLCPP_INFO(this->get_logger(), "Goal succeeded");
+            RCLCPP_INFO(get_logger(), "Goal succeeded");
         }
     }
 
@@ -127,7 +173,8 @@ namespace generate_trajectory
 
             // Offset time_from_start
             std::for_each(trajectory.points.begin(), trajectory.points.end(),
-                          [&time_from_start_offset](trajectory_msgs::msg::JointTrajectoryPoint &tp) mutable {
+                          [&time_from_start_offset](trajectory_msgs::msg::JointTrajectoryPoint &tp) mutable
+                          {
                               auto time_from_start_sec = static_cast<double>(tp.time_from_start.sec) + tp.time_from_start.nanosec / 1e9;
                               time_from_start_sec += time_from_start_offset;
                               tp.time_from_start = rclcpp::Duration::from_seconds(time_from_start_sec);
@@ -171,7 +218,7 @@ namespace generate_trajectory
             }
             else
             {
-                RCLCPP_INFO(this->get_logger(), "Trajectory generation failed.");
+                RCLCPP_INFO(get_logger(), "Trajectory generation failed.");
                 return 1;
             }
         }
@@ -235,11 +282,8 @@ namespace generate_trajectory
             }
             trajectory_point.time_from_start = rclcpp::Duration::from_seconds(time);
             out_trajectory.points.push_back(trajectory_point);
-
             time += _time_step;
         }
-        // trajectory_data.header.stamp = this->now();
-        // _pub_trajectory->publish(trajectory_data);
     }
 }
 
