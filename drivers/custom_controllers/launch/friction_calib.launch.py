@@ -11,7 +11,7 @@ from launch_ros.actions import Node
 
 def launch_setup(context, *args, **kwargs):
 
-    
+    config_path=os.path.join(os.path.split(os.path.abspath(os.pardir))[0],"config")
 
     pkg_share = FindPackageShare('custom_controllers').find('custom_controllers')
     config = os.path.join(pkg_share,'config')
