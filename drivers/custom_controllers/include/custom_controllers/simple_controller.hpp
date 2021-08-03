@@ -58,7 +58,7 @@ private:
     helpers::Watchdog::SharedPtr _watchdog;
 
     //TODO:
-    const double _trajectory_rate = 500;
+    const double _trajectory_rate = 250;
 
     //parameters
     int _joints_number;
@@ -77,7 +77,7 @@ private:
 
     double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _error, _c_friction_comp;
     int _trajectory_index;
-    int _torque_sign, _vel_sign, _time, _remaining_time;
+    int _torque_sign, _vel_sign, _time, _remaining_time, _acc_sign;
     int _controller_state;
 
     const int _avg_samples = 50;

@@ -136,14 +136,15 @@ double SimpleController::compensateFriction(double vel, double temp, int jnt_idx
     // std::cout << v << " " << t << std::endl;
     std::cout << _friction_chart[jnt_idx][v][t].vel << std::string("\t") << _friction_chart[jnt_idx][v][t].temp << std::string("\t") << _friction_chart[jnt_idx][v][t].tq << std::endl;
 
-    if (std::abs(_avg_vel[jnt_idx]) > 0.01){
-        _frick_acc[jnt_idx]*=0.2;
+
+    if (std::abs(_avg_vel[jnt_idx]) > 0.01 || _acc_sign!=_vel_sign){
+        _frick_acc[jnt_idx]=0;
         
     }
     else
     {
 
-        _frick_acc[jnt_idx]+=_vel_sign;
+        _frick_acc[jnt_idx]+=(_vel_sign*0.5);
     }
     return _friction_chart[jnt_idx][v][t].tq + _frick_acc[jnt_idx];
     // //linear interpolation
@@ -614,8 +615,9 @@ void SimpleController::init()
             //RCLCPP_INFO_STREAM(node_->get_logger(), "tau: "<<tau_[jnt_idx]);
 
             //set_torque_val=set_torque_pid_val+set_torque_ff_val;
-            _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
+            
             _vel_sign = ((_trajectory.points[_trajectory_index].velocities[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].velocities[jnt_idx] < 0));
+            _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
 
             if (abs(_error) > _error_margin)
             {
@@ -629,12 +631,19 @@ void SimpleController::init()
             // _set_torque_val += _c_friction_comp;
 
             _set_torque_val += compensateFriction(_trajectory.points[_trajectory_index].velocities[jnt_idx], 30, jnt_idx);
+            _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
 
             //limit torque
             if (model.effortLimit[jnt_idx] != 0)
             {
                 if (_set_torque_val * _torque_sign > model.effortLimit[jnt_idx])
                     _set_torque_val = model.effortLimit[jnt_idx] * _torque_sign;
+            }
+            
+            // TODO: min tq
+            if(std::abs(_trajectory.points[_trajectory_index].velocities[jnt_idx])>0.01){
+                if(std::abs(_set_torque_val)<6)
+                    _set_torque_val = 6 * _torque_sign;
             }
 
             if (_controller_state != 1)

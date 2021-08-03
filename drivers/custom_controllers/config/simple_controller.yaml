@@ -17,27 +17,27 @@
 
     FFv_gain_0: 0.0
     FFa_gain_0: 0.
-    Kd_gain_0: 0.0
-    Ki_gain_0: 100.0
-    Kp_gain_0: 200.0
+    Kd_gain_0: 20.0
+    Ki_gain_0: 80.0
+    Kp_gain_0: 160.0
     Coulomb_friction_0: 0.
     i_clamp_h_0: 40.
     i_clamp_l_0: -40.
 
     FFv_gain_1: 0.
     FFa_gain_1: 0.
-    Kd_gain_1: 0.0
-    Ki_gain_1: 100.0
-    Kp_gain_1: 200.0
+    Kd_gain_1: 20.0
+    Ki_gain_1: 80.0
+    Kp_gain_1: 160.0
     Coulomb_friction_1: 0.0
     i_clamp_h_2: 40.
     i_clamp_l_2: -40.
 
     FFv_gain_2: 0.
     FFa_gain_2: 0.
-    Kd_gain_2: 0.0
-    Ki_gain_2: 100.0
-    Kp_gain_2: 200.0
+    Kd_gain_2: 20.0
+    Ki_gain_2: 80.0
+    Kp_gain_2: 160.0
     Coulomb_friction_2: 0.
     i_clamp_h_2: 40.
     i_clamp_l_2: -40.
