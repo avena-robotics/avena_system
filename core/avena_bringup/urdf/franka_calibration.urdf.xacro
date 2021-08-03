@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="franka">
+  <xacro:include filename="$(find avena_bringup)/urdf/franka_arm.xacro"/>
+  <xacro:include filename="$(find avena_bringup)/urdf/calibration_mat.xacro"/>
+
+  <xacro:arg name="side" default="right" />
+  <xacro:arg name="description_pkg" default="avena_bringup" />
+
+  <xacro:franka_arm arm_id="$(arg side)_franka" description_pkg="$(arg description_pkg)" safety_distance="0.03"/>
+
+  <!-- Calibration mat offsets -->
+  <xacro:property name="grid_size" value="0.04025" />
+  <xacro:property name="x_axis_offset" value="0.02306" />
+  <xacro:property name="y_axis_offset" value="${-1.5 * grid_size}" />
+  <xacro:property name="z_axis_offset" value="${grid_size}" />
+  <xacro:property name="x_axis_rot" value="${-pi/2}" />
+  <xacro:property name="y_axis_rot" value="0" />
+  <xacro:property name="z_axis_rot" value="${pi/2}" />
+
+  <xacro:calibration_mat arm_id="$(arg side)_franka" 
+                         connected_to="$(arg side)_franka_gripper_connection" 
+                         grid_size="${grid_size}" 
+                         xyz="${x_axis_offset} ${y_axis_offset} ${z_axis_offset}" 
+                         rpy="${x_axis_rot} ${y_axis_rot} ${z_axis_rot}" 
+                         safety_distance="0.03"/>
+</robot>

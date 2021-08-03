@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="calibration_mat">
+  <!-- safety_distance: Minimum safety distance in [m] by which the collision volumes are expanded and which is enforced during robot motions -->
+  <xacro:macro name="calibration_mat" 
+               params="connected_to:='' grid_size:='1' description_pkg:='avena_bringup' arm_id:='franka' ns:='' rpy:='0 0 0' xyz:='0 0 0' safety_distance:=0">
+    
+    <!-- ********************************************* -->
+    <!-- Parameters -->
+    <xacro:property name="sqrt_2" value="1.414213562" />
+
+    <!-- Box dimensions -->
+    <xacro:property name="x_size" value="0.21" />
+    <xacro:property name="y_size" value="0.17" />
+    <xacro:property name="z_size" value="0.02306" />
+    <xacro:property name="z_offset" value="0.01" />
+    <!-- ********************************************* -->
+
+    <xacro:unless value="${connected_to == ''}">
+      <joint name="${arm_id}_hand_joint" type="fixed">
+        <parent link="${connected_to}"/>
+        <child link="${arm_id}_calibration_mat"/>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+      </joint>
+    </xacro:unless>
+    
+    <link name="${arm_id}_calibration_mat">
+      <visual>
+        <origin xyz="${1.5 * grid_size} ${grid_size} ${z_size/2-z_offset/2}" rpy="0 0 0" />
+        <geometry>
+          <box size="${x_size} ${y_size} ${z_size-z_offset}" />
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.5 0.5 0.5 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="${1.5 * grid_size} ${grid_size} ${z_size/2-z_offset/2}" rpy="0 0 0" />
+        <geometry>
+          <box size="${x_size} ${y_size} ${z_size-z_offset}" />
+        </geometry>
+      </collision>
+    </link>
+
+  </xacro:macro>
+</robot>

@@ -32,16 +32,19 @@ namespace helpers
      */
     struct GripperInfo
     {
-      // TODO:
+      std::vector<std::string> link_names;
     };
 
     /**
-     * @brief Joint bounds
+     * @brief Joint limits
      */
-    struct Bounds
+    struct Limits
     {
-      float bounds_low;
-      float bounds_high;
+      Limits() = default;
+      Limits(const double &lower, const double &upper)
+          : lower(lower), upper(upper) {}
+      double lower;
+      double upper;
     };
 
     /**
@@ -53,10 +56,13 @@ namespace helpers
       std::string robot_prefix;
       std::string connection;
       std::vector<std::string> joint_names;
+      std::vector<std::string> fixed_joint_names;
       std::vector<std::string> link_names;
       size_t nr_joints;
+      size_t nr_fixed_joints;
       size_t nr_links;
-      std::vector<Bounds> bounds;
+      std::vector<Limits> limits;
+      std::vector<Limits> soft_limits;
 
       GripperInfo gripper_info;
     };

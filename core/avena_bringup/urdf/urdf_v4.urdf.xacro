@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="avena_urdf">
+ 
+ <link name="left_base_link">
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/base_link.stl" />
+      </geometry>
+      
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/base_link.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="left_link_1">
+   
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_1.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_1.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_joint_1"
+    type="revolute">
+    <origin
+      xyz="0 0 0.047"
+      rpy="3.1416 0 1.5708" />
+    <parent
+      link="left_base_link" />
+    <child
+      link="left_link_1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-3.05"
+      upper="3.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_link_2">
+   
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_2.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_2.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_joint_2"
+    type="revolute">
+    <origin
+      xyz="0 0.048 -0.0679"
+      rpy="-1.5708 0 0" />
+    <parent
+      link="left_link_1" />
+    <child
+      link="left_link_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_link_3">
+    
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_3.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_3.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_joint_3"
+    type="revolute">
+    <origin
+      xyz="0 0.452 0"
+      rpy="0 0 0" />
+    <parent
+      link="left_link_2" />
+    <child
+      link="left_link_3" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.9"
+      upper="2.9"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_link_4">
+    
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_4.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_4.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_joint_4"
+    type="revolute">
+    <origin
+      xyz="0 0.447 0.0006"
+      rpy="1.5708 0 0" />
+    <parent
+      link="left_link_3" />
+    <child
+      link="left_link_4" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-3.05"
+      upper="3.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_link_5">
+    
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_5.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_5.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_joint_5"
+    type="revolute">
+    <origin
+      xyz="0 0.055 -0.0567"
+      rpy="1.5708 0 3.1416" />
+    <parent
+      link="left_link_4" />
+    <child
+      link="left_link_5" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-3.05"
+      upper="3.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_link_6">
+    
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_6.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://avena_bringup/urdf/meshes/Link_6.stl" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_joint_6"
+    type="revolute">
+    <origin
+      xyz="0 -0.055 0.0567"
+      rpy="-1.5708 0 0.785" />
+    <parent
+      link="left_link_5" />
+    <child
+      link="left_link_6" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-3.05"
+      upper="3.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+    <link name="franka_gripper">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="0.03"  length="0.01" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0.0424 0.0424 -0.02" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="0.03"  />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0.0424 0.0424 -0.03" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="0.03"  />
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="left_joint_7" type="fixed">
+      <origin rpy="-0.985 -1.57 2.55" xyz="0 -0.027 0"/>
+      <parent link="left_link_6"/>
+      <child link="franka_gripper"/>
+    </joint>
+
+</robot>

@@ -1,0 +1,4 @@
+std_msgs/Float64 time_stamp
+custom_interfaces/Detections data
+---
+std_msgs/Bool result

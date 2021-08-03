@@ -13,6 +13,11 @@ namespace avena_view
 
     void AvenaView::initPlugin(qt_gui_cpp::PluginContext &context)
     {
+        
+        
+        
+        // signal(SIGINT, std::bind(&AvenaView::sigIntHandle, this));
+
         // QApplication::setAttribute(Qt::AA_EnableHighDpiScaling); // DPI support
         // QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
         widget_ = new QWidget();
@@ -24,25 +29,30 @@ namespace avena_view
         }
         context.addWidget(widget_);
 
+        pick_place_launch_file_ = std::make_shared<LaunchFile>("pick_place.pid");
+        
         qRegisterMetaType<custom_interfaces::msg::GuiBtMessage::SharedPtr>("custom_interfaces::msg::GuiBtMessage::SharedPtr");
         qRegisterMetaType<custom_interfaces::msg::Heartbeat::SharedPtr>("custom_interfaces::msg::Heartbeat::SharedPtr");
         qRegisterMetaType<std_msgs::msg::String::SharedPtr>("std_msgs::msg::String::SharedPtr");
         qRegisterMetaType<rcl_interfaces::msg::Log::SharedPtr>("rcl_interfaces::msg::Log::SharedPtr");
-
+        
         // fillNodesList();
 
         arm_control_graphics_scene_ = std::make_shared<QGraphicsScene>(widget_);
         pick_place_graphics_scene_ = std::make_shared<QGraphicsScene>(widget_);
         ui_.statusIndicatorArmControl->setScene(arm_control_graphics_scene_.get());
         ui_.statusIndicator->setScene(pick_place_graphics_scene_.get());
+        
+        // launch_file_process_ = new QProcess();
+        calibrate_launch_file_process_ = new QProcess();
 
-        launch_file_process_ = new QProcess();
+        calibrate_launch_file_pid_ = 0;
 
         refreshing_node_list_timer_ = std::make_shared<QTimer>(this);
         refreshing_on_ = true;
         connect(refreshing_node_list_timer_.get(), SIGNAL(timeout()), this, SLOT(refreshNodeList()));
         refreshing_node_list_timer_->start(GUI_REFRESH_DELAY);
-
+        
         connect(ui_.nodeListTable, SIGNAL(cellClicked(int, int)), this, SLOT(handleTableCellClick(int, int)));
 
         connect(ui_.startButtonArmControl, SIGNAL(clicked(bool)), this, SLOT(startArmController()));
@@ -89,13 +99,14 @@ namespace avena_view
         user_answer_pub_ = node_->create_publisher<custom_interfaces::msg::GuiBtMessage>("/user_answer", 10);
         arm_command_client_ = node_->create_client<custom_interfaces::srv::ControlCommand>("arm_controller/commands");
         pick_place_action_client_ = rclcpp_action::create_client<BTPickAndPlaceAction>(node_, PICK_PLACE_ACTION_SERVER_NAME);
+        calibrate_action_client_ = rclcpp_action::create_client<custom_interfaces::action::SimpleAction>(node_, CALIBRATE_ACTION_SERVER_NAME);
 
         danger_tool_in_hand_pub_ = node_->create_publisher<std_msgs::msg::Bool>("/danger_tool_in_hand", 10);
         set_background_pub_ = node_->create_publisher<std_msgs::msg::Bool>("/rgbdiff_set_background", 10);
         scene_change_treshold_pub_ = node_->create_publisher<std_msgs::msg::Int32>("/rgbdiff_scene_change_threshold", 10);
         pixel_treshold_pub_ = node_->create_publisher<std_msgs::msg::Int32>("/rgbdiff_pixel_threshold_threshold", 10);
 
-        pid_file_name_ = ament_index_cpp::get_package_share_directory("avena_view") + "/" + PID_FILE_NAME;
+        // pid_file_name_ = ament_index_cpp::get_package_share_directory("avena_view") + "/" + PID_FILE_NAME;
 
         setUpDangerToolTimer();
         connect(ui_.dangerToolSwitch, SIGNAL(clicked(bool)), this, SLOT(changeDangerToolStatus()));
@@ -103,7 +114,7 @@ namespace avena_view
         setUpPickPlaceComboBoxes();
 
         setUpIdBasedOnSavedPid();
-
+        
         connect(this, SIGNAL(questionRecived(custom_interfaces::msg::GuiBtMessage::SharedPtr)), this, SLOT(showQuestionMessageBox(custom_interfaces::msg::GuiBtMessage::SharedPtr)));
         connect(this, SIGNAL(securityWarningRecived()), this, SLOT(showSecurityRgbWarning()));
 
@@ -115,41 +126,125 @@ namespace avena_view
         connect(this, SIGNAL(securityTriggerChanged(bool)), this, SLOT(refreshSecurityTriggerStatus(bool)));
         connect(this, SIGNAL(securityPauseChanged(bool)), this, SLOT(refreshSecurityPasueStatus(bool)));
 
-        const bool connected = connect(this, SIGNAL(nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr)), this, SLOT(refreshNodeList(custom_interfaces::msg::Heartbeat::SharedPtr)));
-        qDebug() << "Connection established?" << connected;
+        connect(this, SIGNAL(nodeListChanged(custom_interfaces::msg::Heartbeat::SharedPtr)), this, SLOT(refreshNodeList(custom_interfaces::msg::Heartbeat::SharedPtr)));
 
         connect(this, SIGNAL(logsAppeared(std_msgs::msg::String::SharedPtr)), this, SLOT(refreshLogConsole(std_msgs::msg::String::SharedPtr)));
         connect(this, SIGNAL(rosOutAppeared(rcl_interfaces::msg::Log::SharedPtr)), this, SLOT(refreshRosoutConsole(rcl_interfaces::msg::Log::SharedPtr)));
 
+        
+
         previus_gui_warning_msg_ = false;
         setUpGuiWarningUi();
         connect(this, SIGNAL(securityWarningClosed()), this, SLOT(hideSecurityRgbWarning()));
+
+        detectron_runner_ = std::make_shared<DetectronRunner>(&ui_);
+
+        connect(ui_.calibrateCancelButton, SIGNAL(clicked(bool)), this, SLOT(stopCalibrate()));
+
+        cameras_launch_file_ = std::make_shared<LaunchFile>("cameras.pid");
+        connect(ui_.startCamerasButton, SIGNAL(clicked(bool)), this, SLOT(startCameras()));
+        connect(ui_.stopCamerasButton, SIGNAL(clicked(bool)), this, SLOT(stopCameras()));
+        connect(ui_.res1080Radio, SIGNAL(clicked()), this, SLOT(switchResolutions()));
+        connect(ui_.res720Radio, SIGNAL(clicked()), this, SLOT(switchResolutions()));
+        ui_.res720Radio->setChecked(false);
+        ui_.res1080Radio->setChecked(true);
+        
+    }
+
+    void AvenaView::switchResolutions()
+    {
+        if (ui_.res720Radio->isChecked())
+        {
+            ui_.res1080Radio->setChecked(false);
+            ui_.res720Radio->setChecked(true);
+        }
+        else
+        {
+            ui_.res720Radio->setChecked(false);
+            ui_.res1080Radio->setChecked(true);
+        }
+
+        ui_.logConsoleCameras->append(
+            (ui_.res720Radio->isChecked()) ? "720p ON" : "720p OFF");
+
+        ui_.logConsoleCameras->append(
+            (ui_.res1080Radio->isChecked()) ? "1080p ON" : "1080p OFF");
+    }
+
+    void AvenaView::startCameras()
+    {
+        bool full_hd = ui_.res1080Radio->isChecked();
+        ui_.logConsoleCameras->append((full_hd) ? "1080p mode" : "720p mode");
+        ui_.startCamerasButton->setEnabled(false);
+        ui_.stopCamerasButton->setEnabled(false);
+
+        if (full_hd)
+        {
+            cameras_launch_file_->setArguments({"launch",
+                                                "realsense2_camera",
+                                                "rs_multi_camera_launch.py",
+                                                "rgb_width1:=1920",
+                                                "rgb_height1:=1080",
+                                                "rgb_width2:=1920",
+                                                "rgb_height2:=1080"});
+        }
+        else
+        {
+            cameras_launch_file_->setArguments({"launch",
+                                                "realsense2_camera",
+                                                "rs_multi_camera_launch.py",
+                                                "rgb_width1:=1280",
+                                                "rgb_height1:=720",
+                                                "rgb_width2:=1280",
+                                                "rgb_height2:=720"});
+        }
+        auto post_cameras_start = [this]()
+        {
+            ui_.startCamerasButton->setEnabled(false);
+            ui_.stopCamerasButton->setEnabled(true);
+            ui_.logConsoleCameras->append("Started cameras");
+        };
+        cameras_launch_file_->run(post_cameras_start, 5000);
+    }
+
+    void AvenaView::stopCameras()
+    {
+        ui_.logConsoleCameras->append("Stoping cameras");
+        cameras_launch_file_->terminate();
+        ui_.startCamerasButton->setEnabled(true);
+        ui_.stopCamerasButton->setEnabled(false);
     }
 
     void AvenaView::setUpIdBasedOnSavedPid()
     {
-        std::ifstream pid_file_in(pid_file_name_);
-        if (!pid_file_in)
-        {
-            setUpStoppedPickPlaceUi();
-            return;
-        }
+        // std::ifstream pid_file_in(pid_file_name_);
+        // if (!pid_file_in)
+        // {
+        //     setUpStoppedPickPlaceUi();
+        //     return;
+        // }
 
-        int saved_pid = 0;
-        pid_file_in >> saved_pid;
+        // int saved_pid = 0;
+        // pid_file_in >> saved_pid;
 
-        if (saved_pid != 0)
-        {
-            writeLog("Restoring started pick and place session", ui_.logConsole);
-            launch_file_pid_ = saved_pid;
+        // if (saved_pid != 0)
+        // {
+        //     writeLog("Restoring started pick and place session", ui_.logConsole);
+        //     launch_file_pid_ = saved_pid;
+        //     setUpStartedPickPlaceUi();
+        // }
+        // pid_file_in.close();
+
+        // std::ofstream pid_file_out;
+        // pid_file_out.open(pid_file_name_, std::ofstream::out | std::ofstream::trunc);
+
+        pick_place_launch_file_->restoreSessionFromFile();
+        if (pick_place_launch_file_->isRunning())
             setUpStartedPickPlaceUi();
-        }
-        pid_file_in.close();
+        else
+            setUpStoppedPickPlaceUi();
 
-        std::ofstream pid_file_out;
-        pid_file_out.open(pid_file_name_, std::ofstream::out | std::ofstream::trunc);
-
-        pid_file_out.close();
+        // pid_file_out.close();
     }
 
     void AvenaView::changeDangerToolStatus()
@@ -186,12 +281,13 @@ namespace avena_view
     {
         if (pick_place_status_ == Status::RUNNING)
             terminateLaunchFile();
+
+        if (cameras_launch_file_->isRunning())
+            cameras_launch_file_->terminate();
+
+        stopCalibrate();
         refreshing_on_ = false;
         refreshing_node_list_timer_->stop();
-        // delete refreshing_node_list_timer_;
-        // delete arm_control_graphics_scene_;
-        // delete pick_place_graphics_scene_;
-        // delete launch_file_process_;
     }
 
     void AvenaView::saveSettings(qt_gui_cpp::Settings &plugin_settings, qt_gui_cpp::Settings &instance_settings) const {}
@@ -202,11 +298,16 @@ namespace avena_view
 
 #pragma region UTILS
 
+    void AvenaView::sigIntHandle(int signum)
+    {
+        shutdownPlugin();
+        exit(signum);
+    }
+
     void AvenaView::setUpGuiWarningUi()
     {
         security_rgb_warning_ = std::make_shared<QMessageBox>();
         security_rgb_warning_->setText("Security Area triggered. Waiting...");
-        security_rgb_warning_->setStandardButtons(nullptr);
     }
 
     void AvenaView::writeTerminalAndUiLog(const char *msg, Status status, QTextBrowser *console)
@@ -247,29 +348,6 @@ namespace avena_view
             return file["is_container"].as<bool>();
         }
         return false;
-    }
-
-    std::string exec(const char *cmd)
-    {
-        char buffer[128];
-        std::string result = "";
-        FILE *pipe = popen(cmd, "r");
-        if (!pipe)
-            throw std::runtime_error("popen() failed!");
-        try
-        {
-            while (fgets(buffer, sizeof buffer, pipe) != NULL)
-            {
-                result += buffer;
-            }
-        }
-        catch (...)
-        {
-            pclose(pipe);
-            throw;
-        }
-        pclose(pipe);
-        return result;
     }
 
     std::chrono::nanoseconds AvenaView::rosTime2Chrono(builtin_interfaces::msg::Time &stamp)
@@ -486,99 +564,81 @@ namespace avena_view
 
     void AvenaView::runLaunchFile()
     {
-        RCLCPP_INFO(node_->get_logger(), "Starting system");
-        QString program = "ros2";
+        // RCLCPP_INFO(node_->get_logger(), "Starting system");
+        // QString program = "ros2";
 
-        launch_file_process_->setArguments({"launch", "avena_bringup", START_LAUNCH_FILE});
-        launch_file_process_->setProgram(program);
-        launch_file_pid_ = 0;
+        // launch_file_process_->setArguments({"launch", "avena_bringup", START_LAUNCH_FILE});
+        // launch_file_process_->setProgram(program);
+        // launch_file_pid_ = 0;
 
-        std::ofstream pid_file(pid_file_name_);
+        // std::ofstream pid_file(pid_file_name_);
 
-        if (!pid_file)
+        // if (!pid_file)
+        // {
+        //     throw std::runtime_error(std::string("Cannot create pid file. Exiting"));
+        // }
+
+        // if (launch_file_process_->startDetached(&launch_file_pid_))
+        // {
+        //     this->writeTerminalAndUiLog("Starting pick place system", Status::STARTING, ui_.logConsole);
+        //     pid_file << launch_file_pid_;
+        //     auto post_start_action = [this]()
+        //     {
+        //         this->startNodes();
+        //         this->writeTerminalAndUiLog("Sucessfully started pick place system", Status::RUNNING, ui_.logConsole);
+        //         this->setUpStartedPickPlaceUi();
+        //         // QTimer::singleShot(100, this, [this]()
+        //         //                    { sendPickPlaceGoal("start"); });
+        //     };
+        //     QTimer::singleShot(3000, this, post_start_action);
+        // }
+        // else
+        // {
+        //     writeTerminalAndUiLog("Error while starting pick place system", Status::ERROR, ui_.logConsole);
+        // }
+
+        // pid_file.close();
+
+        pick_place_launch_file_->setArguments(
+            {"launch",
+             "avena_bringup",
+             START_LAUNCH_FILE});
+        
+        auto post_start_action = [this]()
         {
-            throw std::runtime_error(std::string("Cannot create pid file. Exiting"));
-        }
+            this->startNodes();
+            this->writeTerminalAndUiLog("Sucessfully started pick place system", Status::RUNNING, ui_.logConsole);
+            this->setUpStartedPickPlaceUi();
+        };
+        this->writeTerminalAndUiLog("Starting pick place system", Status::STARTING, ui_.logConsole);
 
-        if (launch_file_process_->startDetached(&launch_file_pid_))
-        {
-            this->writeTerminalAndUiLog("Starting pick place system", Status::STARTING, ui_.logConsole);
-            pid_file << launch_file_pid_;
-            auto post_start_action = [this]()
-            {
-                this->startNodes();
-                this->writeTerminalAndUiLog("Sucessfully started pick place system", Status::RUNNING, ui_.logConsole);
-                this->setUpStartedPickPlaceUi();
-                // QTimer::singleShot(100, this, [this]()
-                //                    { sendPickPlaceGoal("start"); });
-            };
-            QTimer::singleShot(3000, this, post_start_action);
-        }
-        else
-        {
-            writeTerminalAndUiLog("Error while starting pick place system", Status::ERROR, ui_.logConsole);
-        }
-
-        pid_file.close();
-
-        // writeLog("PID=" + QString::number(launch_file_pid_), ui_.logConsole);
+        pick_place_launch_file_->run(post_start_action, 3000);
     }
 
     void AvenaView::terminateLaunchFile()
     {
-        RCLCPP_INFO(node_->get_logger(), "Stoping system");
+        // RCLCPP_INFO(node_->get_logger(), "Stoping system");
 
-        if (launch_file_pid_ > 0)
-        {
-            if (killAllChildProcessPids())
-            {
-                writeTerminalAndUiLog("Sucessfully stopped pick place system", Status::STOPPED, ui_.logConsole);
-                fs::remove(pid_file_name_);
-                setUpStoppedPickPlaceUi();
-            }
-            else
-            {
-                writeTerminalAndUiLog("Error while stopping pick place system", Status::ERROR, ui_.logConsole);
-            }
-        }
-        else
-        {
-            writeTerminalAndUiLog("Nothing to stop", Status::ERROR, ui_.logConsole);
-        }
-    }
-
-    bool AvenaView::killAllChildProcessPids()
-    {
-        std::string pids = exec("ps -e -o ppid= -o pid=");
-        std::stringstream ss;
-        ss << pids;
-
-        qint64 pid, ppid;
-        std::map<qint64, std::vector<qint64>> pids_map;
-        std::map<qint64, std::vector<qint64>>::iterator it;
-        while (ss >> ppid >> pid)
-        {
-            it = pids_map.lower_bound(ppid);
-            if (it != pids_map.end())
-                pids_map[ppid].push_back(pid);
-            else
-                pids_map.insert({ppid, {pid}});
-        }
-
-        std::map<int, std::vector<qint64>> pids_layers;
-        int layer_id = 0;
-        pids_layers.insert({layer_id++, {launch_file_pid_}});
-        pids_layers.insert({layer_id, pids_map[launch_file_pid_]});
-        bool result = true;
-        for (int i = pids_layers.size() - 1; i >= 0; i--)
-        {
-            for (int j = 0; j < pids_layers[i].size(); j++)
-            {
-                if (kill(pids_layers[i][j], SIGINT) != 0)
-                    result = false;
-            }
-        }
-        return result;
+        // if (launch_file_pid_ > 0)
+        // {
+        //     //TODO: change returend value type to int with exit code
+        //     if (killAllChildProcessPids(launch_file_pid_))
+        //     {
+        //         writeTerminalAndUiLog("Sucessfully stopped pick place system", Status::STOPPED, ui_.logConsole);
+        //         fs::remove(pid_file_name_);
+        //         setUpStoppedPickPlaceUi();
+        //     }
+        //     else
+        //     {
+        //         writeTerminalAndUiLog("Error while stopping pick place system", Status::ERROR, ui_.logConsole);
+        //     }
+        // }
+        // else
+        // {
+        //     writeTerminalAndUiLog("Nothing to stop", Status::ERROR, ui_.logConsole);
+        // }
+        pick_place_launch_file_->terminate();
+        setUpStoppedPickPlaceUi();
     }
 
 #pragma endregion
@@ -603,8 +663,6 @@ namespace avena_view
             setIndicator("WAITING", Qt::yellow, arm_control_graphics_scene_.get(), ui_.statusLabelArmControl);
             RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
             writeLog("service not available, waiting again...", ui_.logConsoleArmControl);
-
-            // widget_->update();
         }
 
         if (waiting_counter < 3)
@@ -790,9 +848,9 @@ namespace avena_view
     {
         if (msg->data && !previus_gui_warning_msg_)
             emit securityWarningRecived();
-        else if(!msg->data && previus_gui_warning_msg_)
+        else if (!msg->data && previus_gui_warning_msg_)
             emit securityWarningClosed();
-            
+
         previus_gui_warning_msg_ = msg->data;
     }
 
@@ -882,6 +940,7 @@ namespace avena_view
         ui_.placeTargetCombo->setEnabled(false);
         ui_.executeButton->setEnabled(false);
         pick_place_status_ = Status::STOPPED;
+        setIndicator("STOPPED", Qt::red, pick_place_graphics_scene_.get(), ui_.statusLabel);
     }
 
     void AvenaView::setUpStartedPickPlaceUi()
@@ -984,27 +1043,8 @@ namespace avena_view
 
     void AvenaView::showSecurityRgbWarning()
     {
-        writeLog( "Security RGB Warning" , ui_.logConsole);
+        writeLog("Security RGB Warning", ui_.logConsole);
         security_rgb_warning_->exec();
-
-
-        // auto q_progress = std::make_shared<QProgressDialog>(
-        //     "Securit4y area breached. Waiting 5s.", "Abort", 0, BT_WARNING_DURATION);
-
-        // q_progress->setCancelButton(nullptr);
-
-        // q_progress->setValue(0);
-        // q_progress->show();
-        
-        // for (size_t i = 0; i < BT_WARNING_DURATION; i++)
-        // {
-        //     QCoreApplication::processEvents();
-        //     q_progress->setValue(i);
-        //     std::this_thread::sleep_for(std::chrono::seconds(1));
-        // }
-        
-        
-        // q_progress->setValue(BT_WARNING_DURATION);
     }
 
     void AvenaView::hideSecurityRgbWarning()
@@ -1050,11 +1090,86 @@ namespace avena_view
 
         if (msg_box.clickedButton() == done_btn)
         {
-            //run calibration
+            runCalibrationLaunchFile();
         }
         else if (msg_box.clickedButton() == abort_btn)
         {
-            //cancel calibration
+            stopCalibrate();
+        }
+    }
+
+    void AvenaView::stopCalibrate()
+    {
+        RCLCPP_INFO(node_->get_logger(), "Stoping system");
+
+        if (calibrate_launch_file_pid_ > 0)
+        {
+            //TODO: change returend value type to int with exit code
+            if (killAllChildProcessPids(calibrate_launch_file_pid_))
+            {
+                writeTerminalAndUiLog("Sucessfully stopped calibration", Status::STOPPED, ui_.logConsole);
+            }
+            else
+            {
+                writeTerminalAndUiLog("Error while stopping calibration", Status::ERROR, ui_.logConsole);
+            }
+        }
+        else
+        {
+            writeTerminalAndUiLog("Nothing to stop", Status::ERROR, ui_.logConsole);
+        }
+    }
+
+    void AvenaView::calibrateGoalResponseCallback(std::shared_future<GoalCalibrateAction::SharedPtr> future)
+    {
+    }
+
+    void AvenaView::calibrateFeedbackCallback(
+        GoalCalibrateAction::SharedPtr,
+        const std::shared_ptr<const CalibrateAction::Feedback> feedback)
+    {
+    }
+
+    void AvenaView::calibrateResultCallback(const GoalCalibrateAction::WrappedResult &result)
+    {
+        this->writeLog("Calibration action returned result", ui_.logConsoleCalibrate);
+    }
+
+    // FIXME: refactor this
+    void AvenaView::runCalibrationLaunchFile()
+    {
+        using namespace std::placeholders;
+        RCLCPP_INFO(node_->get_logger(), "Starting system");
+        QString program = "ros2";
+        calibrate_launch_file_process_->setArguments({"launch", "avena_bringup", CALIBRATE_LAUNCH_FILE});
+        calibrate_launch_file_process_->setProgram(program);
+        calibrate_launch_file_pid_ = 0;
+
+        if (calibrate_launch_file_process_->startDetached(&calibrate_launch_file_pid_))
+        {
+            this->writeLog("Starting calibration", ui_.logConsoleCalibrate);
+            auto post_start_action = [this]()
+            {
+                if (!this->calibrate_action_client_->wait_for_action_server(200ms))
+                {
+                    RCLCPP_ERROR(node_->get_logger(), "Action server not available");
+                    rclcpp::shutdown();
+                }
+                auto goal_msg = CalibrateAction::Goal();
+                auto send_goal_options = rclcpp_action::Client<CalibrateAction>::SendGoalOptions();
+                send_goal_options.feedback_callback = std::bind(&AvenaView::calibrateFeedbackCallback, this, _1, _2);
+                send_goal_options.goal_response_callback = std::bind(&AvenaView::calibrateGoalResponseCallback, this, _1);
+                send_goal_options.result_callback = std::bind(&AvenaView::calibrateResultCallback, this, _1);
+
+                this->calibrate_action_client_->async_send_goal(goal_msg, send_goal_options);
+
+                this->writeLog("Sucessfully started calibration", ui_.logConsoleCalibrate);
+            };
+            QTimer::singleShot(3000, this, post_start_action);
+        }
+        else
+        {
+            writeLog("Error while starting calibration", ui_.logConsoleCalibrate);
         }
     }
 
