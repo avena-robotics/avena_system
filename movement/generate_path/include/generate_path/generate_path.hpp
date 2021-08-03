@@ -67,18 +67,20 @@ namespace generate_path
     ReturnCode _shutdown();
     ArmConfiguration _getJointStatesFromTopic(const sensor_msgs::msg::JointState::SharedPtr &joint_states);
     ReturnCode _getParametersFromServer();
-    ReturnCode _validateJointStates(const ArmConfiguration &joint_states, const std::vector<Limits> &joint_limits);
+    ReturnCode _checkJointLimits(const ArmConfiguration &joint_states, const std::vector<Limits> &joint_limits);
     static double _calculateDistanceEndEffectorPosToGoalPos(const Eigen::Affine3d &end_effector_pose, const Eigen::Affine3d &goal_end_effector_pose);
     static double _calculateDistanceEndEffectorOrienToGoalOrien(const Eigen::Affine3d &end_effector_pose, const Eigen::Affine3d &goal_end_effector_pose);
     Eigen::Affine3d _getEndEffectorPose();
     void _convertPathSegmentToTrajectoryMsg(const std::vector<ArmConfiguration> &path, trajectory_msgs::msg::JointTrajectory &path_segment);
-    ArmConfiguration _calculateGoalStateFromEndEffectorPose(const Eigen::Affine3d &end_effector_pose);
+    std::tuple<ArmConfiguration, std::string> _calculateIK(const PathPlanningInput &path_planning_input);
     ReturnCode _readSceneInfoFromPhysicsServer();
     void _updateJointLimits();
     void _setJointStates(const ArmConfiguration &joint_states);
     void _drawCoordinateAxes(const Eigen::Affine3d &pose);
+    ReturnCode _validateConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message);
+    // ReturnCode _
 
-    ArmConfiguration _calculateIKWithKDL(const ArmConfiguration &initial_state, const Eigen::Affine3d &end_effector_pose);
+    // ArmConfiguration _calculateIKWithKDL(const ArmConfiguration &initial_state, const Eigen::Affine3d &end_effector_pose);
 
     // ___Attributes___
     helpers::Watchdog::SharedPtr _watchdog;
@@ -88,13 +90,13 @@ namespace generate_path
     std::mutex _current_joint_states_mtx;
     sensor_msgs::msg::JointState::SharedPtr _current_joint_states;
     helpers::commons::RobotInfo _robot_info;
-
     SceneInfo::SharedPtr _scene_info;
-
-    /**
-     * @brief Inverse kinematic limits are tighter than path planning ones just to be sure than planning does not go out of bounds
-     */
-    std::vector<Limits> _ik_joint_limits;
+    geometry_msgs::msg::TransformStamped _robot_base_tf;
+     
+    // /**
+    //  * @brief Inverse kinematic limits are tighter than path planning ones just to be sure than planning does not go out of bounds
+    //  */
+    // std::vector<Limits> _ik_joint_limits;
 
     /**
      * @brief ID in physics server of table and all static things which are not changing e.g. camera stands, artificial walls for collisions

@@ -9,9 +9,13 @@
 #include <bullet_client/b3RobotSimulatorClientAPI.h>
 #include <helpers_commons/helpers_commons.hpp>
 
+// ___ROS___
+#include <rclcpp/rclcpp.hpp>
 
 namespace generate_path
 {
+  static const rclcpp::Logger LOGGER = rclcpp::get_logger("generate_path");
+
   using ArmConfiguration = std::vector<double>;
   using Path = std::vector<ArmConfiguration>;
   using Limits = helpers::commons::Limits;

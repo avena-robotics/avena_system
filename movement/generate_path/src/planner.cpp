@@ -8,6 +8,7 @@ namespace generate_path
 
     ReturnCode Planner::solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path)
     {
+        helpers::Timer timer(__func__, LOGGER);
         auto space = std::make_shared<ompl::base::RealVectorStateSpace>(path_planning_input.scene_info->joint_handles.size());
 
         // Joints constraints

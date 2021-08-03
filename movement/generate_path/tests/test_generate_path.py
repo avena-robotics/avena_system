@@ -1,4 +1,5 @@
 import json
+import time
 
 import rclpy
 from rclpy.node import Node
@@ -62,12 +63,17 @@ def main(args=None):
         for i, camera_pose in enumerate(camera_poses):
             all_poses_cnt += 1
             node.get_logger().info(f'Pose {i + 1}/{len(camera_poses)}')
+
+            start_time = time.perf_counter()
             if send_single_camera_pose(node, action_client, camera_pose):
                 node.get_logger().info('Goal succeeded')
                 success_cnt += 1
             else:
                 node.get_logger().error('Goal failed')
-            input('Press any key to continue...')
+            elapsed_time_ms = (time.perf_counter() - start_time) * 1000
+            node.get_logger().info(f'Elapsed time: {elapsed_time_ms:.2f} [ms]')
+            # input('Press any key to continue...')
+            time.sleep(0.01)
 
     if success_cnt != all_poses_cnt:
         node.get_logger().error(f'Test for IK failed: {success_cnt}/{all_poses_cnt} succeeded')

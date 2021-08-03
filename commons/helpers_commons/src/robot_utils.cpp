@@ -50,6 +50,8 @@ namespace helpers
             {
                 if (link_info->visual || link_info->visual_array.size() != 0)
                 {
+                    if (!link_info->getParent())
+                        robot_info.base_link_name = link_name;
                     if (link_name.find("gripper") == std::string::npos && link_name.find("link") != std::string::npos)
                         robot_info.link_names.push_back(link_name);
                     else
