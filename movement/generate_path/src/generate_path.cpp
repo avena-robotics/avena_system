@@ -91,10 +91,7 @@ namespace generate_path
 
         // Get transform to base link
         if (auto robot_base_tf = helpers::vision::getTransformStamped("world", _robot_info.base_link_name))
-        {
             _robot_base_tf = *robot_base_tf;
-            RCLCPP_WARN_STREAM(get_logger(), _robot_info.base_link_name << ", " << _robot_base_tf.transform.translation.x << ", " << _robot_base_tf.transform.translation.y << ", " << _robot_base_tf.transform.translation.z);
-        }
         else
         {
             RCLCPP_WARN(get_logger(), "Cannot read transform for robot base");
