@@ -544,7 +544,7 @@ namespace generate_path
         path_segment.joint_names = _robot_info.joint_names;
         for (size_t i = 0; i < path.size(); ++i)
         {
-            path_segment.points[i].positions = std::vector<double>(path[i].begin(), path[i].end());
+            path_segment.points[i].positions = path[i];
         }
     }
 
