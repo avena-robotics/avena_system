@@ -1,5 +1,4 @@
 ---
 float64[] arm_current_positions
 float64[] arm_current_torques
-float64[] arm_current_temperature
 float64[] arm_current_status

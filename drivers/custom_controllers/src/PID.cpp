@@ -17,8 +17,8 @@
         Ki_=Ki;
         Kd_=Kd;
         dt_=dt;
-        i_clamp_low_=i_clamp_low/Ki;
-        i_clamp_high_=i_clamp_high/Ki;
+        i_clamp_low_=i_clamp_low;
+        i_clamp_high_=i_clamp_high;
         i_val_=0;
         prev_error_=0;
     }

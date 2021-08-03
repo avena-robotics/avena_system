@@ -46,7 +46,6 @@ struct CAN_single_response_msg_t
     int joint_id;
     int16_t position;
     int16_t torque;
-    uint8_t temperature;
     int16_t joint_status;
     int16_t error_code;
 };

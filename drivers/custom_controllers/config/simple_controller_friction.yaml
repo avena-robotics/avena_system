@@ -6,12 +6,12 @@
 
     Fv_gain_0: 0.
     FFa_gain_0: 0.
-    Kd_gain_0: 0.
-    Ki_gain_0: 2.
-    Kp_gain_0: 0.0
-    Coulomb_friction_0: 10.
-    i_clamp_h_0: 15.
-    i_clamp_l_0: -15.
+    Kd_gain_0: 0.1
+    Ki_gain_0: 5.
+    Kp_gain_0: 20.0
+    Coulomb_friction_0: 0.
+    i_clamp_h_0: 10.
+    i_clamp_l_0: -10.
 
     Fv_gain_1: 0.
     FFa_gain_1: 0.
