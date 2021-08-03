@@ -14,7 +14,8 @@ def generate_launch_description():
                 ComposableNode(
                     package='generate_path',
                     plugin='generate_path::GeneratePath',
-                    name='generate_path'
+                    name='generate_path',
+                    parameters=[{'log_level': 'info'}],
                 ),
             ],
             output='screen',

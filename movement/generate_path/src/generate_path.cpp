@@ -379,6 +379,7 @@ namespace generate_path
                 std::vector<IkReal> solvalues(GetNumJoints());
                 for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i)
                 {
+                    RCLCPP_DEBUG_STREAM(get_logger(), "Validating solution " << i + 1 << " / " << solutions.GetNumSolutions());
                     amount_of_samples++;
 
                     const IkSolutionBase<IkReal> &sol = solutions.GetSolution(i);
@@ -515,7 +516,7 @@ namespace generate_path
     void GeneratePath::_updateJointLimits()
     {
         RCLCPP_DEBUG(get_logger(), "Update joint limits by using soft limits");
-        const double range_tighten_coeff = 0.95; // values from 0.0 - 1.0 how much scale down range for joint limits
+        const double range_tighten_coeff = 0.9; // values from 0.0 - 1.0 how much scale down range for joint limits
         for (size_t i = 0; i < _robot_info.limits.size(); ++i)
         {
             auto range_middle = (_robot_info.limits[i].lower + _robot_info.limits[i].upper) / 2.0;
@@ -532,9 +533,9 @@ namespace generate_path
         for (size_t i = 0; i < _robot_info.limits.size(); ++i)
             ss << "  joint " << i + 1 << ": (" << _robot_info.limits[i].lower << ", " << _robot_info.limits[i].upper << ")" << std::endl;
 
-        ss << "Limits for IK:" << std::endl;
-        for (size_t i = 0; i < _robot_info.limits.size(); ++i)
-            ss << "  joint " << i + 1 << ": (" << _robot_info.limits[i].lower << ", " << _robot_info.limits[i].upper << ")" << std::endl;
+        // ss << "Limits for IK:" << std::endl;
+        // for (size_t i = 0; i < _robot_info.limits.size(); ++i)
+        //     ss << "  joint " << i + 1 << ": (" << _robot_info.limits[i].lower << ", " << _robot_info.limits[i].upper << ")" << std::endl;
         RCLCPP_DEBUG(get_logger(), ss.str());
     }
 
