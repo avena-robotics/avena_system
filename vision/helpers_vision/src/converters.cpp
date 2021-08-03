@@ -348,6 +348,34 @@ namespace helpers
             return 0;
         }
 
+        int eigenAffineToGeometry(const Eigen::Affine3d &eigen_aff, geometry_msgs::msg::Pose &out_ros_pose)
+        {
+            Eigen::Vector3d position = eigen_aff.translation();
+            Eigen::Quaterniond orientation(eigen_aff.rotation());
+            out_ros_pose.position.x = position.x();
+            out_ros_pose.position.y = position.y();
+            out_ros_pose.position.z = position.z();
+            out_ros_pose.orientation.w = orientation.w();
+            out_ros_pose.orientation.x = orientation.x();
+            out_ros_pose.orientation.y = orientation.y();
+            out_ros_pose.orientation.z = orientation.z();
+            return 0;
+        }
+
+        int eigenAffineToGeometry(const Eigen::Affine3d &eigen_aff, geometry_msgs::msg::Transform &out_ros_pose)
+        {
+            Eigen::Vector3d position = eigen_aff.translation();
+            Eigen::Quaterniond orientation(eigen_aff.rotation());
+            out_ros_pose.translation.x = position.x();
+            out_ros_pose.translation.y = position.y();
+            out_ros_pose.translation.z = position.z();
+            out_ros_pose.rotation.w = orientation.w();
+            out_ros_pose.rotation.x = orientation.x();
+            out_ros_pose.rotation.y = orientation.y();
+            out_ros_pose.rotation.z = orientation.z();
+            return 0;
+        }
+
         int geometryToEigenAffine(const geometry_msgs::msg::Transform &ros_pose, Eigen::Affine3f &out_eigen_aff)
         {
             geometry_msgs::msg::Pose temp_pose;
@@ -364,6 +392,25 @@ namespace helpers
             Eigen::Vector3f position(ros_pose.position.x, ros_pose.position.y, ros_pose.position.z);
             Eigen::Quaternionf orientation(ros_pose.orientation.w, ros_pose.orientation.x, ros_pose.orientation.y, ros_pose.orientation.z);
             out_eigen_aff = Eigen::Translation3f(position) * orientation;
+            return 0;
+        }
+
+        int geometryToEigenAffine(const geometry_msgs::msg::Transform &ros_pose, Eigen::Affine3d &out_eigen_aff)
+        {
+            geometry_msgs::msg::Pose temp_pose;
+            temp_pose.position.x = ros_pose.translation.x;
+            temp_pose.position.y = ros_pose.translation.y;
+            temp_pose.position.z = ros_pose.translation.z;
+            temp_pose.orientation = ros_pose.rotation;
+            geometryToEigenAffine(temp_pose, out_eigen_aff);
+            return 0;
+        }
+
+        int geometryToEigenAffine(const geometry_msgs::msg::Pose &ros_pose, Eigen::Affine3d &out_eigen_aff)
+        {
+            Eigen::Vector3d position(ros_pose.position.x, ros_pose.position.y, ros_pose.position.z);
+            Eigen::Quaterniond orientation(ros_pose.orientation.w, ros_pose.orientation.x, ros_pose.orientation.y, ros_pose.orientation.z);
+            out_eigen_aff = Eigen::Translation3d(position) * orientation;
             return 0;
         }
 

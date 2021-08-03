@@ -31,10 +31,11 @@ namespace helpers
     /**
      * @brief Get the Robot Info with basic information about robot e.g. prefix name, list of joints, list of links
      * 
-     * @param side working side on which robot is working e.g. "left", "right"
+     * @param side working side Right now it does not really matter what you put here. All is read from URDF. 
+     * Kept for now for backward compatibility.
      * @return RobotInfo 
      */
-    RobotInfo getRobotInfo(const std::string &side);
+    RobotInfo getRobotInfo(const std::string &side = "none");
   } // namespace commons
 } // namespace helpers
 

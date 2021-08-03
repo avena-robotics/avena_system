@@ -20,7 +20,8 @@ def launch_setup(context, *args, **kwargs):
         p = subprocess.Popen(['xacro', xacro_file, xacro_arguments], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
         p = subprocess.Popen(['xacro', xacro_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    robot_desc, _ = p.communicate()
+    robot_desc, error_msg = p.communicate()
+    print(error_msg.decode())
     params = {'robot_description': robot_desc.decode('utf-8')}
 
     return [
@@ -29,7 +30,7 @@ def launch_setup(context, *args, **kwargs):
             executable='joint_state_publisher',
             output='both',
             parameters=[{'source_list': ['arm_joint_states', 'gripper_joint_states'],
-                         'rate': 10,
+                         'rate': 50,
                          'publish_default_positions': False}]
         ),
         Node(

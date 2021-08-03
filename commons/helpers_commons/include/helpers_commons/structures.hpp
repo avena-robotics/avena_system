@@ -55,6 +55,7 @@ namespace helpers
       std::string robot_name;
       std::string robot_prefix;
       std::string connection;
+      std::string base_link_name;
       std::vector<std::string> joint_names;
       std::vector<std::string> fixed_joint_names;
       std::vector<std::string> link_names;

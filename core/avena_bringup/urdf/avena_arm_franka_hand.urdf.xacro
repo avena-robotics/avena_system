@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="avena_robot">
-  <xacro:include filename="$(find avena_bringup)/urdf/urdf_v4.urdf.xacro"/>
+  <xacro:include filename="$(find avena_bringup)/urdf/avena_arm.urdf.xacro"/>
   <xacro:include filename="$(find avena_bringup)/urdf/hand.xacro"/>
   <xacro:hand ns="franka" rpy="1 0 0" connected_to="franka_gripper"/>
 </robot>

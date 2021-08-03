@@ -2,6 +2,6 @@
 geometry_msgs/Pose end_effector_pose
 ---
 # Result
-trajectory_msgs/JointTrajectory pick_to_place
+custom_interfaces/GeneratedPath generated_path
 ---
 # Feedback

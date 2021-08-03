@@ -44,11 +44,7 @@ def launch_setup(context, *args, **kwargs):
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
                 'generate_path'), 'launch', 'generate_path.launch.py'))
-        ),        
-        # IncludeLaunchDescription(
-        #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-        #         'path_buffer'), 'launch', 'path_buffer.launch.py'))
-        # ),
+        ),
     ]
 
 
