@@ -22,7 +22,8 @@ namespace generate_path
 
     GeneratePath::~GeneratePath()
     {
-        shutDownNode();
+        shutDownNode();ros2 launch bullet_server setup_scene.launch.py
+
     }
 
     void GeneratePath::initNode()

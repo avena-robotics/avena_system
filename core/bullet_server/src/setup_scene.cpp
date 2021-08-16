@@ -93,11 +93,11 @@ namespace bullet_server
 
         //? Try to create other elements and link them with the table (which is the parent body)
         b3RobotSimulatorCreateCollisionShapeArgs stick1_collision_args;
-        stick1_collision_args.m_halfExtents = btVector3(0.02, 0.02, 0.3);
+        stick1_collision_args.m_halfExtents = btVector3(0.02, 0.02, 0.7);
         int stick1_collision = sim->createCollisionShape(GEOM_BOX, stick1_collision_args);
         int stick2_collision = sim->createCollisionShape(GEOM_BOX, stick1_collision_args);
         b3RobotSimulatorCreateVisualShapeArgs stick1_visual_args;
-        stick1_visual_args.m_halfExtents = btVector3(0.02, 0.02, 0.3);
+        stick1_visual_args.m_halfExtents = btVector3(0.02, 0.02, 0.7);
         int stick1_visual = sim->createVisualShape(GEOM_BOX, stick1_visual_args);
         int stick2_visual = sim->createVisualShape(GEOM_BOX, stick1_visual_args);
 
@@ -129,6 +129,15 @@ namespace bullet_server
         int side_plane_visual = sim->createVisualShape(GEOM_BOX, plane_side_visual_args);
         int side_plane2_visual = sim->createVisualShape(GEOM_BOX, plane_side_visual_args);
 
+
+        b3RobotSimulatorCreateCollisionShapeArgs front_stcik_collision_args;
+        front_stcik_collision_args.m_halfExtents = btVector3(0.02, 0.04, 0.7);
+        int front_stick_collision = sim->createCollisionShape(GEOM_BOX, front_stcik_collision_args);
+        b3RobotSimulatorCreateVisualShapeArgs front_stick_visual_args;
+        front_stick_visual_args.m_halfExtents = btVector3(0.02, 0.04, 0.7);
+        int front_stick_visual = sim->createVisualShape(GEOM_BOX, front_stick_visual_args);
+
+
         // Avena arm base
         b3RobotSimulatorCreateCollisionShapeArgs avena_arm_base_collision_args;
         avena_arm_base_collision_args.m_halfExtents = btVector3(0.1, 0.1, 0.05);
@@ -143,31 +152,31 @@ namespace bullet_server
         table_args.m_basePosition = btVector3(TABLE_WIDTH_HALF, 0, -TABLE_HEIGHT / 2);
         table_args.m_baseVisualShapeIndex = table_visual;
         table_args.m_baseCollisionShapeIndex = table_collision;
-
-        std::vector<int> collision_indices = {stick1_collision, stick2_collision, camera_collision, camera2_collision, front_plane_collision, front_plane2_collision, side_plane_collision, side_plane2_collision, avena_arm_base_collision};
+        std::vector<int> collision_indices = {stick1_collision, stick2_collision, camera_collision, camera2_collision, front_plane_collision, front_plane2_collision, side_plane_collision, side_plane2_collision, avena_arm_base_collision, front_stick_collision};
         table_args.m_numLinks = collision_indices.size();
         table_args.m_linkCollisionShapeIndices = collision_indices.data(); //!1
-        std::vector<int> visual_indices = {stick1_visual, stick2_visual, camera_visual, camera2_visual, front_plane_visual, front_plane2_visual, side_plane_visual, side_plane2_visual, avena_arm_base_visual};
+        std::vector<int> visual_indices = {stick1_visual, stick2_visual, camera_visual, camera2_visual, front_plane_visual, front_plane2_visual, side_plane_visual, side_plane2_visual, avena_arm_base_visual, front_stick_visual};
         table_args.m_linkVisualShapeIndices = visual_indices.data(); //!2
         std::vector<double> mass_links(collision_indices.size(), 1.0);
         table_args.m_linkMasses = mass_links.data(); //!3
 
-        std::vector<btVector3> link_positions = {btVector3(0.38, 1.18, 0.30),
-                                                 btVector3(0.38, -1.18, 0.30),
+        std::vector<btVector3> link_positions = {btVector3(0.38, 1.18, 0.7),
+                                                 btVector3(0.38, -1.18, 0.7),
                                                  btVector3(-0.03, -0.03, 0.3 + 0.05),
                                                  btVector3(-0.03, 0.03, 0.3 + 0.05),
                                                  btVector3(-TABLE_WIDTH_HALF - 2 * 0.005, 0, collision_wall_height / 2),
                                                  btVector3(TABLE_WIDTH_HALF + 2 * 0.005 + 0.2, 0, collision_wall_height / 2),
                                                  btVector3(0, -TABLE_LENGTH_HALF - 2 * 0.005, collision_wall_height / 2),
                                                  btVector3(0, TABLE_LENGTH_HALF + 2 * 0.005, collision_wall_height / 2),
-                                                 btVector3(0.18 - TABLE_WIDTH_HALF, 0.35, 0.05)};
+                                                 btVector3(0.18 - TABLE_WIDTH_HALF, 0.35, 0.05),
+                                                 btVector3(TABLE_WIDTH_HALF + 0.02, 0, 0.7)};
         table_args.m_linkPositions = link_positions.data(); //!4
         std::vector<btQuaternion> link_orientations(collision_indices.size(), btQuaternion(0, 0, 0, 1));
         table_args.m_linkOrientations = link_orientations.data(); //!5
         //! To chceck faster - inertial same positions
         table_args.m_linkInertialFramePositions = link_positions.data();       //!6
         table_args.m_linkInertialFrameOrientations = link_orientations.data(); //!7
-        std::vector<int> link_parent_indices = {0, 0, 1, 2, 0, 0, 0, 0, 0};
+        std::vector<int> link_parent_indices = {0, 0, 1, 2, 0, 0, 0, 0, 0, 0};
         table_args.m_linkParentIndices = link_parent_indices.data(); //!8
         std::vector<int> link_joint_types(link_positions.size(), JointType::eFixedType);
         table_args.m_linkJointTypes = link_joint_types.data(); //!9
