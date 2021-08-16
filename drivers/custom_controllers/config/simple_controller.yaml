@@ -1,57 +1,47 @@
 /simple_controller:
   ros__parameters:
+
     error_margin: 0.005
 
     #friction
 
-    Fv_gain_0: 0.
-    FFa_gain_0: 0.
-    Kd_gain_0: 0.1
-    Ki_gain_0: 5.
-    Kp_gain_0: 20.0
-    Coulomb_friction_0: 0.
-    i_clamp_h_0: 10.
-    i_clamp_l_0: -10.
-
-
-    # FFv_gain_0: 0.0
+    # Fv_gain_0: 0.
     # FFa_gain_0: 0.
-    # Kd_gain_0: 20.0
-    # Ki_gain_0: 40.0
-    # Kp_gain_0: 150.0
+    # Kd_gain_0: 0.1
+    # Ki_gain_0: 10.
+    # Kp_gain_0: 80.0
     # Coulomb_friction_0: 0.
-    # i_clamp_h_0: 0.4
-    # i_clamp_l_0: -0.4
+    # i_clamp_h_0: 10.
+    # i_clamp_l_0: -10.
 
-    FFv_gain_0: 0.
+
+    FFv_gain_0: 0.0
     FFa_gain_0: 0.
-    Kd_gain_0: 0.1
-    Ki_gain_0: 5.
-    Kp_gain_0: 20.0
+    Kd_gain_0: 20.0
+    Ki_gain_0: 80.0
+    Kp_gain_0: 160.0
     Coulomb_friction_0: 0.
-    i_clamp_h_0: 10.
-    i_clamp_l_0: -10.
-
-    # FFv_gain_1: 1.5
-    # FFa_gain_1: 8.
-    # Kd_gain_1: 30.0
-    # Ki_gain_1: 5.0
-    # Kp_gain_1: 165.0
-    # Coulomb_friction_1: 6.5
+    i_clamp_h_0: 40.
+    i_clamp_l_0: -40.
 
     FFv_gain_1: 0.
     FFa_gain_1: 0.
-    Kd_gain_1: 1.0
-    Ki_gain_1: 15.0
-    Kp_gain_1: 15.0
-    Coulomb_friction_1: 0.
+    Kd_gain_1: 20.0
+    Ki_gain_1: 80.0
+    Kp_gain_1: 160.0
+    Coulomb_friction_1: 0.0
+    i_clamp_h_2: 40.
+    i_clamp_l_2: -40.
 
     FFv_gain_2: 0.
     FFa_gain_2: 0.
-    Kd_gain_2: 1.0
-    Ki_gain_2: 15.0
-    Kp_gain_2: 15.0
+    Kd_gain_2: 20.0
+    Ki_gain_2: 80.0
+    Kp_gain_2: 160.0
     Coulomb_friction_2: 0.
+    i_clamp_h_2: 40.
+    i_clamp_l_2: -40.
+
 
     use_sim_time: false
 

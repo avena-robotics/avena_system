@@ -55,7 +55,7 @@
     <limit
       lower="-3.05"
       upper="3.05"
-      effort="45."
+      effort="50."
       velocity="0." />
   </joint>
   <link
@@ -104,7 +104,7 @@
     <limit
       lower="-1.57"
       upper="1.57"
-      effort="60."
+      effort="80."
       velocity="0." />
   </joint>
   <link
@@ -185,11 +185,12 @@
     <limit
       lower="-2.9"
       upper="2.9"
-      effort="45."
+      effort="60."
       velocity="0" />
   </joint>
   <link
     name="left_link_4">
+    
     <visual>
       <origin
         xyz="0 0 0"
@@ -219,9 +220,7 @@
       <inertia ixx="1.817e-03"  ixy="0"  ixz="0" iyy="1.655e-03" iyz="0" izz="1.897e-03" />
     </inertial>
   </link>
-  <joint
-    name="dummy"
-    type="fixed">
+  <joint name="dummy_joint" type="fixed">
     <origin
       xyz="0 0.447 0.0006"
       rpy="1.5708 0 0" />
@@ -348,7 +347,7 @@
       effort="0"
       velocity="0" />
   </joint>
-    <link name="franka_gripper">
+    <link name="Panda_gripper">
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
@@ -377,7 +376,7 @@
     <joint name="left_joint_7" type="fixed">
       <origin rpy="-0.985 -1.57 2.55" xyz="0 -0.027 0"/>
       <parent link="left_link_6"/>
-      <child link="franka_gripper"/>
+      <child link="Panda_gripper"/>
     </joint> -->
 
 </robot>

@@ -286,8 +286,9 @@ CAN_single_response_msg_t CanOperations::readJointMessage(int joint)
     {   
         int16_t position_temp = static_cast<int16_t>((frames[joint].data[0] << 8) ^ (frames[joint].data[1]));
         int16_t torque_temp = static_cast<int16_t>((frames[joint].data[2] << 8) ^ (frames[joint].data[3]));
-        int16_t error_code = static_cast<int16_t>(frames[joint].data[4]);
-        int16_t joint_status = static_cast<int16_t>(frames[joint].data[5]);
+        uint8_t temperature_temp = static_cast<uint8_t>((frames[joint].data[4]));
+        int16_t error_code = static_cast<int16_t>(frames[joint].data[5]);
+        int16_t joint_status = static_cast<int16_t>(frames[joint].data[6]);
 
         last_postion_msg_value[joint] = position_temp;
         // last_torque_msg_value[joint] = torque_temp;
@@ -297,10 +298,11 @@ CAN_single_response_msg_t CanOperations::readJointMessage(int joint)
         result.joint_id=((frames[joint].can_id / 16) - 10); //?
         result.position = position_temp;
         result.torque = torque_temp;
+        result.temperature = temperature_temp;
         result.joint_status = joint_status;
         result.error_code = error_code;
 
-        std::cout<<result.joint_id<<std::endl<<result.position<<std::endl<<result.torque<<std::endl<<result.joint_status<<std::endl<<result.error_code<<std::endl;
+        std::cout<<result.joint_id<<std::endl<<result.position<<std::endl<<result.torque<<std::endl<<result.temperature<<std::endl<<result.joint_status<<std::endl<<result.error_code<<std::endl;
         // result.active_error = active_error;
 
         // if (motor_error != 0)

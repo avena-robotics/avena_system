@@ -671,8 +671,8 @@ namespace avena_view
             std::future_status status = result.wait_for(std::chrono::seconds(1));
             if (status == std::future_status::ready)
             {
-                RCLCPP_INFO_STREAM(node_->get_logger(), "ArmController response: " << result.get()->error);
-                writeLog("ArmController response: " + QString(result.get()->error.c_str()), ui_.logConsoleArmControl);
+                RCLCPP_INFO_STREAM(node_->get_logger(), "ArmController response: " << result.get()->feedback);
+                writeLog("ArmController response: " + QString(result.get()->feedback.c_str()), ui_.logConsoleArmControl);
                 setIndicator("SUCCESS", Qt::green, arm_control_graphics_scene_.get(), ui_.statusLabelArmControl);
             }
             else

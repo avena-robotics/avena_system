@@ -194,6 +194,7 @@ public:
             response->arm_current_positions.resize(JOINTS_NUMBER);
             response->arm_current_torques.resize(JOINTS_NUMBER);
             response->arm_current_status.resize(JOINTS_NUMBER);
+            response->arm_current_temperature.resize(JOINTS_NUMBER);
 
             // if(request->device_name == 0 && !position_1_buffer->empty())
             // {
@@ -226,6 +227,7 @@ public:
                 std::cout<<"int val: "<<res_msg.at(jnt_idx).position<<" X "<<(2 * M_PI / GEAR_CONST / double(_can.gears_ratio.at(jnt_idx)))<<std::endl;
                 response->arm_current_positions.at(jnt_idx) = double(res_msg.at(jnt_idx).position) * (2 * M_PI / GEAR_CONST / double(_can.gears_ratio.at(jnt_idx)));
                 response->arm_current_torques.at(jnt_idx) = res_msg.at(jnt_idx).torque * TORQUE_CONSTANT * _can.gears_ratio.at(jnt_idx) * MOTOR_MAX_CURRENT / INT16_MAX;
+                response->arm_current_temperature.at(jnt_idx) = res_msg.at(jnt_idx).temperature;
                 response->arm_current_status.at(jnt_idx) = res_msg.at(jnt_idx).joint_status;
             }
             publishStateMsg(res_msg);
