@@ -44,7 +44,7 @@ class TrajectoriesVisualizer(Node):
             ),
         )
         self._trajectory = None
-        self._valid_trajectory = False
+        self._new_trajectory = False
         self._logged_joint_states: List[JointState] = []
         self._logging_state = LoggingState.IDLE
         self._logging_start_time = INVALID_TIME
@@ -54,9 +54,8 @@ class TrajectoriesVisualizer(Node):
                                 throttle_time_source_type=self.get_clock())
 
         if self._logging_state == LoggingState.IDLE:
-            if self._moving(joint_state) and self._logging_start_time == INVALID_TIME and self._valid_trajectory:
+            if self._moving(joint_state) and self._new_trajectory:
                 self.get_logger().info('Started logging')
-                self._valid_trajectory = False
                 self._logging_state = LoggingState.LOGGING
                 self._logging_start_time = time.time()
                 self._logged_joint_states.clear()
@@ -72,7 +71,8 @@ class TrajectoriesVisualizer(Node):
             else:
                 self.get_logger().info('Stopped logging')
                 self._logging_state = LoggingState.IDLE
-                self._logging_start_time = INVALID_TIME
+                self._new_trajectory = False
+                # self._logging_start_time = INVALID_TIME
                 # Save to JSON and display TODO: Check wheth
                 self._visualize_trajectories(
                     self._trajectory, self._logged_joint_states)
@@ -80,7 +80,7 @@ class TrajectoriesVisualizer(Node):
 
     def _generated_trajectory_callback(self, trajectory: JointTrajectory):
         self.get_logger().info('Received trajectory')
-        self._valid_trajectory = True
+        self._new_trajectory = True
         self._trajectory = trajectory
 
     def _moving(self, joint_state: JointState) -> bool:
