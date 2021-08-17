@@ -153,7 +153,7 @@ namespace visualization_tools
     {
         _lock_marker_interaction = true;
         RCLCPP_INFO(get_logger(), "Waiting for generate path pose action server");
-        if (!_generate_path_pose_client->wait_for_action_server(std::chrono::seconds(5)))
+        if (!_generate_path_pose_client->wait_for_action_server(WAITING_FOR_ACTION_TIMEOUT))
         {
             RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
             _lock_marker_interaction = false;
@@ -175,7 +175,7 @@ namespace visualization_tools
     // {
     //     _lock_marker_interaction = true;
     //     RCLCPP_INFO(get_logger(), "Waiting for generate path pick action server");
-    //     if (!_generate_path_pick_client->wait_for_action_server(std::chrono::seconds(5)))
+    //     if (!_generate_path_pick_client->wait_for_action_server(WAITING_FOR_ACTION_TIMEOUT))
     //     {
     //         RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
     //         _lock_marker_interaction = false;
@@ -214,7 +214,7 @@ namespace visualization_tools
     {
         _lock_marker_interaction = true;
         RCLCPP_INFO(get_logger(), "Waiting for generate trajectory action server");
-        if (!_generate_trajectory_client->wait_for_action_server(std::chrono::seconds(5)))
+        if (!_generate_trajectory_client->wait_for_action_server(WAITING_FOR_ACTION_TIMEOUT))
         {
             RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
             _lock_marker_interaction = false;
@@ -233,7 +233,7 @@ namespace visualization_tools
     {
         _lock_marker_interaction = true;
         RCLCPP_INFO(get_logger(), "Waiting for execute move action server");
-        if (!_execute_move_client->wait_for_action_server(std::chrono::seconds(5)))
+        if (!_execute_move_client->wait_for_action_server(WAITING_FOR_ACTION_TIMEOUT))
         {
             RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
             _lock_marker_interaction = false;

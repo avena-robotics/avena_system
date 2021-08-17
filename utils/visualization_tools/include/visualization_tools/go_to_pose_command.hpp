@@ -86,6 +86,7 @@ namespace visualization_tools
     // const std::string GENERATE_PATH_PICK_NAME = "generate_path_pick";
     // const std::string GENERATE_PATH_PLACE_NAME = "generate_path_place";
     const std::string EXECUTE_MOVE_NAME = "execute_move";
+    const std::chrono::seconds WAITING_FOR_ACTION_TIMEOUT = std::chrono::seconds(2);
   };
 } // namespace visualization_tools
 
