@@ -1,3 +1,4 @@
+import cv2
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog, build_detection_test_loader
@@ -8,7 +9,7 @@ import numpy as np
 import time
 from pycocotools import mask
 from detectron2.projects import point_rend
-
+from py_filter_detections import filter_detections
 
 class DetectronInference:
     """
@@ -72,26 +73,34 @@ class DetectronInference:
         outputs = predictions['instances'].get_fields()
         masks = outputs['pred_masks'].cpu().numpy().astype(np.uint8)
         encoded = list()
+        k = 0
         for x in masks:
-            x *= 255
-            x = np.fliplr(x)
-            x = np.rot90(x)
-            res = mask.encode(np.asfortranarray(x))
-            res['counts'] = res['counts'].decode()
-            encoded.append(res)
+            # k+=1
+            # x *= 255
+            # x = np.fliplr(x)
+            # x = np.rot90(x)
+            # res = mask.encode(np.asfortranarray(x))
+            # res['counts'] = res['counts'].decode()
+            # encoded.append(res)
+            # n = 'img'
+            # cv2.imwrite('imgpy')
+            encoded.append(x)
         MetadataCatalog.get(self.config_file.DATASETS.TRAIN[0]).thing_classes = self.labels_list
 
         outputs = {
             "classes": [self.labels_list[class_digit] for class_digit in
                         outputs['pred_classes'].cpu().numpy().tolist()],
             # "bboxes": outputs['pred_boxes'].tensor.cpu().numpy().tolist(),
-            "masks": encoded,
-            "scores": outputs['scores'].cpu().numpy().tolist(),
-            "class_ids": self.labels_list,
+            "masks": encoded
+            # "scores": outputs['scores'].cpu().numpy().tolist(),
+            # "class_ids": self.labels_list,
         }
+        # DO FILTER DETECTIONS HERE
+        filtered_masks = filter_detections(outputs)
+
         res_end = time.time()
         print("Detectron object gpu result retrieval: ", str(res_end - res_start))
-        return outputs
+        return filtered_masks
 
     def get_label_list(self):
         with open(os.path.join(self.inputs_dir_path, "class_names.yaml"), 'r') as stream:
