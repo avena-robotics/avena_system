@@ -136,7 +136,6 @@ std::map<std::string, std::vector<std::string>> filter_detections(pybind11::dict
             for (pybind11::handle h : masks_arr) {
                 auto img = pybind11::cast<pybind11::array_t<uint8_t>>(h);
                 pybind11::buffer_info buf = img.request();
-//                std::cout<<"shape 0: "<<buf.shape[0]<<" shape 1: "<<buf.shape[1]<<std::endl;
                 cv::Mat ig(buf.shape[0], buf.shape[1], CV_8UC1, (unsigned char *) buf.ptr);
                 masks.push_back(ig);
             }
@@ -160,9 +159,6 @@ std::map<std::string, std::vector<std::string>> filter_detections(pybind11::dict
         unq_classes.insert(cls);
     }
 
-//    for (auto &el: unq_classes) {
-//        std::cout << el << std::endl;
-//    }
 
     for (const auto &unq_cls : unq_classes) {
         LabeledMasks lm;
@@ -174,28 +170,8 @@ std::map<std::string, std::vector<std::string>> filter_detections(pybind11::dict
         }
         _detections_cam.push_back(lm);
     }
-//    std::cout << "Labeled mask obj count: " << _detections_cam.size() << std::endl;
 
-//    for (size_t j = 0; j < _detections_cam.size(); j++) {
-//        std::cout << "class: " << _detections_cam[j].label << " no. of masks: " << _detections_cam[j].masks.size()
-//                  << std::endl;
-//    }
-//
-//    int l = 100;
-//    for(auto &el: _detections_cam){
-//
-//        for (auto& ee: el.masks){
-//            std::string pth = "img"+std::to_string(l)+".png";
-//            cv::imwrite(pth, ee*255);
-//            l++;
-//        }
-//    }
     handleMultipleDetections(_detections_cam);
-
-//    for (size_t j = 0; j < _detections_cam.size(); j++) {
-//        std::cout << "class: " << _detections_cam[j].label << " no. of masks: " << _detections_cam[j].masks.size()
-//        << std::endl;
-//    }
 
     //************************Containers code***********************************//
     // extract container masks from all detection masks
@@ -281,15 +257,7 @@ std::map<std::string, std::vector<std::string>> filter_detections(pybind11::dict
         modifyDetectionMasks(_detections_cam, containers_labels, labeled_containers_masks_cam);
     }
     std::map<std::string, std::vector<std::string>> res;
-//    int k = 0;
-//    for(auto &el: _detections_cam){
-//
-//        for (auto& ee: el.masks){
-//            std::string pth = "img"+std::to_string(k)+".png";
-//            cv::imwrite(pth, ee*255);
-//            k++;
-//        }
-//    }
+
 
     for (auto &el: _detections_cam) {
         std::vector<std::string> str_masks;
@@ -297,7 +265,6 @@ std::map<std::string, std::vector<std::string>> filter_detections(pybind11::dict
             std::string str_msk;
             msk *= 255;
             binaryMaskToString(msk, str_msk, false);
-            std::cout<<str_msk<<std::endl;
             str_masks.push_back(str_msk);
         }
 
