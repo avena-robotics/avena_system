@@ -26,6 +26,13 @@
 #include "custom_interfaces/srv/data_store_rgbd_sync_select.hpp"
 #include "custom_interfaces/srv/data_store_rgbd_sync_get_list.hpp"
 
+
+//scene
+#include "custom_interfaces/srv/data_store_scene_insert.hpp"
+#include "custom_interfaces/srv/data_store_scene_delete.hpp"
+#include "custom_interfaces/srv/data_store_scene_select.hpp"
+#include "custom_interfaces/srv/data_store_scene_get_list.hpp"
+
 // add other data elements here
 
 namespace data_store
@@ -58,6 +65,14 @@ namespace data_store
     using ItemsSelect = custom_interfaces::srv::DataStoreItemsSelect;
     using ItemsGetList = custom_interfaces::srv::DataStoreItemsGetList;
     using Items = DataElement<ItemsSelect, ItemsInsert, ItemsGetList, ItemsDelete>;
+
+    
+    //scene
+    using SceneInsert = custom_interfaces::srv::DataStoreSceneInsert;
+    using SceneDelete = custom_interfaces::srv::DataStoreSceneDelete;
+    using SceneSelect = custom_interfaces::srv::DataStoreSceneSelect;
+    using SceneGetList = custom_interfaces::srv::DataStoreSceneGetList;
+    using Scene = DataElement<SceneSelect, SceneInsert, SceneGetList, SceneDelete>;
 
     // add other data elements here
 

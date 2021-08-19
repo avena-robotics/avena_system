@@ -606,7 +606,7 @@ namespace avena_view
         
         auto post_start_action = [this]()
         {
-            this->startNodes();
+            // this->startNodes();
             this->writeTerminalAndUiLog("Sucessfully started pick place system", Status::RUNNING, ui_.logConsole);
             this->setUpStartedPickPlaceUi();
         };

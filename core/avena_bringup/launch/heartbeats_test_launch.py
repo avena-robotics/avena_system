@@ -16,14 +16,29 @@ def generate_launch_description():
             'parameters_server'), 'launch', 'parameters_server.launch.py'))
     )
 
-    rgb_diff = IncludeLaunchDescription(
+    # rgb_diff = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+    #         'rgb_diff'), 'launch', 'rgb_diff_server.launch.py'))
+    # )
+
+    # security_rgb = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+    #         'security_rgb'), 'launch', 'security_rgb.launch.py'))
+    # )
+    
+    rgbd_sync = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-            'rgb_diff'), 'launch', 'rgb_diff_server.launch.py'))
+            'rgbd_sync'), 'launch', 'rgbd_sync.launch.py'))
+    )
+    
+    octomap_generator = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+            'octomap_generator'), 'launch', 'octomap_generator.launch.py'))
+    )    
+    
+    data_store = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+            'data_store'), 'launch', 'data_store.launch.py'))
     )
 
-    security_rgb = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-            'security_rgb'), 'launch', 'security_rgb.launch.py'))
-    )
-
-    return LaunchDescription([parameters_server, rgb_diff, security_rgb])
+    return LaunchDescription([parameters_server, rgbd_sync, octomap_generator, data_store])

@@ -19,6 +19,8 @@ namespace estimate_shape
 
         auto qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)); //.transient_local().reliable();
         _estimate_shape_pub = create_publisher<Response>("estimate_shape", qos_settings);
+       
+       
         // _compose_items_sub = create_subscription<custom_interfaces::msg::Items>("compose_items", qos_settings,
         //                                                                         [this](custom_interfaces::msg::Items::SharedPtr compose_items_msg)
         //                                                                         {
@@ -39,7 +41,6 @@ namespace estimate_shape
 
         _items_select_client = this->create_client<custom_interfaces::srv::DataStoreItemsSelect>("items_select");
         _items_insert_client = this->create_client<custom_interfaces::srv::DataStoreItemsInsert>("items_insert");
-
 
 
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
@@ -110,7 +111,7 @@ namespace estimate_shape
         if (_validateInput(_compose_items_msg))
         {
             RCLCPP_ERROR(LOGGER, "Invalid input message. Goal failed.");
-            _estimate_shape_pub->publish(Response());
+            // _estimate_shape_pub->publish(Response());
             goal_handle->abort(result);
             return;
         }
@@ -124,7 +125,16 @@ namespace estimate_shape
         try
         {
             auto estimate_shape_msg = _estimateShapeProcessing(_compose_items_msg, item_label, fit_method);
-            _estimate_shape_pub->publish(*estimate_shape_msg);
+            // _estimate_shape_pub->publish(*estimate_shape_msg);
+            auto request = std::make_shared<custom_interfaces::srv::DataStoreItemsInsert::Request>();
+            request->data = estimate_shape_msg->data;
+
+
+            // _items_insert_client
+            auto data_store_result = _items_insert_client->async_send_request(request);
+            if (rclcpp::ok() && data_store_result.wait_for(5s) == std::future_status::ready)
+                return;
+            
             if (rclcpp::ok())
             {
                 goal_handle->succeed(result);
@@ -134,7 +144,7 @@ namespace estimate_shape
         catch (const std::exception &e)
         {
             RCLCPP_ERROR_STREAM(LOGGER, "Error occured during estimate shape: " << e.what());
-            _estimate_shape_pub->publish(Response());
+            // _estimate_shape_pub->publish(Response());
             if (rclcpp::ok())
             {
                 goal_handle->abort(result);
