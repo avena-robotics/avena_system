@@ -2,12 +2,10 @@ import os
 import time
 import argparse
 import json
-from collections import defaultdict, deque
 from datetime import datetime
+from multiprocessing import Process
 from enum import Enum
 from typing import List
-import matplotlib.pyplot as plt
-from numpy.core.shape_base import block
 import rclpy 
 from rclpy.logging import set_logger_level, LoggingSeverity
 from rclpy.duration import Duration
@@ -19,6 +17,7 @@ from ament_index_python.packages import get_package_share_directory
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory
 
+from visualization_tools_py import utils
 
 JOINT_VEL_MOVE_THRESHOLD = 1e-2
 JOINT_POS_MOVE_THRESHOLD = 1e-3
@@ -34,7 +33,7 @@ class LoggingState(Enum):
 
 
 class TrajectoriesVisualizer(Node):
-    def __init__(self):
+    def __init__(self, visualize: bool = False):
         super().__init__("trajectories_visualizer")
         self._robot_joint_state_sub = self.create_subscription(
             msg_type=JointState,
@@ -52,16 +51,20 @@ class TrajectoriesVisualizer(Node):
                 durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             ),
         )
+        self._visualize = visualize
         self._prev_joint_state = None
-        self._prev_joint_states = deque(maxlen=10)
         self._next_joint_states = []
         self._trajectory = None
         self._logged_joint_states: List[JointState] = []
         self._logging_state = LoggingState.WAITING_FOR_NEW_TRAJECTORY
         self._logging_start_time = INVALID_TIME
 
+        self._vis_processes: List[Process] = []
+
     def _arm_joint_state_callback(self, joint_state: JointState):
         self.get_logger().debug(f'Received joint states. State: {self._logging_state}', throttle_duration_sec=1, throttle_time_source_type=self.get_clock())
+
+        self._remove_terminated_vis_processes()
 
         if self._logging_state == LoggingState.WAITING_TO_MOVE:
             if self._moving(joint_state, self._prev_joint_state) and self._logging_start_time == INVALID_TIME:
@@ -69,9 +72,8 @@ class TrajectoriesVisualizer(Node):
                 self._logging_state = LoggingState.LOGGING
                 self._logging_start_time = time.time()
                 self._logged_joint_states.clear()
+                self._logged_joint_states.append(self._prev_joint_state)
                 self._logged_joint_states.append(joint_state)
-            else:
-                self._prev_joint_states.append(joint_state)
         elif self._logging_state == LoggingState.LOGGING:
             ros_duration = Duration.from_msg(self._trajectory.points[-1].time_from_start)
             duration_sec = ros_duration.nanoseconds / 1e9
@@ -84,46 +86,37 @@ class TrajectoriesVisualizer(Node):
                 self._logging_state = LoggingState.LOGGING_NEXT_JOINT_STATES
                 self._logging_start_time = INVALID_TIME
                 self._next_joint_states.clear()
+                self._next_joint_states.append(joint_state)
         elif self._logging_state == LoggingState.LOGGING_NEXT_JOINT_STATES:
             if len(self._next_joint_states) < 10:
                 self._next_joint_states.append(joint_state)
             else:
                 self._logging_state = LoggingState.VISUALIZE_LOGS
         elif self._logging_state == LoggingState.VISUALIZE_LOGS:
-            self.get_logger().info('Stopped logging. Visualizing data')
+            self.get_logger().info('Stopped logging.')
             self._logging_state = LoggingState.WAITING_FOR_NEW_TRAJECTORY
-            # Synchronize logged joint states with trajectory
-            trajectory_first_configuration = self._trajectory.points[0].positions
-            all_logged_joint_states = list(self._prev_joint_states) + self._logged_joint_states + self._next_joint_states
-            
-            found_synchronized_log = False
-            start_idx = -1
-            for configuration_idx, joint_states in enumerate(all_logged_joint_states):
-                for j_idx, joint_pos in enumerate(joint_states.position):
-                    dist = trajectory_first_configuration[j_idx] - joint_pos
-                    if abs(dist) > JOINT_POS_MOVE_THRESHOLD:
-                        break
-                else:
-                    found_synchronized_log = True
-                    start_idx = configuration_idx
-                if found_synchronized_log:
-                    break
-            self.get_logger().debug(f'Starting index: {start_idx}')
-            synchronized_joint_states = all_logged_joint_states[start_idx:len(self._trajectory.points)]
-            self.get_logger().warn(f'{len(synchronized_joint_states)}, {len(all_logged_joint_states)}, {len(self._prev_joint_states)}, {len(self._logged_joint_states)}, {len(self._next_joint_states)}, {len(self._trajectory.points)}')
+            all_logged_joint_states = self._logged_joint_states + self._next_joint_states
+            ros_duration = Duration.from_msg(self._trajectory.points[-1].time_from_start)
+            trajectory_duration_sec = ros_duration.nanoseconds / 1e9
+            start_time = Time.from_msg(all_logged_joint_states[0].header.stamp).nanoseconds / 1e9
+            synchronized_joint_states = []
+            for _, joint_states in enumerate(all_logged_joint_states):
+                current_time = Time.from_msg(joint_states.header.stamp).nanoseconds / 1e9
+                if current_time - start_time <= trajectory_duration_sec:
+                    synchronized_joint_states.append(joint_states)
             serialized_logs = self._serialize_logs(self._trajectory, synchronized_joint_states)
             self._save_to_json(serialized_logs)
-            self._visualize_trajectories(serialized_logs)
-            self._prev_joint_states.clear()
+            if self._visualize:
+                vis_process = Process(target=utils.visualize_trajectories, args=(serialized_logs, ))
+                vis_process.start()
+                self._vis_processes.append(vis_process)
+            self._remove_old_logs()
         self._prev_joint_state = joint_state
 
     def _generated_trajectory_callback(self, trajectory: JointTrajectory):
         self.get_logger().info('Received trajectory')
-        if self._logging_state == LoggingState.WAITING_FOR_NEW_TRAJECTORY:
-            self._logging_state = LoggingState.WAITING_TO_MOVE
-            self._trajectory = trajectory
-        else:
-            self.get_logger().debug('Invalid state to save new trajectory')
+        self._logging_state = LoggingState.WAITING_TO_MOVE
+        self._trajectory = trajectory
 
     def _moving(self, joint_state: JointState, prev_joint_state: JointState) -> bool:
         if joint_state is None or prev_joint_state is None:
@@ -136,39 +129,6 @@ class TrajectoriesVisualizer(Node):
             if abs(joint_diff) > JOINT_POS_MOVE_THRESHOLD:
                 return True
         return False
-
-    def _visualize_trajectories(self, serialized_logs: dict):
-        nr_joints = serialized_logs['nr_joints']
-        joint_states_times = serialized_logs['robot_trajectory']['time']
-        trajectory_times = serialized_logs['generated_trajectory']['time']
-        fig, ax = plt.subplots(nrows=nr_joints, ncols=2, sharex=True)
-        for joint_idx in range(nr_joints):
-            joint_states_pos = serialized_logs['robot_trajectory']['position'][joint_idx]
-            joint_states_vel = serialized_logs['robot_trajectory']['velocity'][joint_idx]
-            trajectory_pos = serialized_logs['generated_trajectory']['position'][joint_idx]
-            trajectory_vel = serialized_logs['generated_trajectory']['velocity'][joint_idx]
-
-            # print(f'{joint_idx + 1} -> {len(joint_states_pos)}')
-            # print(f'{joint_idx + 1} -> {len(joint_states_vel)}')
-            # print(f'{joint_idx + 1} -> {len(trajectory_pos)}')
-            # print(f'{joint_idx + 1} -> {len(trajectory_vel)}')
-            # print('---')
-
-            ax[joint_idx, 0].plot(joint_states_times, joint_states_pos, label='robot_trajectory', linestyle='-')
-            ax[joint_idx, 0].plot(trajectory_times, trajectory_pos, label='generated_trajectory', linestyle='-')
-            ax[joint_idx, 0].set_title(f'Joint {joint_idx + 1} position [rad]')
-            ax[joint_idx, 0].grid()
-
-            ax[joint_idx, 1].plot(joint_states_times, joint_states_vel, label='robot_trajectory', linestyle='-')
-            ax[joint_idx, 1].plot(trajectory_times, trajectory_vel, label='generated_trajectory', linestyle='-')
-            ax[joint_idx, 1].set_title(f'Joint {joint_idx + 1} velocity [rad/s]')
-            ax[joint_idx, 1].grid()
-
-        handles, labels = ax.flatten()[-1].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='upper right')
-        fig.suptitle('Generated and robot trajectories')
-        fig.supxlabel('Time [s]')
-        plt.show()
 
     def _save_to_json(self, serialized_logs: dict):
         base_path = get_package_share_directory('visualization_tools_py')
@@ -243,18 +203,46 @@ class TrajectoriesVisualizer(Node):
             out_serialized_logs['generated_trajectory']['effort'].append(trajectory_eff)   
         return out_serialized_logs
 
+    def _remove_old_logs(self):
+        def get_directory_size(path: str) -> int:
+            size = 0
+            if os.path.exists(path):
+                logs = os.listdir(path)
+                for log_filename in logs:
+                    size += os.path.getsize(os.path.join(path, log_filename))
+            return size
+
+        self.get_logger().debug('Cleaning logs directory')
+        base_path = get_package_share_directory('visualization_tools_py')
+        logs_path = os.path.join(base_path, 'trajectories_logs')
+        if os.path.exists(logs_path):
+            while get_directory_size(logs_path) > 100_000_000:
+                logs = os.listdir(logs_path)
+                logs = sorted(logs)
+                fullpath = os.path.join(logs_path, logs[0])
+                try:
+                    os.remove(fullpath)
+                except FileNotFoundError as e:
+                    self.get_logger().warn(f'Error: {e}')
+                except IsADirectoryError as e:
+                    self.get_logger().warn(f'Error: {e}')
+
+    def _remove_terminated_vis_processes(self):
+        for _, process in enumerate(self._vis_processes):
+            if not process.is_alive():
+                self._vis_processes.remove(process)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Trajectories visualizer',
+    parser = argparse.ArgumentParser(description='Trajectories visualizer which save logs to JSON files',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-l', '--log', type=str, default='info',
-                        help='log level for node')
+    parser.add_argument('-l', '--log', type=str, default='info', help='log level for node')
+    parser.add_argument('-v', '--visualize', action='store_true', help='visualize current trajectories')
     args = parser.parse_args()
     log_level = args.log.lower()
 
     rclpy.init(args=None)
-    trajectory_sub = TrajectoriesVisualizer()
+    trajectory_sub = TrajectoriesVisualizer(visualize=args.visualize)
     log_level_enum = LoggingSeverity.INFO
     if log_level == 'debug':
         log_level_enum = LoggingSeverity.DEBUG

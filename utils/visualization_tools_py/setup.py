@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            f'save_path = {package_name}.save_path:main',
+            f'log_trajectories = {package_name}.log_trajectories:main',
+            f'visualize_trajectories = {package_name}.visualize_trajectories:main',
         ],
     },
 )

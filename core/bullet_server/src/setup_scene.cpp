@@ -73,7 +73,6 @@ namespace bullet_server
         // urdf_load_args.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
         urdf_load_args.m_startPosition = btVector3(0.18, -0.35, 0); // TODO: Read this from TF of robot base
         urdf_load_args.m_startOrientation = sim->getQuaternionFromEuler(btVector3(0, 0, 0));
-
         const std::string robot_urdf = helpers::commons::getRobotDescription();
         std::string package_share_directory = ament_index_cpp::get_package_share_directory("bullet_server");
         const std::string avena_arm_urdf_path = package_share_directory + "/robot_description.urdf";
@@ -83,7 +82,7 @@ namespace bullet_server
         sim->loadURDF(avena_arm_urdf_path, urdf_load_args);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! LOAD THE SCENE
+        // --- Table ---
         b3RobotSimulatorCreateCollisionShapeArgs table_collision_args;
         table_collision_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, TABLE_LENGTH_HALF, TABLE_HEIGHT / 2);
         int table_collision = sim->createCollisionShape(GEOM_BOX, table_collision_args);
@@ -91,7 +90,7 @@ namespace bullet_server
         table_visual_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, TABLE_LENGTH_HALF, TABLE_HEIGHT / 2);
         int table_visual = sim->createVisualShape(GEOM_BOX, table_visual_args);
 
-        //? Try to create other elements and link them with the table (which is the parent body)
+        // --- Side posts for cameras ---
         b3RobotSimulatorCreateCollisionShapeArgs stick1_collision_args;
         stick1_collision_args.m_halfExtents = btVector3(0.02, 0.02, 0.7);
         int stick1_collision = sim->createCollisionShape(GEOM_BOX, stick1_collision_args);
@@ -101,49 +100,46 @@ namespace bullet_server
         int stick1_visual = sim->createVisualShape(GEOM_BOX, stick1_visual_args);
         int stick2_visual = sim->createVisualShape(GEOM_BOX, stick1_visual_args);
 
-        // Cameras
+        // --- Cameras ---
         b3RobotSimulatorCreateCollisionShapeArgs camera_collision_args;
         camera_collision_args.m_halfExtents = btVector3(0.05, 0.05, 0.05);
-        int camera_collision = sim->createCollisionShape(GEOM_BOX, camera_collision_args);
+        int camera1_collision = sim->createCollisionShape(GEOM_BOX, camera_collision_args);
         int camera2_collision = sim->createCollisionShape(GEOM_BOX, camera_collision_args);
-        camera_collision_args.m_halfExtents = btVector3(0.15, 0.125, 0.075);
-        int camera3_collision = sim->createCollisionShape(GEOM_BOX, camera_collision_args);
         b3RobotSimulatorCreateVisualShapeArgs camera_visual_args;
         camera_visual_args.m_halfExtents = btVector3(0.05, 0.05, 0.05);
-        int camera_visual = sim->createVisualShape(GEOM_BOX, camera_visual_args);
+        int camera1_visual = sim->createVisualShape(GEOM_BOX, camera_visual_args);
         int camera2_visual = sim->createVisualShape(GEOM_BOX, camera_visual_args);
-        camera_visual_args.m_halfExtents = btVector3(0.15, 0.125, 0.075);
-        int camera3_visual = sim->createVisualShape(GEOM_BOX, camera_visual_args);
 
-        // Collision walls
+        // --- Collision walls ---
         const float collision_wall_height = 1;
+        const float wall_thickness = 0.01;
+        // Front and back wall
         b3RobotSimulatorCreateCollisionShapeArgs plane_front_collision_args;
-        plane_front_collision_args.m_halfExtents = btVector3(0.005, TABLE_LENGTH_HALF, collision_wall_height / 2);
+        plane_front_collision_args.m_halfExtents = btVector3(wall_thickness / 2, TABLE_LENGTH_HALF, collision_wall_height / 2);
         int front_plane_collision = sim->createCollisionShape(GEOM_BOX, plane_front_collision_args);
         int front_plane2_collision = sim->createCollisionShape(GEOM_BOX, plane_front_collision_args);
         b3RobotSimulatorCreateVisualShapeArgs plane_front_visual_args;
-        plane_front_visual_args.m_halfExtents = btVector3(0.005, TABLE_LENGTH_HALF, collision_wall_height / 2);
+        plane_front_visual_args.m_halfExtents = btVector3(wall_thickness / 2, TABLE_LENGTH_HALF, collision_wall_height / 2);
         int front_plane_visual = sim->createVisualShape(GEOM_BOX, plane_front_visual_args);
         int front_plane2_visual = sim->createVisualShape(GEOM_BOX, plane_front_visual_args);
+        // Side walls
         b3RobotSimulatorCreateCollisionShapeArgs plane_side_collision_args;
-        plane_side_collision_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, 0.005, collision_wall_height / 2);
+        plane_side_collision_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, wall_thickness / 2, collision_wall_height / 2);
         int side_plane_collision = sim->createCollisionShape(GEOM_BOX, plane_side_collision_args);
         int side_plane2_collision = sim->createCollisionShape(GEOM_BOX, plane_side_collision_args);
         b3RobotSimulatorCreateVisualShapeArgs plane_side_visual_args;
-        plane_side_visual_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, 0.005, collision_wall_height / 2);
+        plane_side_visual_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, wall_thickness / 2, collision_wall_height / 2);
         int side_plane_visual = sim->createVisualShape(GEOM_BOX, plane_side_visual_args);
         int side_plane2_visual = sim->createVisualShape(GEOM_BOX, plane_side_visual_args);
+        // Top wall
+        b3RobotSimulatorCreateCollisionShapeArgs plane_top_collision_args;
+        plane_top_collision_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, TABLE_LENGTH_HALF, wall_thickness / 2);
+        int top_plane_collision = sim->createCollisionShape(GEOM_BOX, plane_top_collision_args);
+        b3RobotSimulatorCreateVisualShapeArgs plane_top_visual_args;
+        plane_top_visual_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, TABLE_LENGTH_HALF, wall_thickness / 2);
+        int top_plane_visual = sim->createVisualShape(GEOM_BOX, plane_top_visual_args);
 
-        // Front stick
-        b3RobotSimulatorCreateCollisionShapeArgs front_stick_collision_args;
-        front_stick_collision_args.m_halfExtents = btVector3(0.02, 0.04, 0.7);
-        int front_stick_collision = sim->createCollisionShape(GEOM_BOX, front_stick_collision_args);
-        b3RobotSimulatorCreateVisualShapeArgs front_stick_visual_args;
-        front_stick_visual_args.m_halfExtents = btVector3(0.02, 0.04, 0.7);
-        int front_stick_visual = sim->createVisualShape(GEOM_BOX, front_stick_visual_args);
-
-
-        // Avena arm base
+        // --- Avena arm base ---
         b3RobotSimulatorCreateCollisionShapeArgs avena_arm_base_collision_args;
         avena_arm_base_collision_args.m_halfExtents = btVector3(0.1, 0.1, 0.05);
         int avena_arm_base_collision = sim->createCollisionShape(GEOM_BOX, avena_arm_base_collision_args);
@@ -157,32 +153,55 @@ namespace bullet_server
         table_args.m_basePosition = btVector3(TABLE_WIDTH_HALF, 0, -TABLE_HEIGHT / 2);
         table_args.m_baseVisualShapeIndex = table_visual;
         table_args.m_baseCollisionShapeIndex = table_collision;
-        std::vector<int> collision_indices = {stick1_collision, stick2_collision, camera_collision, camera2_collision, front_plane_collision, front_plane2_collision, side_plane_collision, side_plane2_collision, avena_arm_base_collision, front_stick_collision, camera3_collision};
+        std::vector<int> collision_indices = {
+            front_plane_collision,
+            front_plane2_collision,
+            side_plane_collision,
+            side_plane2_collision,
+            top_plane_collision,
+            stick1_collision,
+            stick2_collision,
+            camera1_collision,
+            camera2_collision,
+            avena_arm_base_collision,
+        };
         table_args.m_numLinks = collision_indices.size();
         table_args.m_linkCollisionShapeIndices = collision_indices.data(); //!1
-        std::vector<int> visual_indices = {stick1_visual, stick2_visual, camera_visual, camera2_visual, front_plane_visual, front_plane2_visual, side_plane_visual, side_plane2_visual, avena_arm_base_visual, front_stick_visual, camera3_visual};
+        std::vector<int> visual_indices = {
+            front_plane_visual,
+            front_plane2_visual,
+            side_plane_visual,
+            side_plane2_visual,
+            top_plane_visual,
+            stick1_visual,
+            stick2_visual,
+            camera1_visual,
+            camera2_visual,
+            avena_arm_base_visual,
+        };
         table_args.m_linkVisualShapeIndices = visual_indices.data(); //!2
         std::vector<double> mass_links(collision_indices.size(), 1.0);
         table_args.m_linkMasses = mass_links.data(); //!3
 
-        std::vector<btVector3> link_positions = {btVector3(0.38, 1.18, 0.7),
-                                                 btVector3(0.38, -1.18, 0.7),
-                                                 btVector3(-0.03, -0.03, 0.3 + 0.05),
-                                                 btVector3(-0.03, 0.03, 0.3 + 0.05),
-                                                 btVector3(-TABLE_WIDTH_HALF - 2 * 0.005, 0, collision_wall_height / 2),
-                                                 btVector3(TABLE_WIDTH_HALF + 2 * 0.005 + 0.2, 0, collision_wall_height / 2),
-                                                 btVector3(0, -TABLE_LENGTH_HALF - 2 * 0.005, collision_wall_height / 2),
-                                                 btVector3(0, TABLE_LENGTH_HALF + 2 * 0.005, collision_wall_height / 2),
-                                                 btVector3(0.18 - TABLE_WIDTH_HALF, 0.35, 0.05),
-                                                 btVector3(TABLE_WIDTH_HALF + 0.02, 0, 0.7),
-                                                 btVector3(TABLE_WIDTH_HALF - 0.15, 0, 1.23)};
+        std::vector<btVector3> link_positions = {
+            btVector3(-TABLE_WIDTH_HALF - 2 * 0.005, 0, collision_wall_height / 2),
+            btVector3(TABLE_WIDTH_HALF + 2 * 0.005 + 0.2, 0, collision_wall_height / 2),
+            btVector3(0, -TABLE_LENGTH_HALF - 2 * 0.005, collision_wall_height / 2),
+            btVector3(0, TABLE_LENGTH_HALF + 2 * 0.005, collision_wall_height / 2),
+            btVector3(0, 0, 1.05 + wall_thickness / 2),
+            btVector3(0.38, 1.18, 0.7),
+            btVector3(0.38, -1.18, 0.7),
+            btVector3(0.35, 1.15, 1.05),
+            btVector3(0.35, -1.15, 1.05),
+            btVector3(0.18 - TABLE_WIDTH_HALF, 0.35, 0.05),
+        };
         table_args.m_linkPositions = link_positions.data(); //!4
         std::vector<btQuaternion> link_orientations(collision_indices.size(), btQuaternion(0, 0, 0, 1));
         table_args.m_linkOrientations = link_orientations.data(); //!5
         //! To chceck faster - inertial same positions
         table_args.m_linkInertialFramePositions = link_positions.data();       //!6
         table_args.m_linkInertialFrameOrientations = link_orientations.data(); //!7
-        std::vector<int> link_parent_indices = {0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0};
+        std::vector<int> link_parent_indices(link_positions.size(), 0);
         table_args.m_linkParentIndices = link_parent_indices.data(); //!8
         std::vector<int> link_joint_types(link_positions.size(), JointType::eFixedType);
         table_args.m_linkJointTypes = link_joint_types.data(); //!9
@@ -191,18 +210,20 @@ namespace bullet_server
 
         // Change opacity for collision walls
         int table_id = sim->createMultiBody(table_args);
-        b3RobotSimulatorChangeVisualShapeArgs visual_;
-        visual_.m_rgbaColor = btVector4(0, 1, 0, 0.1);
-        visual_.m_objectUniqueId = table_id;
-        visual_.m_linkIndex = 4;
-        visual_.m_hasRgbaColor = true;
-        sim->changeVisualShape(visual_);
-        visual_.m_linkIndex = 5;
-        sim->changeVisualShape(visual_);
-        visual_.m_linkIndex = 6;
-        sim->changeVisualShape(visual_);
-        visual_.m_linkIndex = 7;
-        sim->changeVisualShape(visual_);
+        b3RobotSimulatorChangeVisualShapeArgs visual;
+        visual.m_rgbaColor = btVector4(0, 1, 0, 0.05);
+        visual.m_objectUniqueId = table_id;
+        visual.m_linkIndex = 0;
+        visual.m_hasRgbaColor = true;
+        sim->changeVisualShape(visual);
+        visual.m_linkIndex = 1;
+        sim->changeVisualShape(visual);
+        visual.m_linkIndex = 2;
+        sim->changeVisualShape(visual);
+        visual.m_linkIndex = 3;
+        sim->changeVisualShape(visual);
+        visual.m_linkIndex = 4;
+        sim->changeVisualShape(visual);
         ////////////////////////////////////////////////////////////////////////////////////////////
 
         // // Calibration mat params
