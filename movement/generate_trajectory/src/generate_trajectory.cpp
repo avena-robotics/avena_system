@@ -124,7 +124,7 @@ namespace generate_trajectory
                 return;
             }
             current_generated_path = std::make_shared<GeneratedPath>(*_current_generated_path);
-            _current_generated_path.reset();
+            // _current_generated_path.reset();
         }
 
         if (current_generated_path->path_segments.size() == 0)
