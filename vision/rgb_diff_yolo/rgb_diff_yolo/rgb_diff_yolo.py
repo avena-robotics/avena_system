@@ -10,7 +10,7 @@ from pathlib import Path
 from std_msgs.msg import Bool
 
 
-class Rgb_Diff(Node):
+class Rgb_Diff_Yolo(Node):
 
     def __init__(self):
         super().__init__('rgb_diff_yolo')
@@ -122,14 +122,14 @@ class Rgb_Diff(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    rgb_diff = Rgb_Diff()
+    rgb_diff_yolo = Rgb_Diff_Yolo()
 
-    rclpy.spin(rgb_diff)
+    rclpy.spin(rgb_diff_yolo)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    rgb_diff.destroy_node()
+    rgb_diff_yolo.destroy_node()
     rclpy.shutdown()
 
 

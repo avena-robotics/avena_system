@@ -8,7 +8,6 @@ yolo_detector = 'rgb_diff_yolo/yolo_detector'
 models = 'rgb_diff_yolo/yolo_detector/models'
 utils = 'rgb_diff_yolo/yolo_detector/utils'
 
-
 setup(
     name=package_name,
     version='0.0.0',
@@ -16,8 +15,9 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('lib', 'python' + '.'.join(platform.python_version().split('.')[:2]), 'site-packages', package_name, 'yolo_detector'), glob(os.path.join('launch', '*.*'))),
-        # (os.path.join('share', package_name), glob(os.path.join('rgb_diff_yolo', 'yolo_detector', 'yolo5s.pt'))),
+        (os.path.join('lib', 'python' + '.'.join(platform.python_version().split('.')[:2]), 'site-packages',
+                      package_name, 'yolo_detector'), glob(os.path.join('launch', '*.pt'))),
+        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*.py'))),
 
     ],
     install_requires=['setuptools'],
