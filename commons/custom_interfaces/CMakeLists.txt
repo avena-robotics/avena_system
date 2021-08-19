@@ -18,14 +18,16 @@ find_package(geometry_msgs REQUIRED)
 
 set(msg_files
   "msg/CamerasData.msg"
-  # "msg/PtcldTransformer.msg"
+  "msg/PtcldTransformer.msg"
   # "msg/RobotSelfFilter.msg"
   # "msg/ChangeDetect.msg"
   # "msg/CoppeliaItemInfo.msg"
   # "msg/ValidateData.msg"
   "msg/RgbImages.msg"
   "msg/DepthImages.msg"
-  # "msg/Ptclds.msg"
+  "msg/Ptclds.msg"
+  "msg/SceneData.msg"
+  "msg/Octomap.msg"
   # "msg/SceneDebugData.msg"
   # "msg/MergedPtcldFiltered.msg"
   "msg/Detections.msg"
@@ -89,6 +91,10 @@ set(srv_files
   "srv/DataStoreRgbdSyncInsert.srv"
   "srv/DataStoreRgbdSyncGetList.srv"
   "srv/DataStoreRgbdSyncSelect.srv"
+  "srv/DataStoreSceneDelete.srv"
+  "srv/DataStoreSceneInsert.srv"
+  "srv/DataStoreSceneGetList.srv"
+  "srv/DataStoreSceneSelect.srv"
 )
 
 set(action_files

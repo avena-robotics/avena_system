@@ -26,6 +26,7 @@ namespace data_store
         std::unique_ptr<Tracker> _tracker_element_ptr;
         std::unique_ptr<Detectron> _detectron_element_ptr;
         std::unique_ptr<Items> _items_element_ptr;
+        std::unique_ptr<Scene> _scene_element_ptr;
         // add other data elements here
     };
 
