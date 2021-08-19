@@ -11,5 +11,4 @@ int32[] cam2_labels
 Item[] items
 string occupancy_grid
 int32[] selected_items_ids
-
 sensor_msgs/PointCloud2 filtered_scene_octomap

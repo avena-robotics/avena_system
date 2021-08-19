@@ -8,7 +8,8 @@ from rclpy.action import ActionServer
 from rclpy.node import Node
 from custom_interfaces.action import SimpleAction
 from custom_interfaces.msg import Detections
-from custom_interfaces.srv import DataStoreCamerasDataSelect, DataStoreCamerasDataInsert, DataStoreDetectronSelect
+from custom_interfaces.srv import DataStoreCamerasDataSelect, DataStoreCamerasDataInsert, DataStoreDetectronSelect, \
+    DataStoreDetectronInsert
 from .DetectronInference import DetectronInference
 from ament_index_python.packages import get_package_share_directory
 import time
@@ -16,8 +17,10 @@ import os
 from os.path import expanduser
 from builtins import float
 from std_msgs.msg import Float64
-# import pydevd_pycharm
-# pydevd_pycharm.settrace('localhost', port=1090, stdoutToServer=True, stderrToServer=True)
+
+
+import pydevd_pycharm
+pydevd_pycharm.settrace('localhost', port=1090, stdoutToServer=True, stderrToServer=True)
 
 class InsertRgbClientAsync(Node):
 
@@ -25,11 +28,45 @@ class InsertRgbClientAsync(Node):
         super().__init__('rgb_insert_client_async')
         self.ds_insert_rgb = self.create_client(DataStoreCamerasDataInsert, 'cameras_data_insert')
         while not self.ds_insert_rgb.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
+            self.get_logger().info('Datastore insert rgb service not available, waiting again...')
         self.rgb_ins_req = DataStoreCamerasDataInsert.Request()
 
     def send_request(self):
         self.ins_rgb_future = self.ds_insert_rgb.call_async(self.rgb_ins_req)
+
+
+class InsertDetectronClientAsync(Node):
+
+    def __init__(self):
+        super().__init__('detectron_insert_client_async')
+        self.ds_insert_detectron = self.create_client(DataStoreDetectronInsert, 'detectron_insert')
+        while not self.ds_insert_detectron.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Datastore detectron result service not available, waiting again...')
+        self.detectron_ins_req = DataStoreDetectronInsert.Request()
+
+    def send_request(self, detections_result):
+        detections_msg = Detections()
+        detections_msg.cam1_masks = list()
+        detections_msg.cam1_labels = list()
+        detections_msg.cam2_masks = list()
+        detections_msg.cam2_labels = list()
+
+        for k,v in detections_result[0].items():
+            for i in range(len(v)):
+                detections_msg.cam1_masks.append(v[i])
+                detections_msg.cam1_labels.append(k.lower())
+
+        for k,v in detections_result[1].items():
+            for j in range(len(v)):
+                detections_msg.cam2_masks.append(v[j])
+                detections_msg.cam2_labels.append(k.lower())
+
+
+        self.detectron_ins_req.data = detections_msg
+        ts = Float64()
+        ts.data = float(time.time())
+        self.detectron_ins_req.time_stamp = ts
+        self.future = self.ds_insert_detectron.call_async(self.detectron_ins_req)
 
 
 class SelectRgbClientAsync(Node):
@@ -47,7 +84,6 @@ class SelectRgbClientAsync(Node):
 
 class DetectActionServer(Node):
 
-
     def __init__(self):
         super().__init__('detect_action_server')
 
@@ -58,7 +94,8 @@ class DetectActionServer(Node):
             self.execute_callback)
         self.qos = QoSProfile(depth=1)
         self.qos.history = HistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST
-        self.detections_publisher = self.create_publisher(DataStoreDetectronSelect.Response, 'filter_detections', qos_profile=self.qos)
+        # self.detections_publisher = self.create_publisher(DataStoreDetectronSelect.Response, 'filter_detections',
+        #                                                   qos_profile=self.qos)
 
         # init detectron instances
         self.package_share_directory = get_package_share_directory('detect_server')
@@ -72,6 +109,9 @@ class DetectActionServer(Node):
 
         # datastore select client
         self.ds_sel_client = SelectRgbClientAsync()
+
+        # datastore detectron result insert client
+        self.detectron_ins_client = InsertDetectronClientAsync()
 
     def make_detction(self, lock, detectron_instance, image, result, cam_no):
         res = detectron_instance.detect_image(image)
@@ -92,6 +132,20 @@ class DetectActionServer(Node):
                         'Service call failed %r' % (e,))
                 break
 
+    def save_detectron_result_to_datastore(self, results):
+
+        self.detectron_ins_client.send_request(results)
+        while rclpy.ok():
+            rclpy.spin_once(self.detectron_ins_client)
+            if self.detectron_ins_client.future.done():
+                try:
+                    response = self.detectron_ins_client.future.result()
+                except Exception as e:
+                    self.detectron_ins_client.get_logger().info(
+                        'Service call failed %r' % (e,))
+                else:
+                    self.detectron_ins_client.get_logger().info(str(response.result))
+                break
 
     def execute_callback(self, goal_handle):
         # start = time.time()
@@ -113,10 +167,11 @@ class DetectActionServer(Node):
         result = [None, None]
 
         # det = time.time()
-
+        # self.make_detction(self.lock, self.detectron_cam1, cam1_img, result, 0)
+        # self.make_detction(self.lock, self.detectron_cam2, cam2_img, result, 1)
         t1 = Thread(target=self.make_detction, args=(self.lock, self.detectron_cam1, cam1_img, result, 0,))
         t2 = Thread(target=self.make_detction, args=(self.lock, self.detectron_cam2, cam2_img, result, 1,))
-
+        #
         t1.start()
         t2.start()
         t1.join()
@@ -131,21 +186,7 @@ class DetectActionServer(Node):
         # pub_start = time.time()
 
         # save results to datastore
-        detections_msg = Detections()
-        detections_msg.cam1_masks = [str(mask) for mask in result[0]['masks']]
-        detections_msg.cam1_labels = list(map(lambda lbl: lbl.lower(), result[1]['classes']))
-        detections_msg.cam2_masks = [str(mask) for mask in result[1]['masks']]
-        detections_msg.cam2_labels = list(map(lambda lbl: lbl.lower(), result[1]['classes']))
-
-        # resp = DataStoreDetectronSelect.Response()
-        # resp.detections = detections_msg
-        # ts = Float64()
-        # ts.data = float(time.time())
-        # resp.time_stamp = ts
-        #
-        # self.detections_publisher.publish(resp)
-
-
+        self.save_detectron_result_to_datastore(results=result)
 
         # pub_end = time.time()
         # print("Publishing time: ", pub_end-pub_start)

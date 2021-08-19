@@ -350,20 +350,12 @@ namespace compose_items
             RCLCPP_INFO(this->get_logger(), "service not available, waiting again...");
         }
 
-        _publisher->publish(*compose_msg);
+        // _publisher->publish(*compose_msg);
+            request->data = compose_msg->data;
 
-        while (rclcpp::ok())
-        {
-            size_t size = _publisher->get_queue_size();
-            if (size > 0)
-                break;
-        }
-        // Wait for the result.
-        auto data_store_result = _items_client->async_send_request(request);
-        if (rclcpp::ok() && data_store_result.wait_for(5s) == std::future_status::ready)
-        {
-            return 0;
-        }
+            auto data_store_result = _items_client->async_send_request(request);
+            if (rclcpp::ok() && data_store_result.wait_for(5s) == std::future_status::ready)
+                return 0;
 
         return 1;
     }

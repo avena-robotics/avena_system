@@ -15,7 +15,6 @@ namespace rgbd_sync
                                                                                        [this](const custom_interfaces::msg::RgbImages::SharedPtr rgb_image_msg) {
                                                                                            if(_cant_touch_this)
                                                                                              return;
-                                                                                            //  std::cout << "cam1" <<std::endl;
                                                                                            _rgb_images_data = rgb_image_msg;
                                                                                        });        
                                                                                        
@@ -23,12 +22,19 @@ namespace rgbd_sync
                                                                                        [this](const custom_interfaces::msg::DepthImages::SharedPtr depth_image_msg) {
                                                                                            if(_cant_touch_this)
                                                                                              return;
-                                                                                            //  std::cout << "cam2" <<std::endl;
                                                                                            _depth_images_data = depth_image_msg;
                                                                                        });
 
+
+        _ptclds_sub = create_subscription<custom_interfaces::msg::Ptclds>("ptclds_stream", qos_settings,
+                                                                                       [this](const custom_interfaces::msg::Ptclds::SharedPtr ptclds_msg) {
+                                                                                           if(_cant_touch_this)
+                                                                                             return;
+                                                                                           _ptclds_data = ptclds_msg;
+                                                                                       });
+
         qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-        _rgbd_sync_publisher = create_publisher<Response>("rgbd_sync", qos_settings);
+        // _rgbd_sync_publisher = create_publisher<Response>("rgbd_sync", qos_settings);
    
         _initializeServers();
 
@@ -37,8 +43,8 @@ namespace rgbd_sync
 
     _client = this->create_client<custom_interfaces::srv::DataStoreRgbdSyncInsert>("rgbd_sync_insert");
 
-        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
         status = Heartbeat::STOPPED;
+        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
 
    
 
@@ -98,14 +104,15 @@ namespace rgbd_sync
         // auto request_timestamp = goal_handle->get_goal()->timestamp;
         auto abortReturn = [this, &goal_handle, &result]()
         {
-            _rgbd_sync_publisher->publish(Response());
+            // _rgbd_sync_publisher->publish(Response());
 
             goal_handle->abort(result);
         };
 
         // Validate input message
         if (!_rgb_images_data || _rgb_images_data->header.stamp == builtin_interfaces::msg::Time() || 
-            !_depth_images_data || _depth_images_data->header.stamp == builtin_interfaces::msg::Time())
+            !_depth_images_data || _depth_images_data->header.stamp == builtin_interfaces::msg::Time() ||
+            !_ptclds_data || _ptclds_data->header.stamp == builtin_interfaces::msg::Time())
         {
             RCLCPP_ERROR(this->get_logger(), "Invalid input message. Goal failed.");
             abortReturn();
@@ -114,9 +121,8 @@ namespace rgbd_sync
 
         RCLCPP_INFO(this->get_logger(), "Publishing scene data");
         _cant_touch_this = true;
-        Response::SharedPtr response_msg = _prepareOutputMessages(_rgb_images_data, _depth_images_data);
+        auto request = _prepareOutputMessages(_rgb_images_data, _depth_images_data, _ptclds_data);
 
-    auto request = std::make_shared<custom_interfaces::srv::DataStoreRgbdSyncInsert::Request>();
         while (!_client->wait_for_service(1s)) {
             if (!rclcpp::ok()) {
             RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
@@ -124,13 +130,7 @@ namespace rgbd_sync
             RCLCPP_INFO(this->get_logger(), "service not available, waiting again...");
         }
 
-    _rgbd_sync_publisher->publish(*response_msg);
 
-    while (rclcpp::ok()) {
-        size_t size = _rgbd_sync_publisher->get_queue_size();
-        if(size > 0)
-            break;
-    }
 
     auto data_store_result = _client->async_send_request(request);
     data_store_result.wait_for(5s);
@@ -142,16 +142,16 @@ namespace rgbd_sync
 
     }
 
-    Response::SharedPtr RgbdSynchronizer::_prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images)
+    Request::SharedPtr RgbdSynchronizer::_prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images, const Ptclds::SharedPtr &ptclds)
     {
-        Response::SharedPtr response_msg = std::make_shared<Response>();
-        response_msg->data.header.stamp = now();
-        response_msg->data.rgb = *rgb_images;
-        response_msg->data.depth = *depth_images;
-
+        Request::SharedPtr request_msg = std::make_shared<Request>();
+        request_msg->data.header.stamp = now();
+        request_msg->data.rgb = *rgb_images;
+        request_msg->data.depth = *depth_images;
+        request_msg->data.ptclds = *ptclds;
 
         _cant_touch_this = false;
-        return response_msg;
+        return request_msg;
     }
 
 } // namespace 

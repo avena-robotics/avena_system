@@ -1,0 +1,4 @@
+std_msgs/Float64 time_stamp
+custom_interfaces/SceneData data
+---
+std_msgs/Bool result

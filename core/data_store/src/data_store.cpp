@@ -18,6 +18,7 @@ namespace data_store
         _cameras_data_element_ptr = std::make_unique<RgbdSync>(shared_from_this(), "rgbd_sync");
         _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), "filter_detections");
         _items_element_ptr = std::make_unique<Items>(shared_from_this(), "compose_items");
+        _scene_element_ptr = std::make_unique<Scene>(shared_from_this(), "scene");
         // add other data elements here
         status = custom_interfaces::msg::Heartbeat::RUNNING;
     }

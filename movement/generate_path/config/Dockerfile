@@ -1,3 +1,4 @@
+# https://sdk.rethinkrobotics.com/wiki/Custom_IKFast_for_your_Baxter - follow instruction to generate IK file
 FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y lsb-release gnupg2 build-essential && apt-get clean all

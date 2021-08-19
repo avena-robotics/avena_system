@@ -30,6 +30,8 @@
   <depend>rgb_diff</depend>
   <depend>detect_server</depend>
   <depend>data_store</depend>
+  <depend>rgbd_sync</depend>
+  
 
   <!-- <build_depend>rclcpp</build_depend>
   <build_depend>cv_bridge</build_depend>
