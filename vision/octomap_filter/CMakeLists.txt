@@ -31,7 +31,6 @@ find_package(nlohmann_json REQUIRED)
 
 find_package(helpers_vision REQUIRED)
 find_package(helpers_commons REQUIRED)
-find_package(db_connector REQUIRED)
 
 add_library(octomap_filter SHARED src/octomap_filter.cpp)
 
@@ -65,7 +64,6 @@ ament_target_dependencies(octomap_filter_debug
   rclcpp
   rclcpp_components
   custom_interfaces
-  db_connector
   helpers_vision)
 rclcpp_components_register_nodes(octomap_filter_debug "ros2mysql::OctomapFilter")
 

@@ -19,9 +19,7 @@
   <depend>sensor_msgs</depend>
   <depend>helpers_commons</depend>
   <depend>helpers_vision</depend>
-  <depend>db_connector</depend>
-
-
+  
   <export>
     <build_type>ament_cmake</build_type>
   </export>
