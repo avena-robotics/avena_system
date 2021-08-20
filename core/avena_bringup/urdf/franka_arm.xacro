@@ -3,7 +3,8 @@
   <!-- safety_distance: Minimum safety distance in [m] by which the collision volumes are expanded and which is enforced during robot motions -->
   <!-- arm_id: Namespace of the franka arm. Serves to differentiate between arms in case of multiple instances. -->
   <xacro:macro name="franka_arm" params="arm_id:='franka' description_pkg:='avena_bringup' connected_to:='' xyz:='0 0 0' rpy:='0 0 0' safety_distance:=0">
-    <link name="${arm_id}_link_0">
+  <!-- Links   -->
+  <link name="${arm_id}_link_0">
       <visual>
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link0.dae"/>
@@ -101,6 +102,7 @@
     </link>
     <link name="${arm_id}_gripper_connection"/>
 
+    <!-- Joints -->
     <xacro:unless value="${not connected_to}">
       <joint name="${arm_id}_joint__${connected_to}" type="fixed">
         <parent link="${connected_to}"/>

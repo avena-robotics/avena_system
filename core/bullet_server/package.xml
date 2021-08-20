@@ -10,6 +10,7 @@
   <buildtool_depend>ament_cmake_ros</buildtool_depend>
 
   <depend>helpers_commons</depend>
+  <depend>helpers_vision</depend>
   <depend>bullet_client</depend>
   
   <test_depend>ament_lint_auto</test_depend>

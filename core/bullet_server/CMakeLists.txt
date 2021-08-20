@@ -23,6 +23,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(helpers_commons REQUIRED)
+find_package(helpers_vision REQUIRED)
 find_package(bullet_client REQUIRED)
 find_package(Bullet REQUIRED)
 
@@ -94,6 +95,7 @@ ament_target_dependencies(setup_scene
   Bullet
   bullet_client
   helpers_commons
+  helpers_vision
 )
 rclcpp_components_register_nodes(setup_scene 
   PLUGIN "bullet_server::SetupScene"
@@ -114,6 +116,7 @@ ament_export_dependencies(
   bullet_client
   ament_index_cpp
   helpers_commons
+  helpers_vision
 )
 ament_export_include_directories(
   include

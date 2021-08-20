@@ -83,6 +83,8 @@ extern "C" {
   void dgeev_(const char *jobvl, const char *jobvr, const int *n, double *a, const int *lda, double *wr, double *wi,double *vl, const int *ldvl, double *vr, const int *ldvr, double *work, const int *lwork, int *info);
 }
 
+namespace ik_franka
+{
 using namespace std; // necessary to get std math routines
 
 #ifdef IKFAST_NAMESPACE
@@ -12844,3 +12846,4 @@ int main(int argc, char** argv)
 }
 
 #endif
+}

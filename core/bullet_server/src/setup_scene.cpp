@@ -6,6 +6,7 @@ namespace bullet_server
     SetupScene::SetupScene(const rclcpp::NodeOptions &options)
         : Node("scene_setup", options)
     {
+        helpers::commons::setLoggerLevel(get_logger(), "info");
         _loading_scene_timer = create_wall_timer(std::chrono::milliseconds(500), std::bind(&SetupScene::createWorld, this));
     }
 
@@ -17,6 +18,7 @@ namespace bullet_server
         if (area.empty())
             return ReturnCode::FAILURE;
 
+        RCLCPP_DEBUG(get_logger(), "Reading table area dimensions");
         _workspace_area.x_min = area["table_area"]["min"]["x"].get<float>();
         _workspace_area.y_min = area["table_area"]["min"]["y"].get<float>();
         _workspace_area.z_min = area["table_area"]["min"]["z"].get<float>();
@@ -24,6 +26,11 @@ namespace bullet_server
         _workspace_area.x_max = area["table_area"]["max"]["x"].get<float>();
         _workspace_area.y_max = area["table_area"]["max"]["y"].get<float>();
         _workspace_area.z_max = area["table_area"]["max"]["z"].get<float>();
+
+        RCLCPP_DEBUG(get_logger(), "Reading robot information");
+        _robot_info = helpers::commons::getRobotInfo();
+        if (!_robot_info.valid)
+            return ReturnCode::FAILURE;
 
         RCLCPP_INFO(get_logger(), "Parameters read successfully...");
         return ReturnCode::SUCCESS;
@@ -51,35 +58,46 @@ namespace bullet_server
             // return ReturnCode::FAILURE;
         }
 
-        //! robot params
-
-        // const double TABLE_HEIGHT = 0;
-        // const double TABLE_HEIGHT = 0.545;
+        // Table dimensions
         const double TABLE_HEIGHT = 0.01;
         const double TABLE_LENGTH_HALF = (_workspace_area.y_max - _workspace_area.y_min) / 2;
         const double TABLE_WIDTH_HALF = (_workspace_area.x_max - _workspace_area.x_min) / 2;
 
         // sim->configureDebugVisualizer(COV_ENABLE_GUI, 1);
-        //	sim->configureDebugVisualizer( COV_ENABLE_SHADOWS, 0);//COV_ENABLE_WIREFRAME
+        // sim->configureDebugVisualizer( COV_ENABLE_SHADOWS, 0);//COV_ENABLE_WIREFRAME
         sim->setTimeOut(10);
         //syncBodies is only needed when connecting to an existing physics server that has already some bodies
         sim->syncBodies();
         // btScalar fixedTimeStep = 1. / 240.;
         sim->setGravity(btVector3(0, 0, -9.81));
 
-        //! LOAD AVENA ARM FROM URDF
-        b3RobotSimulatorLoadUrdfFileArgs urdf_load_args;
-        urdf_load_args.m_forceOverrideFixedBase = true;
-        // urdf_load_args.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
-        urdf_load_args.m_startPosition = btVector3(0.18, -0.35, 0); // TODO: Read this from TF of robot base
-        urdf_load_args.m_startOrientation = sim->getQuaternionFromEuler(btVector3(0, 0, 0));
+        // --- Robot ---
+        // Read robot description and base transformation to world
         const std::string robot_urdf = helpers::commons::getRobotDescription();
         std::string package_share_directory = ament_index_cpp::get_package_share_directory("bullet_server");
-        const std::string avena_arm_urdf_path = package_share_directory + "/robot_description.urdf";
-        std::ofstream f(avena_arm_urdf_path);
+        const std::string arm_urdf_path = package_share_directory + "/robot_description.urdf";
+        std::ofstream f(arm_urdf_path);
         f << robot_urdf;
         f.close();
-        sim->loadURDF(avena_arm_urdf_path, urdf_load_args);
+        b3RobotSimulatorLoadUrdfFileArgs urdf_load_args;
+        // Load transformation for arm base
+        geometry_msgs::msg::TransformStamped tf_to_base;
+        if (auto tf_to_base_opt = helpers::vision::getTransformStamped("world", _robot_info.base_link_name))
+        {
+            RCLCPP_INFO(get_logger(), "Transformation from base to world read successfully");
+            tf_to_base = *tf_to_base_opt;
+            urdf_load_args.m_startPosition  = btVector3(tf_to_base.transform.translation.x, tf_to_base.transform.translation.y, tf_to_base.transform.translation.z);
+        }
+        else
+        {
+            RCLCPP_ERROR(get_logger(), "Invalid transformation from robot base to world. Exiting...");
+            std::exit(1);
+        }
+
+        urdf_load_args.m_forceOverrideFixedBase = true;
+        // urdf_load_args.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
+        urdf_load_args.m_startOrientation = sim->getQuaternionFromEuler(btVector3(0, 0, 0));
+        sim->loadURDF(arm_urdf_path, urdf_load_args);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // --- Table ---
@@ -139,13 +157,21 @@ namespace bullet_server
         plane_top_visual_args.m_halfExtents = btVector3(TABLE_WIDTH_HALF, TABLE_LENGTH_HALF, wall_thickness / 2);
         int top_plane_visual = sim->createVisualShape(GEOM_BOX, plane_top_visual_args);
 
-        // --- Avena arm base ---
-        b3RobotSimulatorCreateCollisionShapeArgs avena_arm_base_collision_args;
-        avena_arm_base_collision_args.m_halfExtents = btVector3(0.1, 0.1, 0.05);
-        int avena_arm_base_collision = sim->createCollisionShape(GEOM_BOX, avena_arm_base_collision_args);
-        b3RobotSimulatorCreateVisualShapeArgs avena_arm_base_visual_args;
-        avena_arm_base_visual_args.m_halfExtents = btVector3(0.1, 0.1, 0.05);
-        int avena_arm_base_visual = sim->createVisualShape(GEOM_BOX, avena_arm_base_visual_args);
+        ////////////////////////////////////////////////////////////////////////////
+        // TODO: This should be removed later when whole real scene is setup properly
+        int avena_arm_base_collision = -1;
+        int avena_arm_base_visual = -1;
+        if (_robot_info.robot_name == "franka")
+        {
+            // --- Avena arm base ---
+            b3RobotSimulatorCreateCollisionShapeArgs avena_arm_base_collision_args;
+            avena_arm_base_collision_args.m_halfExtents = btVector3(0.1, 0.1, 0.05);
+            avena_arm_base_collision = sim->createCollisionShape(GEOM_BOX, avena_arm_base_collision_args);
+            b3RobotSimulatorCreateVisualShapeArgs avena_arm_base_visual_args;
+            avena_arm_base_visual_args.m_halfExtents = btVector3(0.1, 0.1, 0.05);
+            avena_arm_base_visual = sim->createVisualShape(GEOM_BOX, avena_arm_base_visual_args);
+        }
+        ////////////////////////////////////////////////////////////////////////////
 
         // Create collision table with all parts
         b3RobotSimulatorCreateMultiBodyArgs table_args;
@@ -163,8 +189,16 @@ namespace bullet_server
             stick2_collision,
             camera1_collision,
             camera2_collision,
-            avena_arm_base_collision,
         };
+
+        ////////////////////////////////////////////////////////////////////////////
+        // TODO: This should be removed later when whole real scene is setup properly
+        if (_robot_info.robot_name == "franka")
+        {
+            collision_indices.push_back(avena_arm_base_collision);
+        }
+        ////////////////////////////////////////////////////////////////////////////
+
         table_args.m_numLinks = collision_indices.size();
         table_args.m_linkCollisionShapeIndices = collision_indices.data(); //!1
         std::vector<int> visual_indices = {
@@ -177,8 +211,16 @@ namespace bullet_server
             stick2_visual,
             camera1_visual,
             camera2_visual,
-            avena_arm_base_visual,
         };
+
+        ////////////////////////////////////////////////////////////////////////////
+        // TODO: This should be removed later when whole real scene is setup properly
+        if (_robot_info.robot_name == "franka")
+        {
+            visual_indices.push_back(avena_arm_base_visual);
+        }
+        ////////////////////////////////////////////////////////////////////////////
+
         table_args.m_linkVisualShapeIndices = visual_indices.data(); //!2
         std::vector<double> mass_links(collision_indices.size(), 1.0);
         table_args.m_linkMasses = mass_links.data(); //!3
@@ -193,8 +235,17 @@ namespace bullet_server
             btVector3(0.38, -1.18, 0.7),
             btVector3(0.35, 1.15, 1.05),
             btVector3(0.35, -1.15, 1.05),
-            btVector3(0.18 - TABLE_WIDTH_HALF, 0.35, 0.05),
+            // btVector3(0.18 - TABLE_WIDTH_HALF, 0.35, 0.05),
         };
+
+        ////////////////////////////////////////////////////////////////////////////
+        // TODO: This should be removed later when whole real scene is setup properly
+        if (_robot_info.robot_name == "franka")
+        {
+            link_positions.push_back(btVector3(0.18 - TABLE_WIDTH_HALF, -tf_to_base.transform.translation.y, 0.05));
+        }
+        ////////////////////////////////////////////////////////////////////////////
+       
         table_args.m_linkPositions = link_positions.data(); //!4
         std::vector<btQuaternion> link_orientations(collision_indices.size(), btQuaternion(0, 0, 0, 1));
         table_args.m_linkOrientations = link_orientations.data(); //!5
