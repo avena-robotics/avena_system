@@ -15,7 +15,7 @@ namespace generate_path
             ompl::msg::setLogLevel(ompl::msg::LOG_WARN);
         else if (log_level == RCUTILS_LOG_SEVERITY_ERROR || log_level == RCUTILS_LOG_SEVERITY_FATAL)
             ompl::msg::setLogLevel(ompl::msg::LOG_ERROR);
-        
+
         status = custom_interfaces::msg::Heartbeat::STOPPED;
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
     }
@@ -174,14 +174,22 @@ namespace generate_path
         path_planning_input.constraints->obstacles.push_back(_table_idx);
 
         // Check initial state validity
-        _setJointStates(path_planning_input.start_state);
-        if (Planner::calculateContactPointsAmount(path_planning_input) > _contact_number_allowed)
+        std::string error_message;
+        if (_validateArmInitialConfiguration(path_planning_input, path_planning_input.start_state, error_message) != ReturnCode::SUCCESS)
         {
-            RCLCPP_ERROR(get_logger(), "Invalid initial state. Robot is in collision with scene or itself. Aborting...");
+            RCLCPP_ERROR_STREAM(get_logger(), error_message << ". Aborting...");
             _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
             goal_handle->abort(result);
             return;
         }
+        // _setJointStates(path_planning_input.start_state);
+        // if (Planner::calculateContactPointsAmount(path_planning_input) > _contact_number_allowed)
+        // {
+        //     RCLCPP_ERROR(get_logger(), "Invalid initial state. Robot is in collision with scene or itself. Aborting...");
+        //     _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+        //     goal_handle->abort(result);
+        //     return;
+        // }
 
         auto goal_end_effector_pose_ros = goal_handle.get()->get_goal()->end_effector_pose;
         Eigen::Affine3d goal_end_effector_pose;
@@ -237,7 +245,7 @@ namespace generate_path
         RCLCPP_INFO(get_logger(), "Generate to pose finished");
     }
 
-    ReturnCode GeneratePath::_validateConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message)
+    ReturnCode GeneratePath::_validateArmFinalConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message)
     {
         _setJointStates(joint_state);
 
@@ -271,6 +279,25 @@ namespace generate_path
         {
             // RCLCPP_ERROR(get_logger(), "Invalid final state. Robot is in collision with scene or itself. Aborting...");
             error_message = "Invalid final state. Robot is in collision with scene or itself.";
+            return ReturnCode::FAILURE;
+        }
+        return ReturnCode::SUCCESS;
+    }
+
+    ReturnCode GeneratePath::_validateArmInitialConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message)
+    {
+        _setJointStates(joint_state);
+        if (_checkJointLimits(joint_state, _robot_info.limits) != ReturnCode::SUCCESS)
+        {
+            // RCLCPP_DEBUG(get_logger(), "Invalid initial state. Joint states are outside of limits. Checking another configuration...");
+            error_message = "Invalid initial state. Joint states are outside of limits";
+            return ReturnCode::FAILURE;
+        }
+
+        if (Planner::calculateContactPointsAmount(path_planning_input) > _contact_number_allowed)
+        {
+            // RCLCPP_ERROR(get_logger(), "Invalid initial state. Robot is in collision with scene or itself. Aborting...");
+            error_message = "Invalid initial state. Robot is in collision with scene or itself";
             return ReturnCode::FAILURE;
         }
         return ReturnCode::SUCCESS;
@@ -332,11 +359,14 @@ namespace generate_path
         // Get rotation of end effector
         IkReal eerot[9];
         auto quat = Eigen::Quaterniond(path_planning_input.goal_end_effector_pose.rotation());
-        auto ee_rot_matrix = quat.normalized().toRotationMatrix();
-        auto rotation_z = Eigen::AngleAxisd(-M_PI_4, ee_rot_matrix.col(2));
-        auto rotation_y = Eigen::AngleAxisd(M_PI_2, ee_rot_matrix.col(1));
-        auto rotation_x = Eigen::AngleAxisd(-M_PI_2, ee_rot_matrix.col(0));
-        quat = rotation_x * rotation_y * rotation_z * quat;
+        if (_robot_info.robot_name == "franka")
+        {
+            auto ee_rot_matrix = quat.normalized().toRotationMatrix();
+            auto rotation_z = Eigen::AngleAxisd(-M_PI_4, ee_rot_matrix.col(2));
+            auto rotation_y = Eigen::AngleAxisd(M_PI_2, ee_rot_matrix.col(1));
+            auto rotation_x = Eigen::AngleAxisd(-M_PI_2, ee_rot_matrix.col(0));
+            quat = rotation_x * rotation_y * rotation_z * quat;
+        }
         auto rot_matrix = quat.normalized().toRotationMatrix();
         eerot[0] = rot_matrix(0);
         eerot[1] = rot_matrix(3);
@@ -355,43 +385,27 @@ namespace generate_path
         eetrans[1] = trans_vec(1) - _robot_base_tf.transform.translation.y;
         eetrans[2] = trans_vec(2) - _robot_base_tf.transform.translation.z;
 
-        const auto free_joint_idx = GetFreeIndices();
-        const double joint_state_increment = 0.1;
-        const auto free_joint_limits = _robot_info.limits[free_joint_idx[0]];
-        const double middle_range = (free_joint_limits.lower + free_joint_limits.upper) / 2;
-        double lower_joint_state = middle_range;
-        double upper_joint_state = middle_range + joint_state_increment;
-        
-        size_t amount_of_samples = 0; 
-        std::string error_msg = "success";
+        std::string error_msg = "";
         ArmConfiguration goal_configuration;
-
-        auto check_single_ik = [=, &amount_of_samples](const double &free_joint_val) mutable -> std::tuple<ArmConfiguration, std::string>
+        if (_robot_info.robot_name == "avena")
         {
-            std::string error_msg = "success";
-            ArmConfiguration goal_configuration;
-
-            std::vector<IkReal> vfree = {free_joint_val};
+            // Avena
             IkSolutionList<IkReal> solutions;
-            if (ComputeIk(eetrans, eerot, vfree.size() > 0 ? &vfree[0] : NULL, solutions))
+            if (ik_avena::ComputeIk(eetrans, eerot, NULL, solutions))
             {
                 RCLCPP_DEBUG_STREAM(get_logger(), "Found " << solutions.GetNumSolutions() << " IK solutions");
-                std::vector<IkReal> solvalues(GetNumJoints());
+                std::vector<IkReal> solvalues(ik_avena::GetNumJoints());
                 for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i)
                 {
                     RCLCPP_DEBUG_STREAM(get_logger(), "Validating solution " << i + 1 << " / " << solutions.GetNumSolutions());
-                    amount_of_samples++;
 
                     const IkSolutionBase<IkReal> &sol = solutions.GetSolution(i);
                     std::vector<IkReal> vsolfree(sol.GetFree().size());
                     sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
 
-                    // Validate calculated configuration
-                    if (_validateConfiguration(path_planning_input, solvalues, error_msg) != ReturnCode::SUCCESS)
-                        continue;
-
-                    goal_configuration = solvalues;
-
+                    // ///////////////////////////////////////////////////////////////////////
+                    // // Single configuration visualization
+                    // _setJointStates(solvalues);
                     // cv::Mat img = cv::Mat::ones(100, 100, CV_8UC1) * 255;
                     // cv::putText(img,                                                                       //target image
                     //             std::to_string(i + 1) + "_" + std::to_string(solutions.GetNumSolutions()), //text
@@ -403,36 +417,101 @@ namespace generate_path
                     // cv::imshow("kek", img);
                     // cv::waitKey();
                     // printf("\n");
+                    // ///////////////////////////////////////////////////////////////////////
+
+                    // Validate calculated configuration
+                    if (_validateArmFinalConfiguration(path_planning_input, solvalues, error_msg) != ReturnCode::SUCCESS)
+                        continue;
+
+                    goal_configuration = solvalues;
                     break;
                 }
             }
-            return std::make_tuple(goal_configuration, error_msg);
-        };
-
-        while (true)
-        {
-            if (lower_joint_state < free_joint_limits.lower && upper_joint_state > free_joint_limits.upper)
-                break;
-
-            if (lower_joint_state >= free_joint_limits.lower)
-            {
-                std::tie(goal_configuration, error_msg) = check_single_ik(lower_joint_state);
-                if (goal_configuration.size() > 0)
-                    break;
-            }
-
-            if (upper_joint_state <= free_joint_limits.upper)
-            {
-                std::tie(goal_configuration, error_msg) = check_single_ik(upper_joint_state);
-                if (goal_configuration.size() > 0)
-                    break;
-            }
-
-            lower_joint_state -= joint_state_increment;
-            upper_joint_state += joint_state_increment;
         }
+        else if (_robot_info.robot_name == "franka")
+        {
+            using namespace ik_franka;
+            // Franka
+            const auto free_joint_idx = ik_franka::GetFreeIndices();
+            const double joint_state_increment = 0.1;
+            const auto free_joint_limits = _robot_info.limits[free_joint_idx[0]];
+            const double middle_range = (free_joint_limits.lower + free_joint_limits.upper) / 2;
+            double lower_joint_state = middle_range;
+            double upper_joint_state = middle_range + joint_state_increment;
 
-        // RCLCPP_WARN_STREAM(get_logger(), amount_of_samples);
+            size_t amount_of_samples = 0;
+            auto check_single_ik = [=, &amount_of_samples](const double &free_joint_val) mutable -> std::tuple<ArmConfiguration, std::string>
+            {
+                std::string error_msg = "";
+                ArmConfiguration goal_configuration;
+
+                std::vector<IkReal> vfree = {free_joint_val};
+                IkSolutionList<IkReal> solutions;
+                if (ik_franka::ComputeIk(eetrans, eerot, vfree.size() > 0 ? &vfree[0] : NULL, solutions))
+                {
+                    RCLCPP_DEBUG_STREAM(get_logger(), "Found " << solutions.GetNumSolutions() << " IK solutions");
+                    std::vector<IkReal> solvalues(ik_franka::GetNumJoints());
+                    for (std::size_t i = 0; i < solutions.GetNumSolutions(); ++i)
+                    {
+                        RCLCPP_DEBUG_STREAM(get_logger(), "Validating solution " << i + 1 << " / " << solutions.GetNumSolutions());
+                        amount_of_samples++;
+
+                        const IkSolutionBase<IkReal> &sol = solutions.GetSolution(i);
+                        std::vector<IkReal> vsolfree(sol.GetFree().size());
+                        sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
+
+                        // Validate calculated configuration
+                        if (_validateArmFinalConfiguration(path_planning_input, solvalues, error_msg) != ReturnCode::SUCCESS)
+                            continue;
+
+                        goal_configuration = solvalues;
+
+                        // cv::Mat img = cv::Mat::ones(100, 100, CV_8UC1) * 255;
+                        // cv::putText(img,                                                                       //target image
+                        //             std::to_string(i + 1) + "_" + std::to_string(solutions.GetNumSolutions()), //text
+                        //             cv::Point(10, img.rows / 2),                                               //top-left position
+                        //             cv::FONT_HERSHEY_DUPLEX,
+                        //             0.5,
+                        //             CV_RGB(118, 185, 0), //font color
+                        //             2);
+                        // cv::imshow("kek", img);
+                        // cv::waitKey();
+                        // printf("\n");
+                        break;
+                    }
+                }
+                return std::make_tuple(goal_configuration, error_msg);
+            };
+
+            while (true)
+            {
+                if (lower_joint_state < free_joint_limits.lower && upper_joint_state > free_joint_limits.upper)
+                    break;
+
+                if (lower_joint_state >= free_joint_limits.lower)
+                {
+                    std::tie(goal_configuration, error_msg) = check_single_ik(lower_joint_state);
+                    if (goal_configuration.size() > 0)
+                        break;
+                }
+
+                if (upper_joint_state <= free_joint_limits.upper)
+                {
+                    std::tie(goal_configuration, error_msg) = check_single_ik(upper_joint_state);
+                    if (goal_configuration.size() > 0)
+                        break;
+                }
+
+                lower_joint_state -= joint_state_increment;
+                upper_joint_state += joint_state_increment;
+            }
+
+            // RCLCPP_WARN_STREAM(get_logger(), amount_of_samples);
+        }
+        else
+        {
+            error_msg = "Unsupported robot to calculate IK";
+        }
 
         return std::make_tuple(goal_configuration, error_msg);
     }

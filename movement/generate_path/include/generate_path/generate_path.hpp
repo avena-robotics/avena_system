@@ -28,6 +28,7 @@
 #include "generate_path/visibility_control.h"
 #include "generate_path/commons.hpp"
 #include "generate_path/planner.hpp"
+#include "generate_path/ik_avena.hpp"
 #include "generate_path/ik_franka.hpp"
 
 namespace generate_path
@@ -64,7 +65,8 @@ namespace generate_path
     void _updateJointLimits();
     void _setJointStates(const ArmConfiguration &joint_states);
     void _drawCoordinateAxes(const Eigen::Affine3d &pose);
-    ReturnCode _validateConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message);
+    ReturnCode _validateArmFinalConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message);
+    ReturnCode _validateArmInitialConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message);
 
     // ___Attributes___
     helpers::Watchdog::SharedPtr _watchdog;
@@ -84,7 +86,7 @@ namespace generate_path
      */
     int _table_idx;
 
-    const float _safety_range = 0.003;
+    const float _safety_range = 0.005;
     const int _contact_number_allowed = 1;
     const double _end_effector_position_offset = 0.005; // In meters; distance from calculated end effector position to goal end effector
     const double _end_effector_orientation_offset = 0.01; // In radians; sum of all axes
