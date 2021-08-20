@@ -19,6 +19,7 @@
 // ___Avena___
 #include <bullet_client/b3RobotSimulatorClientAPI.h>
 #include <helpers_commons/helpers_commons.hpp>
+#include <helpers_vision/helpers_vision.hpp>
 
 // ___Package___
 #include "bullet_server/visibility_control.h"
@@ -57,6 +58,7 @@ namespace bullet_server
 
     rclcpp::TimerBase::SharedPtr _loading_scene_timer;
     WorkspaceArea _workspace_area;
+    helpers::commons::RobotInfo _robot_info;
   };
 
 } // namespace bullet_server

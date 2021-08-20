@@ -120,6 +120,7 @@
         </geometry>
       </collision>
     </link>
+    <link name="${arm_id}_gripper_connection"/>
 
     <!-- Joints -->
     <joint name="${arm_id}_joint_1" type="revolute">
@@ -163,6 +164,11 @@
       <child link="${arm_id}_link_6" />
       <axis xyz="0 -1 0" />
       <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
+    </joint>
+    <joint name="${arm_id}_joint_7" type="fixed">
+      <origin rpy="0 0 0" xyz="0 -0.018 0"/>
+      <parent link="${arm_id}_link_6"/>
+      <child link="${arm_id}_gripper_connection"/>
     </joint>
     <!--link name="franka_gripper">
       <collision>

@@ -26,6 +26,8 @@ namespace helpers
         std::vector<std::string> getRobotLinksNames()
         {
             std::string robot_urdf = getRobotDescription();
+            if (robot_urdf.empty())
+                return {};
             urdf::ModelInterfaceSharedPtr model = urdf::parseURDF(robot_urdf);
             std::vector<std::string> link_names;
             for (auto &[link_name, link_info] : model->links_)
@@ -41,6 +43,12 @@ namespace helpers
             RobotInfo robot_info;
 
             std::string robot_urdf = getRobotDescription();
+            if (robot_urdf.empty())
+            {
+                robot_info.valid = false;
+                return robot_info;
+            }
+            robot_info.valid = true;
             urdf::ModelInterfaceSharedPtr model = urdf::parseURDF(robot_urdf);
 
             robot_info.robot_name = model->getName();
@@ -51,7 +59,10 @@ namespace helpers
                 if (link_info->visual || link_info->visual_array.size() != 0)
                 {
                     if (!link_info->getParent())
+                    {
+                        RCLCPP_DEBUG(rclcpp::get_logger("helpers"), "Found base link name: %s", link_name);
                         robot_info.base_link_name = link_name;
+                    }
                     if (link_name.find("gripper") == std::string::npos && link_name.find("link") != std::string::npos)
                         robot_info.link_names.push_back(link_name);
                     else
@@ -66,8 +77,17 @@ namespace helpers
                 if (joint_info->type == urdf::Joint::REVOLUTE)
                 {
                     robot_info.joint_names.push_back(joint_name);
+                    if (!joint_info->limits)
+                    {
+                        RCLCPP_ERROR_STREAM(rclcpp::get_logger("helpers"), "There are not joint limits specify for joint \"" << joint_name << "\". Exiting...");
+                        robot_info.valid = false;
+                        return robot_info;                     
+                    }
                     robot_info.limits.push_back(Limits(joint_info->limits->lower, joint_info->limits->upper));
-                    robot_info.soft_limits.push_back(Limits(joint_info->safety->soft_lower_limit, joint_info->safety->soft_upper_limit));
+                    if (joint_info->safety)
+                        robot_info.soft_limits.push_back(Limits(joint_info->safety->soft_lower_limit, joint_info->safety->soft_upper_limit));
+                    else
+                        RCLCPP_DEBUG(rclcpp::get_logger("helpers"), "There not no soft limits in URDF. This is values might now be available, so just skipping them");
                 }
                 else if (joint_info->type == urdf::Joint::FIXED)
                 {
