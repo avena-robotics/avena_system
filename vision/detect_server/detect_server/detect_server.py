@@ -8,7 +8,8 @@ from rclpy.action import ActionServer
 from rclpy.node import Node
 from custom_interfaces.action import SimpleAction
 from custom_interfaces.msg import Detections
-from custom_interfaces.srv import DataStoreCamerasDataSelect, DataStoreCamerasDataInsert, DataStoreDetectronSelect, \
+# DataStoreCamerasDataSelect, DataStoreCamerasDataInsert,
+from custom_interfaces.srv import DataStoreDetectronSelect, \
     DataStoreDetectronInsert
 from .DetectronInference import DetectronInference
 from ament_index_python.packages import get_package_share_directory
@@ -19,8 +20,8 @@ from builtins import float
 from std_msgs.msg import Float64
 
 
-import pydevd_pycharm
-pydevd_pycharm.settrace('localhost', port=1090, stdoutToServer=True, stderrToServer=True)
+# import pydevd_pycharm
+# pydevd_pycharm.settrace('localhost', port=1090, stdoutToServer=True, stderrToServer=True)
 
 class InsertRgbClientAsync(Node):
 
