@@ -36,6 +36,10 @@ set(avena_view_SRCS
   src/avena_view/detectron_runner.cpp
   src/avena_view/utils.cpp
   src/avena_view/launch_files_manager.cpp
+  src/avena_view/nodes_list.cpp
+  src/avena_view/start_system.cpp
+  src/avena_view/fast_loop.cpp
+  src/avena_view/robot_control.cpp
 )
 
 set(avena_view_HDRS
@@ -43,6 +47,10 @@ set(avena_view_HDRS
   include/avena_view/detectron_runner.h
   include/avena_view/utils.h
   include/avena_view/launch_files_manager.h
+  include/avena_view/nodes_list.h
+  include/avena_view/start_system.h
+  include/avena_view/fast_loop.h
+  include/avena_view/robot_control.h
 )
 
 set(avena_view_UIS

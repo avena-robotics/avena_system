@@ -21,6 +21,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(helpers_commons REQUIRED)
 
 add_library(parameters_server SHARED src/parameters_server.cpp)
 # target_include_directories(parameters_server 
@@ -29,8 +30,9 @@ add_library(parameters_server SHARED src/parameters_server.cpp)
 #   $<INSTALL_INTERFACE:include>)
 target_compile_definitions(parameters_server PRIVATE "COMPOSITION_BUILDING_DLL")
 ament_target_dependencies(parameters_server
-  "rclcpp"
-  "rclcpp_components"
+  rclcpp
+  rclcpp_components
+  helpers_commons
 )
 rclcpp_components_register_nodes(parameters_server "parameters_server::ParametersServer")
 set(node_plugins "${node_plugins}parameters_server::ParametersServer;$<TARGET_FILE:parameters_server>\n")

@@ -36,13 +36,21 @@ public:
         }
 
         launch_file_process_->setArguments(args_);
-
-        auto lambda = [post_start_action](){post_start_action();};
+        bool lambda_return_value = false;
+        auto lambda = [post_start_action, &lambda_return_value]()
+        { lambda_return_value = post_start_action(); };
 
         if (launch_file_process_->startDetached(&this->pid_))
         {
             out_pid_file_ << this->pid_;
-            QTimer::singleShot(post_start_delay, this, lambda);
+            delay(post_start_delay);
+            lambda();
+            // QTimer::singleShot(post_start_delay, this, SLOT(lambda()));
+            if(!lambda_return_value)
+            {
+                std::cout << "Module was not correctly initialized" << std::endl;
+                return false;
+            }
             std::cout << "Successfully started launch file: " << pid_file_name_ << std::endl;
             std::cout << "PID: " << pid_ << std::endl;
             return true;
@@ -75,7 +83,8 @@ private:
 class LaunchFileManager : public QObject
 {
     Q_OBJECT
-    std::map<std::string, std::shared_ptr<LaunchFile>> launch_files_;
+public:
+    const std::map<std::string, std::shared_ptr<LaunchFile>> &launchFiles() const { return launch_files_; }
     void addLaunch(const std::string &launch_name);
 
     template <typename F1>
@@ -92,4 +101,7 @@ class LaunchFileManager : public QObject
     }
     bool terminateLaunch(const std::string &launch_name);
     bool removeLaunch(const std::string &launch_name);
+
+private:
+    std::map<std::string, std::shared_ptr<LaunchFile>> launch_files_;
 };

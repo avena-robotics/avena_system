@@ -34,6 +34,13 @@ std::string joinPath(std::initializer_list<const std::string> args)
     return result.substr(0, result.size() - 1);
 }
 
+void delay(int milliseconds)
+{
+    QTime dieTime = QTime::currentTime().addMSecs(milliseconds);
+    while (QTime::currentTime() < dieTime)
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+}
+
 int killAllChildProcessPids(qint64 launch_file_pid)
 {
     std::string pids = exec("ps -e -o ppid= -o pid=");
@@ -63,7 +70,7 @@ int killAllChildProcessPids(qint64 launch_file_pid)
         for (int j = 0; j < pids_layers[i].size(); j++)
         {
             killing_result = kill(pids_layers[i][j], SIGINT);
-            if(killing_result!=0)
+            if (killing_result != 0)
             {
                 final_result = killing_result;
                 std::cout << "Error while killing process with pid=" << pids_layers[i][j] << std::endl;
@@ -72,4 +79,17 @@ int killAllChildProcessPids(qint64 launch_file_pid)
         }
     }
     return final_result;
+}
+
+std::chrono::nanoseconds rosTime2Chrono(builtin_interfaces::msg::Time &stamp)
+{
+    auto seconds = std::chrono::seconds(stamp.sec);
+    auto nanoseconds = std::chrono::nanoseconds(stamp.nanosec);
+
+    return seconds + nanoseconds;
+}
+
+void writeToConsole(const std::string &msg, QTextBrowser *dst_ptr)
+{
+    dst_ptr->append(QString(msg.c_str()));
 }
