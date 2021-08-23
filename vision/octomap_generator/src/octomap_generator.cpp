@@ -5,7 +5,7 @@ namespace octomap_generator
 
     OctomapGenerator::OctomapGenerator(const rclcpp::NodeOptions &options)
         : Node("octomap_generator", options)
-    {   
+    {
         helpers::commons::setLoggerLevelFromParameter(this);
 
         status = custom_interfaces::msg::Heartbeat::STOPPED;
@@ -34,7 +34,6 @@ namespace octomap_generator
         _scene_insert_client = this->create_client<custom_interfaces::srv::DataStoreSceneInsert>("scene_insert");
 
         status = custom_interfaces::msg::Heartbeat::RUNNING;
-
     }
 
     void OctomapGenerator::shutDownNode()
@@ -49,11 +48,9 @@ namespace octomap_generator
         shutDownNode();
     }
 
-
-
     void OctomapGenerator::_getData(custom_interfaces::msg::Ptclds::SharedPtr &cameras_data)
     {
-    auto rgbd_sync_request = std::make_shared<custom_interfaces::srv::DataStoreRgbdSyncSelect::Request>();
+        auto rgbd_sync_request = std::make_shared<custom_interfaces::srv::DataStoreRgbdSyncSelect::Request>();
         while (!_rgbd_sync_select_client->wait_for_service(1s))
         {
             if (!rclcpp::ok())
@@ -66,15 +63,14 @@ namespace octomap_generator
         auto rgbd_sync_result = _rgbd_sync_select_client->async_send_request(rgbd_sync_request);
         // Wait for the result.
         if (rgbd_sync_result.wait_for(5s) == std::future_status::ready)
-        {   
+        {
             cameras_data->cam1_ptcld = rgbd_sync_result.get()->data.ptclds.cam1_ptcld;
             cameras_data->cam2_ptcld = rgbd_sync_result.get()->data.ptclds.cam2_ptcld;
             cameras_data->header = rgbd_sync_result.get()->data.ptclds.header;
-
-        }else
+            std::cout << " encoding: " <<  rgbd_sync_result.get()->data.rgb.cam1_rgb.encoding << std::endl;
+        }
+        else
             RCLCPP_ERROR(this->get_logger(), "Failed to read rgbd_sync data");
-
-    
     }
 
     rclcpp_action::GoalResponse OctomapGenerator::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const OctomapGeneratorAction::Goal> /*goal*/)
@@ -94,41 +90,36 @@ namespace octomap_generator
         std::thread{std::bind(&OctomapGenerator::_execute, this, std::placeholders::_1), goal_handle}.detach();
     }
 
-
     void OctomapGenerator::_execute(const std::shared_ptr<GoalHandleOctomapGenerator> goal_handle)
     {
         helpers::Timer timer("Octomap generator action", get_logger());
         RCLCPP_INFO(this->get_logger(), "Executing goal");
         auto result = std::make_shared<OctomapGeneratorAction::Result>();
 
-
-        custom_interfaces::msg::Ptclds::SharedPtr cameras_data (new custom_interfaces::msg::Ptclds);
+        custom_interfaces::msg::Ptclds::SharedPtr cameras_data(new custom_interfaces::msg::Ptclds);
 
         _getData(cameras_data);
-
-     
 
         if (_validateInputs(cameras_data))
         {
             RCLCPP_ERROR(this->get_logger(), "Invalid input message. Goal failed.");
             goal_handle->abort(result);
             return;
-        }   
+        }
         ptcld_transformer::TransformedPointClouds::SharedPtr transformer_ptcld = _pointCloud_transformer->transfromPointcloud(cameras_data);
         _robot_self_filter->removeRobotFromCloud(transformer_ptcld->merged_ptcld);
 
-    
-
         helpers::visualization::visualize({transformer_ptcld->merged_ptcld});
 
-
-        if(_sendDataToDB(transformer_ptcld) == 0){
-                goal_handle->succeed(result);
-                RCLCPP_INFO(this->get_logger(), "Goal succeeded");
-            }else{
-                goal_handle->abort(result);
-            }
-
+        if (_sendDataToDB(transformer_ptcld) == 0)
+        {
+            goal_handle->succeed(result);
+            RCLCPP_INFO(this->get_logger(), "Goal succeeded");
+        }
+        else
+        {
+            goal_handle->abort(result);
+        }
     }
 
     int OctomapGenerator::_sendDataToDB(ptcld_transformer::TransformedPointClouds::SharedPtr &octomap_msg)
@@ -153,13 +144,11 @@ namespace octomap_generator
         helpers::converters::pclToRosPtcld<pcl::PointXYZ>(octomap_msg->merged_ptcld, request->data.octomap.scene_octomap);
 
         auto data_store_result = _scene_insert_client->async_send_request(request);
-            if (rclcpp::ok() && data_store_result.wait_for(5s) == std::future_status::ready)
-                return 0;
+        if (rclcpp::ok() && data_store_result.wait_for(5s) == std::future_status::ready)
+            return 0;
 
         return 1;
     }
-
-
 
     int OctomapGenerator::_validateInputs(custom_interfaces::msg::Ptclds::SharedPtr cameras_data)
     {
@@ -167,15 +156,13 @@ namespace octomap_generator
         {
             return header.stamp == builtin_interfaces::msg::Time();
         };
-        
+
         if (!cameras_data || checkHeader(cameras_data->header))
             return 1;
         return 0;
     }
 
 }
-
-
 
 #include "rclcpp_components/register_node_macro.hpp"
 RCLCPP_COMPONENTS_REGISTER_NODE(octomap_generator::OctomapGenerator)

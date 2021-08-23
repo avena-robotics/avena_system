@@ -14,7 +14,6 @@ namespace compose_items
         RCLCPP_INFO(this->get_logger(), "started Node");
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
         helpers::commons::setLoggerLevelFromParameter(this);
-        _getCamerasParameters();
     }
 
     void ComposeItems::initNode()
@@ -24,6 +23,8 @@ namespace compose_items
         rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)); //.transient_local().reliable();
         _publisher = this->create_publisher<Response>("compose_items", qos_settings);
         // _initializeSubscribers(qos_settings);
+        _getCamerasParameters();
+
         _readLabels();
         _readAreasParameters();
         this->_action_server = rclcpp_action::create_server<ComposeItemsAction>(
@@ -101,10 +102,14 @@ namespace compose_items
 
         auto detectron_result = _detectron_client->async_send_request(detectron_request);
         // Wait for the result.
-        if (detectron_result.wait_for(5s) == std::future_status::ready)
+        auto detectron_future_result = detectron_result.wait_for(5s);
+        if (detectron_future_result == std::future_status::ready)
         {
             _detect_msg = std::make_shared<custom_interfaces::msg::Detections>(detectron_result.get()->data);
             _detect_msg->header = detectron_result.get()->data.header;
+        }
+        else
+        {
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
 
@@ -120,7 +125,8 @@ namespace compose_items
 
         auto rgbd_sync_result = _rgbd_sync_client->async_send_request(rgbd_sync_request);
         // Wait for the result.
-        if (rgbd_sync_result.wait_for(5s) == std::future_status::ready)
+        auto rgbd_sync_future_result = rgbd_sync_result.wait_for(5s);
+        if (rgbd_sync_future_result == std::future_status::ready)
         {
             _depth_images_msg = std::make_shared<custom_interfaces::msg::DepthImages>();
             _rgb_images_msg = std::make_shared<custom_interfaces::msg::RgbImages>();
@@ -130,6 +136,9 @@ namespace compose_items
             _rgb_images_msg->cam1_rgb = rgbd_sync_result.get()->data.rgb.cam1_rgb;
             _rgb_images_msg->cam2_rgb = rgbd_sync_result.get()->data.rgb.cam2_rgb;
             _rgb_images_msg->header.stamp = rgbd_sync_result.get()->data.header.stamp;
+        }
+        else
+        {
             RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
         }
     }
@@ -156,13 +165,22 @@ namespace compose_items
         auto get_camera_parameters = [this](std::string camera_frame)
         {
             std::optional<Eigen::Affine3f> camera_affine_opt;
-            while (true)
-            {
+            // while (true)
+            // {
+
                 camera_affine_opt = helpers::vision::getCameraTransformAffine("world", camera_frame);
-                if (camera_affine_opt)
-                    break;
-                RCLCPP_WARN_STREAM_THROTTLE(get_logger(), *get_clock(), 1000, "Compose items - cannot obtain transform to \"" + camera_frame + "\" trying again...");
+            //     if (camera_affine_opt)
+            //         break;
+            //     RCLCPP_WARN_STREAM_THROTTLE(get_logger(), *get_clock(), 1000, "Compose items - cannot obtain transform to \"" + camera_frame + "\" trying again...");
+            // }
+
+          if (camera_affine_opt == std::nullopt)
+            {
+                RCLCPP_WARN(this->get_logger(), "Estimate shape  - cannot obtain transform to \"" + camera_frame);
+                throw(std::runtime_error(std::string("Estimate shape  - cannot obtain transform to \"") + camera_frame));
             }
+
+
             Eigen::Affine3f cam_aff = *camera_affine_opt;
 
             CameraParameters camera_data;
@@ -186,7 +204,8 @@ namespace compose_items
             //     RCLCPP_FATAL_STREAM(this->get_logger(), "Exception with ID: " << e.id << "; message: " << e.what());
             //     rclcpp::shutdown();
             // }
-
+            //FIXME this is only removed for ZED camera (single cameraapproach - its necessery to have a frame with 2 cameras)
+            camera_frame = "";
             for (;;)
             {
                 try
@@ -233,7 +252,7 @@ namespace compose_items
     }
 
     int ComposeItems::_saveComposedData(Response::SharedPtr &compose_msg)
-    {   
+    {
         compose_msg->data.items.resize(_items_to_save.size());
 
         std::vector<size_t> empty_items;
@@ -325,17 +344,19 @@ namespace compose_items
         //output data
 
         // custom_interfaces::msg::Items::UniquePtr compose_msg(new custom_interfaces::msg::Items);
-       Response::SharedPtr compose_msg(new Response);
-       
-       _saveComposedData(compose_msg);
-        if(_sendDataToDB(compose_msg) == 0){
+        Response::SharedPtr compose_msg(new Response);
+
+        _saveComposedData(compose_msg);
+        if (_sendDataToDB(compose_msg) == 0)
+        {
             goal_handle->succeed(result);
             RCLCPP_INFO(this->get_logger(), "Goal succeeded");
-        }else{
-           _publisher->publish(Response());
+        }
+        else
+        {
+            _publisher->publish(Response());
             goal_handle->abort(result);
         }
-
     }
 
     int ComposeItems::_sendDataToDB(Response::SharedPtr &compose_msg)
@@ -351,11 +372,12 @@ namespace compose_items
         }
 
         // _publisher->publish(*compose_msg);
-            request->data = compose_msg->data;
+        request->data = compose_msg->data;
 
-            auto data_store_result = _items_client->async_send_request(request);
-            if (rclcpp::ok() && data_store_result.wait_for(5s) == std::future_status::ready)
-                return 0;
+        auto data_store_result = _items_client->async_send_request(request);
+        auto data_store_future_result = data_store_result.wait_for(5s);
+        if (rclcpp::ok() && data_store_future_result == std::future_status::ready)
+            return 0;
 
         return 1;
     }
@@ -632,11 +654,16 @@ namespace compose_items
 
     int ComposeItems::_validateInputs(custom_interfaces::msg::Detections::SharedPtr &detect_msg, custom_interfaces::msg::DepthImages::SharedPtr &depth_images_msg)
     {
+        std::cout << "detect_msg->header: " << detect_msg->header.stamp.sec << std::endl;
+        std::cout << "detect_msg->cam1_labels: " << detect_msg->cam1_labels.size() << std::endl;
+        std::cout << "detect_msg->cam2_labels: " << detect_msg->cam2_labels.size() << std::endl;
         auto checkHeader = [](const std_msgs::msg::Header &header)
         {
             return header.stamp == builtin_interfaces::msg::Time();
         };
-        if (!detect_msg || checkHeader(detect_msg->header) || !depth_images_msg || checkHeader(depth_images_msg->header))
+        // if (!detect_msg || checkHeader(detect_msg->header) || !depth_images_msg || checkHeader(depth_images_msg->header))
+        //     return 1;
+        if (!detect_msg || !depth_images_msg || checkHeader(depth_images_msg->header))
             return 1;
         return 0;
     }
