@@ -8,6 +8,9 @@
 #    python /opt/ros/noetic/lib/moveit_kinematics/round_collada_numbers.py /robot.dae /robot.rounded.dae 5
 # 3. Generate IK solution (remember to set --baselink, --eelink and --freeindex to correct values):
 #    python `openrave-config --python-dir`/openravepy/_openravepy_/ikfast.py --robot=robot.rounded.dae --iktype=transform6d --baselink=0 --eelink=7 --savefile=ik_robot.cpp
+#    Examples:
+#    For Franka arm: python `openrave-config --python-dir`/openravepy/_openravepy_/ikfast.py --robot=franka_arm_ik_fast.rounded.dae --iktype=transform6d --baselink=0 --eelink=8 --freeindex=6 --savefile=ik_franka.cpp
+#    For Avena arm: python `openrave-config --python-dir`/openravepy/_openravepy_/ikfast.py --robot=avena_arm_ik_fast.rounded.dae --iktype=transform6d --baselink=0 --eelink=7 --savefile=ik_avena.cpp
 
 FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND noninteractive

@@ -359,14 +359,6 @@ namespace generate_path
         // Get rotation of end effector
         IkReal eerot[9];
         auto quat = Eigen::Quaterniond(path_planning_input.goal_end_effector_pose.rotation());
-        if (_robot_info.robot_name == "franka")
-        {
-            auto ee_rot_matrix = quat.normalized().toRotationMatrix();
-            auto rotation_z = Eigen::AngleAxisd(-M_PI_4, ee_rot_matrix.col(2));
-            auto rotation_y = Eigen::AngleAxisd(M_PI_2, ee_rot_matrix.col(1));
-            auto rotation_x = Eigen::AngleAxisd(-M_PI_2, ee_rot_matrix.col(0));
-            quat = rotation_x * rotation_y * rotation_z * quat;
-        }
         auto rot_matrix = quat.normalized().toRotationMatrix();
         eerot[0] = rot_matrix(0);
         eerot[1] = rot_matrix(3);
