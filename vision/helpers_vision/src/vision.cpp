@@ -308,7 +308,10 @@ namespace helpers
         }
 
         std::optional<CameraIntrinsic> getCameraIntrinsic(rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_interface, const std::string &camera_frame, const std::chrono::duration<float> &timeout)
-        {
+        {   
+
+
+            
             auto sub = rclcpp::create_subscription<sensor_msgs::msg::CameraInfo>(node_topics_interface, camera_frame + "/depth_to_rgb/camera_info", 1, [](const sensor_msgs::msg::CameraInfo::SharedPtr) {});
 
             sensor_msgs::msg::CameraInfo cam_info;

@@ -8,9 +8,7 @@ from rclpy.action import ActionServer
 from rclpy.node import Node
 from custom_interfaces.action import SimpleAction
 from custom_interfaces.msg import Detections
-# DataStoreCamerasDataSelect, DataStoreCamerasDataInsert,
-from custom_interfaces.srv import DataStoreDetectronSelect, \
-    DataStoreDetectronInsert
+from custom_interfaces.srv import DataStoreRgbdSyncSelect, DataStoreDetectronInsert
 from .DetectronInference import DetectronInference
 from ament_index_python.packages import get_package_share_directory
 import time
@@ -18,31 +16,36 @@ import os
 from os.path import expanduser
 from builtins import float
 from std_msgs.msg import Float64
+from builtin_interfaces.msg import Time
 
-
+import cv2 as cv
 # import pydevd_pycharm
 # pydevd_pycharm.settrace('localhost', port=1090, stdoutToServer=True, stderrToServer=True)
 
-class InsertRgbClientAsync(Node):
+# class InsertRgbClientAsync(Node):
+# import pydevd_pycharm
+# pydevd_pycharm.settrace('localhost', port=1090, stdoutToServer=True, stderrToServer=True)
 
-    def __init__(self):
-        super().__init__('rgb_insert_client_async')
-        self.ds_insert_rgb = self.create_client(DataStoreCamerasDataInsert, 'cameras_data_insert')
-        while not self.ds_insert_rgb.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Datastore insert rgb service not available, waiting again...')
-        self.rgb_ins_req = DataStoreCamerasDataInsert.Request()
+#     def __init__(self):
+#         super().__init__('rgb_insert_client_async')
+#         self.ds_insert_rgb = self.create_client(DataStoreCamerasDataInsert, 'cameras_data_insert')
+#         while not self.ds_insert_rgb.wait_for_service(timeout_sec=1.0):
+#             self.get_logger().info('Datastore insert rgb service not available, waiting again...')
+#         self.rgb_ins_req = DataStoreCamerasDataInsert.Request()
 
-    def send_request(self):
-        self.ins_rgb_future = self.ds_insert_rgb.call_async(self.rgb_ins_req)
+#     def send_request(self):
+#         self.ins_rgb_future = self.ds_insert_rgb.call_async(self.rgb_ins_req)
 
 
 class InsertDetectronClientAsync(Node):
 
     def __init__(self):
         super().__init__('detectron_insert_client_async')
-        self.ds_insert_detectron = self.create_client(DataStoreDetectronInsert, 'detectron_insert')
+        self.ds_insert_detectron = self.create_client(
+            DataStoreDetectronInsert, 'detectron_insert')
         while not self.ds_insert_detectron.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Datastore detectron result service not available, waiting again...')
+            self.get_logger().info(
+                'Datastore detectron result service not available, waiting again...')
         self.detectron_ins_req = DataStoreDetectronInsert.Request()
 
     def send_request(self, detections_result):
@@ -52,32 +55,36 @@ class InsertDetectronClientAsync(Node):
         detections_msg.cam2_masks = list()
         detections_msg.cam2_labels = list()
 
-        for k,v in detections_result[0].items():
+        for k, v in detections_result[0].items():
             for i in range(len(v)):
                 detections_msg.cam1_masks.append(v[i])
                 detections_msg.cam1_labels.append(k.lower())
 
-        for k,v in detections_result[1].items():
+        for k, v in detections_result[1].items():
             for j in range(len(v)):
                 detections_msg.cam2_masks.append(v[j])
                 detections_msg.cam2_labels.append(k.lower())
-
 
         self.detectron_ins_req.data = detections_msg
         ts = Float64()
         ts.data = float(time.time())
         self.detectron_ins_req.time_stamp = ts
-        self.future = self.ds_insert_detectron.call_async(self.detectron_ins_req)
+        # !! : Does not work sometimes :self.detectron_ins_req.data.header.stamp = self.get_clock().now().to_msg()
+        data_header_time = Time(sec=1, nanosec=1)
+        self.detectron_ins_req.data.header.stamp = data_header_time
+        self.future = self.ds_insert_detectron.call_async(
+            self.detectron_ins_req)
 
 
 class SelectRgbClientAsync(Node):
 
     def __init__(self):
         super().__init__('rgb_select_client_async')
-        self.db_sel_rgb = self.create_client(DataStoreCamerasDataSelect, 'cameras_data_select')
+        self.db_sel_rgb = self.create_client(
+            DataStoreRgbdSyncSelect, 'rgbd_sync_select')
         while not self.db_sel_rgb.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
-        self.rgb_sel_req = DataStoreCamerasDataSelect.Request()
+        self.rgb_sel_req = DataStoreRgbdSyncSelect.Request()
 
     def send_request(self):
         self.sel_rgb_future = self.db_sel_rgb.call_async(self.rgb_sel_req)
@@ -99,14 +106,17 @@ class DetectActionServer(Node):
         #                                                   qos_profile=self.qos)
 
         # init detectron instances
-        self.package_share_directory = get_package_share_directory('detect_server')
-        self.detectron_cam1 = DetectronInference(os.path.join(str(expanduser("~")), 'detectron2_weights'))
-        self.detectron_cam2 = DetectronInference(os.path.join(str(expanduser("~")), 'detectron2_weights'))
+        self.package_share_directory = get_package_share_directory(
+            'detect_server')
+        self.detectron_cam1 = DetectronInference(
+            os.path.join(str(expanduser("~")), 'detectron2_weights'))
+        self.detectron_cam2 = DetectronInference(
+            os.path.join(str(expanduser("~")), 'detectron2_weights'))
         self.lock = Lock()
         self.cv_bridge = cv_bridge.CvBridge()
 
         # datastore insert client
-        self.ds_ins_client = InsertRgbClientAsync()
+        # self.ds_ins_client = InsertRgbClientAsync()
 
         # datastore select client
         self.ds_sel_client = SelectRgbClientAsync()
@@ -127,7 +137,7 @@ class DetectActionServer(Node):
             if self.ds_sel_client.sel_rgb_future.done():
                 try:
                     response = self.ds_sel_client.sel_rgb_future.result()
-                    return response
+                    return response.data.rgb
                 except Exception as e:
                     self.ds_sel_client.get_logger().info(
                         'Service call failed %r' % (e,))
@@ -154,10 +164,13 @@ class DetectActionServer(Node):
 
         # read pictures from datastore
         rgb_images = self.get_rgb_from_datastore()
-
+        # cv.imshow("rgb1",rgb_images.cam1_rgb)
+        # cv.imshow("rgb2",rgb_images.cam2_rgb)
+        # cv.waitKey(1)
         # ds = time.time()
         # print("Getting images from datastore: ", ds - start)
-
+        print(rgb_images.cam1_rgb.encoding)
+        print(rgb_images.cam2_rgb.encoding)
         # perform inference on images
         cam1_img = self.cv_bridge.imgmsg_to_cv2(rgb_images.cam1_rgb)
         cam2_img = self.cv_bridge.imgmsg_to_cv2(rgb_images.cam2_rgb)
@@ -170,8 +183,10 @@ class DetectActionServer(Node):
         # det = time.time()
         # self.make_detction(self.lock, self.detectron_cam1, cam1_img, result, 0)
         # self.make_detction(self.lock, self.detectron_cam2, cam2_img, result, 1)
-        t1 = Thread(target=self.make_detction, args=(self.lock, self.detectron_cam1, cam1_img, result, 0,))
-        t2 = Thread(target=self.make_detction, args=(self.lock, self.detectron_cam2, cam2_img, result, 1,))
+        t1 = Thread(target=self.make_detction, args=(
+            self.lock, self.detectron_cam1, cam1_img, result, 0,))
+        t2 = Thread(target=self.make_detction, args=(
+            self.lock, self.detectron_cam2, cam2_img, result, 1,))
         #
         t1.start()
         t2.start()

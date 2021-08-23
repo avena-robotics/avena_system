@@ -64,6 +64,8 @@ class DetectronInference:
         :return: dict containing classes, boxes, masks and scores for all detections in order
         """
         inf_start = time.time()
+        print(image.shape)
+        print(image)
         predictions = self.predictor(image)
 
         inf_end = time.time()

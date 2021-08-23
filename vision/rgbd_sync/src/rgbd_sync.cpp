@@ -130,7 +130,13 @@ namespace rgbd_sync
             RCLCPP_INFO(this->get_logger(), "service not available, waiting again...");
         }
 
-
+        // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        // helpers::converters::rosPtcldtoPcl<pcl::PointXYZ>(request->data.ptclds.cam1_ptcld,cloud);
+        // helpers::visualization::visualize({cloud});
+        // cv::Mat mat;
+        // helpers::converters::rosImageToCV(request->data.rgb.cam1_rgb, mat);
+        // cv::imshow("dupa", mat);
+        // cv::waitKey(1);
 
     auto data_store_result = _client->async_send_request(request);
     data_store_result.wait_for(5s);

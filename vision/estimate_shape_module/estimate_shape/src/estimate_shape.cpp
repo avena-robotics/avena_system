@@ -6,8 +6,44 @@ namespace estimate_shape
         : Node("estimate_shape", options)
     {
         helpers::commons::setLoggerLevelFromParameter(this);
-
         RCLCPP_DEBUG_STREAM(LOGGER, "Using intra process communication: " << std::boolalpha << options.use_intra_process_comms() << std::noboolalpha);
+
+
+
+        status = custom_interfaces::msg::Heartbeat::STOPPED;
+        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
+        RCLCPP_INFO(LOGGER, "...estimate shape initialization done");
+    }
+
+    void EstimateShape::_getData()
+    {
+
+        auto items_request = std::make_shared<custom_interfaces::srv::DataStoreItemsSelect::Request>();
+        while (!_items_select_client->wait_for_service(1s))
+        {
+            if (!rclcpp::ok())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
+            }
+            RCLCPP_INFO(this->get_logger(), "DataStore compose items service not available, waiting again...");
+        }
+
+        auto items_result = _items_select_client->async_send_request(items_request);
+        // Wait for the result.
+        if (items_result.wait_for(5s) == std::future_status::ready)
+        {
+
+            _compose_items_msg = std::make_shared<custom_interfaces::msg::Items>(items_result.get()->data);
+        }
+        else
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to read compose items data");
+        }
+    }
+
+    void EstimateShape::initNode()
+    {
+        status = custom_interfaces::msg::Heartbeat::STARTING;
 
         RCLCPP_INFO(LOGGER, "Estimate shape initialization...");
         this->_estimate_shape_server = rclcpp_action::create_server<SimpleAction>(
@@ -19,8 +55,7 @@ namespace estimate_shape
 
         auto qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)); //.transient_local().reliable();
         _estimate_shape_pub = create_publisher<Response>("estimate_shape", qos_settings);
-       
-       
+
         // _compose_items_sub = create_subscription<custom_interfaces::msg::Items>("compose_items", qos_settings,
         //                                                                         [this](custom_interfaces::msg::Items::SharedPtr compose_items_msg)
         //                                                                         {
@@ -36,51 +71,11 @@ namespace estimate_shape
             RCLCPP_FATAL_STREAM(LOGGER, "Get parameters from the server error: " << e.what() << ". Exiting...");
             rclcpp::shutdown();
         }
-
+        
         _estimate_shape_manager = std::make_unique<EstimateShapeManager>(_cams_params, _labels);
 
         _items_select_client = this->create_client<custom_interfaces::srv::DataStoreItemsSelect>("items_select");
         _items_insert_client = this->create_client<custom_interfaces::srv::DataStoreItemsInsert>("items_insert");
-
-
-        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
-        status = custom_interfaces::msg::Heartbeat::STOPPED;
-        RCLCPP_INFO(LOGGER, "...estimate shape initialization done");
-    }
-
-
-
-
-
-       void EstimateShape::_getData()
-    {
-
-        auto items_request = std::make_shared<custom_interfaces::srv::DataStoreItemsSelect::Request>();
-        while (!_items_select_client->wait_for_service(1s))
-        {
-            if (!rclcpp::ok())
-            {
-                RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the service. Exiting.");
-            }
-            RCLCPP_INFO(this->get_logger(), "DataStore Detectron service not available, waiting again...");
-        }
-
-        auto items_result = _items_select_client->async_send_request(items_request);
-        // Wait for the result.
-        if (items_result.wait_for(5s) == std::future_status::ready)
-        {
-
-            _compose_items_msg = std::make_shared<custom_interfaces::msg::Items>(items_result.get()->data);
-
-            RCLCPP_ERROR(this->get_logger(), "Failed to read detectron data");
-        }
-
-  
-    }
-
-    void EstimateShape::initNode()
-    {
-        status = custom_interfaces::msg::Heartbeat::STARTING;
 
         status = custom_interfaces::msg::Heartbeat::RUNNING;
     }
@@ -98,9 +93,9 @@ namespace estimate_shape
     {
         helpers::Timer timer("Estimate shape action", get_logger());
         auto result = std::make_shared<SimpleAction::Result>();
-        
+
         _getData();
-        if(status!=custom_interfaces::msg::Heartbeat::RUNNING)
+        if (status != custom_interfaces::msg::Heartbeat::RUNNING)
         {
             RCLCPP_WARN_ONCE(this->get_logger(), "Node is not in running state");
             goal_handle->abort(result);
@@ -129,16 +124,17 @@ namespace estimate_shape
             auto request = std::make_shared<custom_interfaces::srv::DataStoreItemsInsert::Request>();
             request->data = estimate_shape_msg->data;
 
-
             // _items_insert_client
             auto data_store_result = _items_insert_client->async_send_request(request);
-            if (rclcpp::ok() && data_store_result.wait_for(5s) == std::future_status::ready)
-                return;
-            
-            if (rclcpp::ok())
+            auto data_store_future_result = data_store_result.wait_for(5s);
+            if (rclcpp::ok() && data_store_future_result == std::future_status::ready)
             {
                 goal_handle->succeed(result);
                 RCLCPP_INFO(LOGGER, "Goal succeeded");
+            }
+            else
+            {
+                return;
             }
         }
         catch (const std::exception &e)
@@ -153,7 +149,7 @@ namespace estimate_shape
         }
     }
 
-    Response::SharedPtr  EstimateShape::_estimateShapeProcessing(const ItemsMsg::SharedPtr &input_items, std::string item_label, std::string fit_method)
+    Response::SharedPtr EstimateShape::_estimateShapeProcessing(const ItemsMsg::SharedPtr &input_items, std::string item_label, std::string fit_method)
     {
         RCLCPP_INFO(LOGGER, "Estimate shape called");
 
@@ -276,13 +272,22 @@ namespace estimate_shape
         auto get_camera_affine = [this](const std::string &camera_frame) -> std::optional<CameraParameters>
         {
             std::optional<Eigen::Affine3f> camera_affine_opt;
-            while (true)
-            {
                 camera_affine_opt = helpers::vision::getCameraTransformAffine("world", camera_frame);
-                if (camera_affine_opt)
-                    break;
-                RCLCPP_WARN_STREAM_THROTTLE(LOGGER, *get_clock(), 1000, "Estimate shape - cannot obtain transform to \"" + camera_frame + "\" trying again...");
+                // if (camera_affine_opt)
+                //     break;
+                // RCLCPP_WARN_STREAM_THROTTLE(LOGGER, *get_clock(), 1000, "Estimate shape - cannot obtain transform to \"" + camera_frame + "\" trying again...");
+            
+            if (camera_affine_opt == std::nullopt)
+            {
+                RCLCPP_WARN(this->get_logger(), "Estimate shape  - cannot obtain transform to \"" + camera_frame);
+                throw(std::runtime_error(std::string("Estimate shape  - cannot obtain transform to \"") + camera_frame));
             }
+            // else
+            // {
+            //     Eigen::Affine3f cam_aff = *camera_affine_opt;
+            //     return cam_aff;
+            // }
+                    
             Eigen::Translation3f translation(camera_affine_opt->translation());
             Eigen::Quaternionf quaternion(camera_affine_opt->rotation());
             return std::optional<CameraParameters>(std::in_place, translation, quaternion, camera_frame);

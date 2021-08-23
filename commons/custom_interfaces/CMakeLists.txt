@@ -95,10 +95,12 @@ set(srv_files
   "srv/DataStoreSceneInsert.srv"
   "srv/DataStoreSceneGetList.srv"
   "srv/DataStoreSceneSelect.srv"
-   "srv/DataStoreCamerasDataDelete.srv"
+
+  "srv/DataStoreCamerasDataDelete.srv"
   "srv/DataStoreCamerasDataInsert.srv"
   "srv/DataStoreCamerasDataGetList.srv"
   "srv/DataStoreCamerasDataSelect.srv"
+
 )
 
 set(action_files

@@ -40,5 +40,23 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
             'data_store'), 'launch', 'data_store.launch.py'))
     )
+    
+    detect_server = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+            'detect_server'), 'launch', 'detect_server.launch.py'))
+    )  
+    
+    get_cameras_data = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+            'get_cameras_data'), 'launch', 'get_cameras_data.launch.py'))
+    )
+    compose_items = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+            'compose_items'), 'launch', 'compose_items_server.launch.py'))
+    )
+    estimate_shape = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+            'estimate_shape'), 'launch', 'estimate_shape.launch.py'))
+    )
 
-    return LaunchDescription([parameters_server, rgbd_sync, octomap_generator, data_store])
+    return LaunchDescription([parameters_server, rgbd_sync, octomap_generator, data_store, get_cameras_data,compose_items,estimate_shape])
