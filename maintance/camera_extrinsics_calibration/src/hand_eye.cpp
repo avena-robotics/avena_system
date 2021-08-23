@@ -17,10 +17,10 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
     _static_broadcaster = std::make_unique<tf2_ros::StaticTransformBroadcaster>(get_node_topics_interface());
 
     _cam1_robot_positions.resize(1);
-    _cam1_robot_positions[0] = Eigen::Translation3f(0.609, -0.824, 0.625) * Eigen::Quaternionf(0.797, 0.032, -0.490, -0.353);
+    _cam1_robot_positions[0] = Eigen::Translation3f(0.571, -0.902, 0.701) * Eigen::Quaternionf(0.603, -0.058, 0.337, -0.720);
 
     _cam2_robot_positions.resize(1);
-    _cam2_robot_positions[0] = Eigen::Translation3f(0.380, 0.438, 0.547) * Eigen::Quaternionf(0.844, -0.050, -0.262, 0.465);
+    _cam2_robot_positions[0] = Eigen::Translation3f(0.422, 0.457, 0.477) * Eigen::Quaternionf(0.669, -0.022, 0.510, 0.540);
     
     _action_server = rclcpp_action::create_server<HandEyeAction>(
         this,
@@ -116,7 +116,7 @@ void PclCalibrator::_rotateSamples(std::vector<Eigen::Affine3f> &input_samples, 
     // int rotations_per_sample = AMOUNT_SAMPLES_PER_CAMERA;
     for (auto &initial_sample : input_samples)
         for (size_t i = 0; i < rotations_per_sample; i++)
-            output_samples.push_back(initial_sample.rotate(helpers::vision::assignRotationMatrixAroundX(2 * M_PI / rotations_per_sample)));
+            output_samples.push_back(initial_sample.rotate(helpers::vision::assignRotationMatrixAroundZ(2 * M_PI / rotations_per_sample)));
 
     // helpers::visualization::visualize({},output_samples);
 }

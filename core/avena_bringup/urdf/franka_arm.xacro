@@ -167,9 +167,10 @@
       <limit effort="12" lower="-2.8973" upper="2.8973" velocity="2.6100"/>
     </joint>
     <joint name="${arm_id}_joint_8" type="fixed">
-      <origin rpy="0 ${-pi/2} ${0.75*pi}" xyz="0 0 0.107"/>
+      <origin rpy="0 0 ${-pi/4}" xyz="0 0 0.107"/>
       <parent link="${arm_id}_link_7"/>
       <child link="${arm_id}_gripper_connection"/>
+      <axis xyz="0 0 0"/>
     </joint>
   </xacro:macro>
 </robot>

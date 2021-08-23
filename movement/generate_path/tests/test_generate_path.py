@@ -80,7 +80,7 @@ def main(args=None):
     action_clients = {}
     action_clients['generate_path_pose'] = ActionClient(node, GeneratePathPose, 'generate_path_pose')
     action_clients['generate_trajectory'] = ActionClient(node, SimpleAction, 'generate_trajectory')
-    action_clients['execute_move'] = ActionClient(node, SimpleAction, 'execute_move')
+    # action_clients['execute_move'] = ActionClient(node, SimpleAction, 'execute_move')
 
     for action_client_name, action_client in action_clients.items():
         node.get_logger().info(f'Waiting for action server for {action_client_name}')    
@@ -97,15 +97,15 @@ def main(args=None):
             node.get_logger().info(f'Pose {i + 1}/{len(camera_poses)}')
 
             start_time = time.perf_counter()
-            if execute_single_camera_move(node, action_clients, camera_pose):
-            # if send_single_camera_pose(node, action_client, camera_pose):
+            # if execute_single_camera_move(node, action_clients, camera_pose):
+            if send_single_camera_pose(node, action_clients['generate_path_pose'], camera_pose):
                 node.get_logger().info('Goal succeeded')
                 success_cnt += 1
             else:
                 node.get_logger().error('Goal failed')
             elapsed_time_ms = (time.perf_counter() - start_time) * 1000
             node.get_logger().info(f'Elapsed time: {elapsed_time_ms:.2f} [ms]')
-            # input('Press any key to continue...')
+            input('Press any key to continue...')
             time.sleep(0.01)
 
     if success_cnt != all_poses_cnt:
