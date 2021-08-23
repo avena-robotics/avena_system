@@ -244,6 +244,8 @@ public:
         // timer_ = this->create_wall_timer(loop_rate, std::bind(&CanNode::loop, this));
     }
 
+    
+
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr state_publisher_;
     rclcpp::Service<custom_interfaces::srv::SetArmTorques>::SharedPtr send_service_;
     rclcpp::Service<custom_interfaces::srv::GetArmState>::SharedPtr read_service_;

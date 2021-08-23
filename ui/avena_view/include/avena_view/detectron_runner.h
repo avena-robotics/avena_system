@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <filesystem>
 #include <string>
+#include "avena_view/utils.h"
 
 namespace fs = std::filesystem;
 

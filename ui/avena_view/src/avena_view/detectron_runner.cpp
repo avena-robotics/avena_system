@@ -19,8 +19,6 @@ DetectronRunner::DetectronRunner(Ui::AvenaViewWidget* ui)
     logs_file_watcher_ = std::make_shared<QFileSystemWatcher>();
     logs_file_watcher_->addPath(QString(share_dir_path_.c_str()) + "/detectron_output.txt");
 
-    connect(ui_->detectronStartButton, SIGNAL(clicked(bool)), this, SLOT(startDetectron()));
-    connect(ui_->detectronStopButton, SIGNAL(clicked(bool)), this, SLOT(stopDetectron()));
     connect(logs_file_watcher_.get(), SIGNAL(fileChanged(QString)), this, SLOT(showLast20Logs()));
 }
 
@@ -41,11 +39,11 @@ void DetectronRunner::startDetectron()
     if(detectron_process_->startDetached(&pid_))
     {
         out_pid_file_ << pid_;
-        ui_->detectronLogConsole->append("Starting detect server");
+        writeToConsole("Starting detect server", ui_->startSystemLogConsole);
     }
     else
     {
-        ui_->detectronLogConsole->append("Failed to start detect server");
+        writeToConsole("Failed to start detect server", ui_->startSystemLogConsole);
     }
     out_pid_file_.close();
 }
@@ -54,7 +52,7 @@ void DetectronRunner::stopDetectron()
     int killing_result = 0;
     if(pid_ != 0)
         killing_result = kill(pid_, SIGINT);
-    ui_->detectronLogConsole->append( "Detectron stopped with exit code: " + QString::number(killing_result));
+    writeToConsole("Detectron stopped with exit code: " + std::to_string(killing_result), ui_->startSystemLogConsole);
     fs::remove(share_dir_path_ + "/detect.pid");
 }
 
@@ -93,9 +91,9 @@ void DetectronRunner::showLast20Logs()
     in_logs_file_.clear();
     in_logs_file_.seekg(0, std::ios::beg);
     std::string line;
-    ui_->detectronLogConsole->clear();
 	while(std::getline(in_logs_file_,line))
     {
-        ui_->detectronLogConsole->append(QString(line.c_str()));
+        std::cout << line << std::endl;
+        writeToConsole(line, ui_->startSystemLogConsole);
     }
 }

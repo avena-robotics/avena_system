@@ -1,7 +1,7 @@
 #include "data_store/data_store.hpp"
 namespace data_store
 {
-    DataStore::DataStore(const rclcpp::NodeOptions &options) : Node("DataStore", options)
+    DataStore::DataStore(const rclcpp::NodeOptions &options) : Node("data_store", options)
     {
         status = custom_interfaces::msg::Heartbeat::STOPPED;
         RCLCPP_INFO(this->get_logger(), "started DataStore Node");

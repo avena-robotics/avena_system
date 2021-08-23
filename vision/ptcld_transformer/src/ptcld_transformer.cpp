@@ -2,12 +2,11 @@
 namespace ptcld_transformer
 {
     PtcldTransformer::PtcldTransformer(rclcpp::Node *node)
-    {        
+    {
         _node = node;
         _cameras_parameters = _getCameraTransform();
         _getTableAreaFromParametersServer();
     }
-
 
     void PtcldTransformer::joinThread()
     {
@@ -27,31 +26,27 @@ namespace ptcld_transformer
         CamerasData::SharedPtr cameras_data = _readInputData(cameras_data_msg);
 
         return _processCamerasData(cameras_data, _cameras_parameters);
-
     }
 
     TransformedPointClouds::SharedPtr PtcldTransformer::_processCamerasData(CamerasData::SharedPtr cameras_data, CameraTransform::SharedPtr cameras_parameters)
     {
-        // helpers::Timer timer(__func__, get_logger());
         TransformedPointClouds::SharedPtr transformed_point_clouds(new TransformedPointClouds);
-
         pcl::PointCloud<pcl::PointXYZ>::Ptr temp1(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::PointCloud<pcl::PointXYZ>::Ptr temp2(new pcl::PointCloud<pcl::PointXYZ>);
 
-        if(cameras_parameters->cam1_aff.matrix() != Eigen::Affine3f().matrix() || cameras_parameters->cam2_aff.matrix() != Eigen::Affine3f().matrix()  ){
-
-        std::thread t3(std::bind(&PtcldTransformer::_filterAndTransformPointCloud, this, cameras_data->cam1_ptcld, cameras_parameters->cam1_aff, temp1));
-        std::thread t4(std::bind(&PtcldTransformer::_filterAndTransformPointCloud, this, cameras_data->cam2_ptcld, cameras_parameters->cam2_aff, temp2));
-        t3.join();
-        t4.join();
-        *transformed_point_clouds->merged_ptcld += *temp1;
-        *transformed_point_clouds->merged_ptcld += *temp2;
-
-        }else{
-            RCLCPP_WARN_STREAM(_node->get_logger(), "there is no valid camera pose, cant transform pointCloud");
- 
+        if (cameras_parameters->cam1_aff.matrix() != Eigen::Affine3f().matrix() || cameras_parameters->cam2_aff.matrix() != Eigen::Affine3f().matrix())
+        {
+            std::thread t3(std::bind(&PtcldTransformer::_filterAndTransformPointCloud, this, cameras_data->cam1_ptcld, cameras_parameters->cam1_aff, temp1));
+            std::thread t4(std::bind(&PtcldTransformer::_filterAndTransformPointCloud, this, cameras_data->cam2_ptcld, cameras_parameters->cam2_aff, temp2));
+            t3.join();
+            t4.join();
+            *transformed_point_clouds->merged_ptcld += *temp1;
+            *transformed_point_clouds->merged_ptcld += *temp2;
         }
-
+        else
+        {
+            RCLCPP_WARN_STREAM(_node->get_logger(), "there is no valid camera pose, cant transform pointCloud");
+        }
 
         return transformed_point_clouds;
     }
@@ -72,7 +67,7 @@ namespace ptcld_transformer
         crop_box_table_edge_ext.filter(*out_cloud);
     }
 
-  CameraTransform::SharedPtr PtcldTransformer::_getCameraTransform()
+    CameraTransform::SharedPtr PtcldTransformer::_getCameraTransform()
     {
         // helpers::Timer timer(__func__, get_logger());
         CameraTransform::SharedPtr cameras_parameters(new CameraTransform);
@@ -93,8 +88,8 @@ namespace ptcld_transformer
             Eigen::Affine3f cam_aff;
             return cam_aff;
         };
-        cameras_parameters->cam1_aff = get_camera_affine("camera_1");       
-        cameras_parameters->cam2_aff = get_camera_affine("camera_2");     
+        cameras_parameters->cam1_aff = get_camera_affine("camera_1");
+        cameras_parameters->cam2_aff = get_camera_affine("camera_2");
 
         return cameras_parameters;
     }
@@ -134,7 +129,6 @@ namespace ptcld_transformer
         }
         // return table_area;
     }
-
 
     CamerasData::SharedPtr PtcldTransformer::_readInputData(const custom_interfaces::msg::Ptclds::SharedPtr cameras_data_msg)
     {
@@ -176,4 +170,3 @@ namespace ptcld_transformer
     }
 
 } // namespace ptcld_transformer
-

@@ -1,3 +1,5 @@
+#pragma once
+
 #define GUI_REFRESH_DELAY 100    //ms
 #define MAX_HEARTBEAT_DELAY 1000 //ms
 
@@ -17,7 +19,7 @@
 
 #define BT_WARNING_DURATION 5
 
-#define DANGER_TOOL_PUBLISHING_FREQ 200
+#define DANGER_TOOL_PUBLISHING_FREQ 1000
 
 #define PID_FILE_NAME "pid.dat"
 
