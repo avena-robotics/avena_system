@@ -39,7 +39,7 @@ class StartSystem : public QObject
 
     private:
         void connectSlotsToSignals();
-        bool startNode(const QString name,const QStringList args);
+        bool startNode(const QString name,const QStringList args, unsigned int ms_waiting=3000);
         void addLaunches();
 
         std::shared_ptr<LaunchFileManager> _launch_file_manager;
