@@ -32,6 +32,7 @@ namespace security
         std::atomic<bool> _security_trigger{false};
 
         std::thread _run_thread;
+        std::mutex _status_mutex;
 
         std::tuple<bool, bool, size_t, size_t> _truth_table(bool dt, bool st, size_t count1, size_t count2);
         void _run();
