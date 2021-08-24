@@ -19,6 +19,7 @@ namespace generate_path
   using ArmConfiguration = std::vector<double>;
   using Path = std::vector<ArmConfiguration>;
   using Limits = helpers::commons::Limits;
+  const int INVALID_HANDLE = -1;
 
   enum class ReturnCode
   {
@@ -29,8 +30,8 @@ namespace generate_path
   struct SceneInfo
   {
     bullet_client::b3RobotSimulatorClientAPI::SharedPtr bullet_client;
-    int robot_idx;
-    int end_effector_idx;
+    int robot_idx = INVALID_HANDLE;
+    int end_effector_idx = INVALID_HANDLE;
     std::vector<int> joint_handles;
 
     using SharedPtr = std::shared_ptr<SceneInfo>;

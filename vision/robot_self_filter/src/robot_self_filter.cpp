@@ -113,8 +113,11 @@ namespace robot_self_filter
          return;
         
         const std::string working_side = parameters["working_side"];
-        _robot_info = helpers::commons::getRobotInfo(working_side);
-    
+        if (auto robot_info = helpers::commons::getRobotInfo(working_side))
+            _robot_info = *robot_info;
+        else
+            return;
+
         _robot_links_names = _robot_info.link_names;
         _robot_links_names.insert(_robot_links_names.end(),_robot_info.gripper_info.link_names.begin(), _robot_info.gripper_info.link_names.end());
 

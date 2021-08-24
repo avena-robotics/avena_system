@@ -35,17 +35,15 @@ namespace visualization_tools
     {
         RCLCPP_INFO_ONCE(get_logger(), "Reading parameters from the server");
 
-        while (true)
-        {
-            nlohmann::json parameters = helpers::commons::getParameter("robot");
-            if (parameters.empty())
-                continue;
-            const std::string working_side = parameters["working_side"];
-            _robot_info = helpers::commons::getRobotInfo(working_side);
-            _end_effector_name = _robot_info.connection;
-            // _end_effector_name = _robot_info.robot_prefix + "_gripper";
-            break;
-        }
+        nlohmann::json parameters = helpers::commons::getParameter("robot");
+        if (parameters.empty())
+            std::runtime_error("Cannot read \"robot\" parameters from server");
+        const std::string working_side = parameters["working_side"];
+        if (auto robot_info = helpers::commons::getRobotInfo(working_side))
+            _robot_info = *robot_info;
+        else
+            std::runtime_error("Cannot read robot info");
+        _end_effector_name = _robot_info.connection;
 
         RCLCPP_INFO(get_logger(), "Parameters read successfully...");
         return 0;

@@ -14,6 +14,7 @@ def generate_launch_description():
                 ComposableNode(
                     package='bullet_server',
                     plugin='bullet_server::SetupScene',
+                    parameters=[{'log_level': 'info'}],
                 ),
             ],
             output='screen',
