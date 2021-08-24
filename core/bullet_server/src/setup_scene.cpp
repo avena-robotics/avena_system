@@ -6,8 +6,60 @@ namespace bullet_server
     SetupScene::SetupScene(const rclcpp::NodeOptions &options)
         : Node("scene_setup", options)
     {
-        helpers::commons::setLoggerLevel(get_logger(), "info");
-        _loading_scene_timer = create_wall_timer(std::chrono::milliseconds(500), std::bind(&SetupScene::createWorld, this));
+        helpers::commons::setLoggerLevelFromParameter(this);
+        status = custom_interfaces::msg::Heartbeat::STOPPED;
+        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
+    }
+
+    SetupScene::~SetupScene()
+    {
+        shutDownNode();
+    }
+
+    void SetupScene::initNode()
+    {
+        RCLCPP_DEBUG(get_logger(), "Initializing node");
+        status = custom_interfaces::msg::Heartbeat::STARTING;
+        if (_createWorld() != ReturnCode::SUCCESS)
+        {
+            RCLCPP_WARN(get_logger(), "Error occured while initializing node");
+            status = custom_interfaces::msg::Heartbeat::STOPPED;
+            return;
+        }
+        status = custom_interfaces::msg::Heartbeat::RUNNING;
+    }
+
+    void SetupScene::shutDownNode()
+    {
+        RCLCPP_DEBUG(get_logger(), "Shutting down node");
+        status = custom_interfaces::msg::Heartbeat::STOPPING;
+        // TODO: Remove everything from world,
+        bullet_client::b3RobotSimulatorClientAPI::SharedPtr sim(new bullet_client::b3RobotSimulatorClientAPI);
+        bool connected = sim->connect(eCONNECT_SHARED_MEMORY);
+        if (!connected)
+        {
+            RCLCPP_ERROR(get_logger(), "Cannot connect to physics server");
+            return;
+        }
+        sim->syncBodies();
+        sim->removeAllUserDebugItems();
+        int num_bodies = sim->getNumBodies();
+        RCLCPP_DEBUG_STREAM(get_logger(), "Number of bodies: " << num_bodies);
+        for (int body_id = 0; body_id < num_bodies; body_id++)
+        {
+            int unique_body_id = body_id;
+            // int unique_body_id = sim->getBodyUniqueId(body_id);
+            b3BodyInfo body_info;
+            sim->getBodyInfo(unique_body_id, &body_info);
+            std::stringstream ss;
+            ss << "Unique body ID: " << unique_body_id
+               << ", body name: \"" << body_info.m_bodyName
+               << "\", base name: \"" << body_info.m_baseName << "\"";
+            RCLCPP_DEBUG(get_logger(), ss.str());
+            sim->removeBody(unique_body_id);
+        }
+
+        status = custom_interfaces::msg::Heartbeat::STOPPED;
     }
 
     ReturnCode SetupScene::_getParametersFromServer()
@@ -28,34 +80,31 @@ namespace bullet_server
         _workspace_area.z_max = area["table_area"]["max"]["z"].get<float>();
 
         RCLCPP_DEBUG(get_logger(), "Reading robot information");
-        _robot_info = helpers::commons::getRobotInfo();
-        if (!_robot_info.valid)
+        if (auto robot_info = helpers::commons::getRobotInfo())
+            _robot_info = *robot_info;
+        else
             return ReturnCode::FAILURE;
 
         RCLCPP_INFO(get_logger(), "Parameters read successfully...");
         return ReturnCode::SUCCESS;
     }
 
-    void SetupScene::createWorld()
+    ReturnCode SetupScene::_createWorld()
     {
         RCLCPP_INFO(get_logger(), "Creating brain world");
 
-        _loading_scene_timer->cancel();
-
         if (_getParametersFromServer() != ReturnCode::SUCCESS)
         {
-            RCLCPP_ERROR(get_logger(), "Cannot read parameters from server. Exiting...");
-            std::exit(1);
-            // rclcpp::shutdown();
+            RCLCPP_ERROR(get_logger(), "Cannot read parameters from server");
+            return ReturnCode::FAILURE;
         }
 
         bullet_client::b3RobotSimulatorClientAPI::SharedPtr sim(new bullet_client::b3RobotSimulatorClientAPI);
         bool connected = sim->connect(eCONNECT_SHARED_MEMORY);
         if (!connected)
         {
-            RCLCPP_WARN(get_logger(), "Cannot connect to physics server");
-            std::exit(1);
-            // return ReturnCode::FAILURE;
+            RCLCPP_ERROR(get_logger(), "Cannot connect to physics server");
+            return ReturnCode::FAILURE;
         }
 
         // Table dimensions
@@ -74,6 +123,11 @@ namespace bullet_server
         // --- Robot ---
         // Read robot description and base transformation to world
         const std::string robot_urdf = helpers::commons::getRobotDescription();
+        if (robot_urdf.empty())
+        {
+            RCLCPP_ERROR(get_logger(), "Cannot read robot description");
+            return ReturnCode::FAILURE;
+        }
         std::string package_share_directory = ament_index_cpp::get_package_share_directory("bullet_server");
         const std::string arm_urdf_path = package_share_directory + "/robot_description.urdf";
         std::ofstream f(arm_urdf_path);
@@ -86,18 +140,19 @@ namespace bullet_server
         {
             RCLCPP_INFO(get_logger(), "Transformation from base to world read successfully");
             tf_to_base = *tf_to_base_opt;
-            urdf_load_args.m_startPosition  = btVector3(tf_to_base.transform.translation.x, tf_to_base.transform.translation.y, tf_to_base.transform.translation.z);
+            urdf_load_args.m_startPosition = btVector3(tf_to_base.transform.translation.x, tf_to_base.transform.translation.y, tf_to_base.transform.translation.z);
+            urdf_load_args.m_startOrientation = btQuaternion(tf_to_base.transform.rotation.x, tf_to_base.transform.rotation.y, tf_to_base.transform.rotation.z, tf_to_base.transform.rotation.w);
         }
         else
         {
             RCLCPP_ERROR(get_logger(), "Invalid transformation from robot base to world. Exiting...");
-            std::exit(1);
+            return ReturnCode::FAILURE;
         }
 
         urdf_load_args.m_forceOverrideFixedBase = true;
         // urdf_load_args.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
-        urdf_load_args.m_startOrientation = sim->getQuaternionFromEuler(btVector3(0, 0, 0));
-        sim->loadURDF(arm_urdf_path, urdf_load_args);
+        int robot_id = sim->loadURDF(arm_urdf_path, urdf_load_args);
+        RCLCPP_DEBUG_STREAM(get_logger(), "Loaded robot unique ID: " << robot_id);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // --- Table ---
@@ -245,7 +300,7 @@ namespace bullet_server
             link_positions.push_back(btVector3(0.18 - TABLE_WIDTH_HALF, -tf_to_base.transform.translation.y, 0.05));
         }
         ////////////////////////////////////////////////////////////////////////////
-       
+
         table_args.m_linkPositions = link_positions.data(); //!4
         std::vector<btQuaternion> link_orientations(collision_indices.size(), btQuaternion(0, 0, 0, 1));
         table_args.m_linkOrientations = link_orientations.data(); //!5
@@ -261,6 +316,7 @@ namespace bullet_server
 
         // Change opacity for collision walls
         int table_id = sim->createMultiBody(table_args);
+        RCLCPP_DEBUG_STREAM(get_logger(), "Table unique ID: " << table_id);
         b3RobotSimulatorChangeVisualShapeArgs visual;
         visual.m_rgbaColor = btVector4(0, 1, 0, 0.05);
         visual.m_objectUniqueId = table_id;
@@ -351,9 +407,7 @@ namespace bullet_server
 
         sim->disconnect();
         RCLCPP_INFO(get_logger(), "World created successfully");
-
-        std::exit(0);
-        // return ReturnCode::SUCCESS;
+        return ReturnCode::SUCCESS;
     }
 
 } // namespace bullet_server

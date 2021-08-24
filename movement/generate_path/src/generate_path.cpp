@@ -32,6 +32,7 @@ namespace generate_path
         if (_initialize() != ReturnCode::SUCCESS)
         {
             RCLCPP_WARN(get_logger(), "Error occured while initializing node");
+            status = custom_interfaces::msg::Heartbeat::STOPPED;
             return;
         }
         status = custom_interfaces::msg::Heartbeat::RUNNING;
@@ -156,6 +157,14 @@ namespace generate_path
         RCLCPP_INFO(get_logger(), "Generating pose path");
         _scene_info->bullet_client->removeAllUserDebugItems();
         _scene_info->bullet_client->syncBodies();
+
+        if (!_isSceneValid())
+        {
+            RCLCPP_ERROR(get_logger(), "Scene in physics server is not valid. Aborting...");
+            _generated_path_pub->publish(custom_interfaces::msg::GeneratedPath());
+            goal_handle->abort(result);
+            return;
+        }
 
         auto current_joint_values = _getJointStatesFromTopic(current_joint_states);
 
@@ -512,6 +521,12 @@ namespace generate_path
     {
         RCLCPP_DEBUG(get_logger(), "Reading info about objects from physics server");
         int num_bodies = _scene_info->bullet_client->getNumBodies();
+        if (num_bodies == 0)
+        {
+            RCLCPP_ERROR(get_logger(), "There are no objects in the physics server");
+            return ReturnCode::FAILURE;
+        }
+
         for (int body_id = 0; body_id < num_bodies; ++body_id)
         {
             int body_unique_id = _scene_info->bullet_client->getBodyUniqueId(body_id);
@@ -539,6 +554,34 @@ namespace generate_path
             else
                 _table_idx = body_unique_id;
         }
+
+        if (_scene_info->end_effector_idx == INVALID_HANDLE)
+        {
+            RCLCPP_ERROR(get_logger(), "End effector handle was not read from the physics server correctly");
+            return ReturnCode::FAILURE;
+        }
+
+        if (_scene_info->robot_idx == INVALID_HANDLE)
+        {
+            RCLCPP_ERROR(get_logger(), "Robot handle was not read from the physics server correctly");
+            return ReturnCode::FAILURE;
+        }
+
+        if (_table_idx == INVALID_HANDLE)
+        {
+            RCLCPP_ERROR(get_logger(), "Table handle was not read from the physics server correctly");
+            return ReturnCode::FAILURE;
+        }
+
+        if (_scene_info->joint_handles.size() != _robot_info.nr_joints)
+        {
+            RCLCPP_ERROR_STREAM(get_logger(), "Number of robot joints read from the physics server is not equal \
+                                               to number of joints in robot description (physics server: "
+                                                  << _scene_info->joint_handles.size()
+                                                  << ", robot description: " << _robot_info.nr_joints << ")");
+            return ReturnCode::FAILURE;
+        }
+
         RCLCPP_INFO_STREAM(get_logger(), "End effector ID: " << _scene_info->end_effector_idx);
         return ReturnCode::SUCCESS;
     }
@@ -578,7 +621,10 @@ namespace generate_path
             return ReturnCode::FAILURE;
 
         const std::string working_side = parameters["working_side"];
-        _robot_info = helpers::commons::getRobotInfo(working_side);
+        if (auto robot_info = helpers::commons::getRobotInfo(working_side))
+            _robot_info = *robot_info;
+        else
+            return ReturnCode::FAILURE;
 
         RCLCPP_INFO(get_logger(), "Parameters read successfully...");
         return ReturnCode::SUCCESS;
@@ -618,6 +664,24 @@ namespace generate_path
         {
             path_segment.points[i].positions = path[i];
         }
+    }
+
+    bool GeneratePath::_isSceneValid()
+    {
+        int num_joints = _scene_info->bullet_client->getNumJoints(_scene_info->robot_idx);
+        int num_moving_joints = 0;
+        for (int joint_idx = 0; joint_idx < num_joints; ++joint_idx)
+        {
+            b3JointInfo joint_info;
+            _scene_info->bullet_client->getJointInfo(_scene_info->robot_idx, joint_idx, &joint_info);
+            if (joint_info.m_jointType != JointType::eFixedType)
+            {
+                auto joint_name_it = std::find(_robot_info.joint_names.begin(), _robot_info.joint_names.end(), std::string(joint_info.m_jointName));
+                if (joint_name_it != _robot_info.joint_names.end())
+                    num_moving_joints++;
+            }
+        }
+        return num_moving_joints == _robot_info.nr_joints;
     }
 
     void GeneratePath::_drawCoordinateAxes(const Eigen::Affine3d &pose)

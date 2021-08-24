@@ -23,6 +23,7 @@ namespace generate_trajectory
         if (_initialize() != ReturnCode::SUCCESS)
         {
             RCLCPP_WARN(get_logger(), "Error occured while initializing node");
+            status = custom_interfaces::msg::Heartbeat::STOPPED;
             return;
         }
         status = custom_interfaces::msg::Heartbeat::RUNNING;
@@ -81,7 +82,10 @@ namespace generate_trajectory
             return ReturnCode::FAILURE;
 
         const std::string working_side = parameters["working_side"];
-        _robot_info = helpers::commons::getRobotInfo(working_side);
+        if (auto robot_info = helpers::commons::getRobotInfo(working_side))
+            _robot_info = *robot_info;
+        else
+            return ReturnCode::FAILURE;
 
         const double controller_frequency = parameters["controller_frequency"].get<double>();
         RCLCPP_INFO_STREAM(get_logger(), "Trajectories generated for controller working with " << controller_frequency << " Hz");

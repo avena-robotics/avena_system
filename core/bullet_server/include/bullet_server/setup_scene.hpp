@@ -43,20 +43,19 @@ namespace bullet_server
     float z_max;
   };
 
-  class SetupScene : public rclcpp::Node
+  class SetupScene : public rclcpp::Node, public helpers::WatchdogInterface
   {
   public:
     explicit SetupScene(const rclcpp::NodeOptions &options);
-    virtual ~SetupScene()
-    {
-      std::cout << "going out" << std::endl;
-    };
-    void createWorld();
+    virtual ~SetupScene();
+    virtual void initNode() override;
+    virtual void shutDownNode() override;
 
   private:
     ReturnCode _getParametersFromServer();
+    ReturnCode _createWorld();
 
-    rclcpp::TimerBase::SharedPtr _loading_scene_timer;
+    helpers::Watchdog::SharedPtr _watchdog;
     WorkspaceArea _workspace_area;
     helpers::commons::RobotInfo _robot_info;
   };

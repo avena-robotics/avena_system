@@ -35,7 +35,7 @@ namespace helpers
      * Kept for now for backward compatibility.
      * @return RobotInfo 
      */
-    RobotInfo getRobotInfo(const std::string &side = "none");
+    std::optional<RobotInfo> getRobotInfo(const std::string &side = "none");
   } // namespace commons
 } // namespace helpers
 

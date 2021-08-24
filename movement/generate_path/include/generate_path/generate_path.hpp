@@ -67,6 +67,7 @@ namespace generate_path
     void _drawCoordinateAxes(const Eigen::Affine3d &pose);
     ReturnCode _validateArmFinalConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message);
     ReturnCode _validateArmInitialConfiguration(const PathPlanningInput &path_planning_input, const ArmConfiguration &joint_state, std::string &error_message);
+    bool _isSceneValid();
 
     // ___Attributes___
     helpers::Watchdog::SharedPtr _watchdog;
@@ -84,7 +85,7 @@ namespace generate_path
      * The reason to keep it separately and not as an generic obstacle is to easily keep track of changing obstacles when new moving items
      * appear on the table.
      */
-    int _table_idx;
+    int _table_idx = INVALID_HANDLE;
 
     const float _safety_range = 0.005;
     const int _contact_number_allowed = 1;

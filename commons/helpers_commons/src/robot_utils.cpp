@@ -9,7 +9,7 @@ namespace helpers
             std::string node_name = "reading_robot_description_" + std::to_string(std::rand());
             rclcpp::Node::SharedPtr temp_node = rclcpp::Node::make_shared(node_name, rclcpp::NodeOptions().enable_rosout(false).use_global_arguments(false));
             auto parameters_client = std::make_shared<rclcpp::SyncParametersClient>(temp_node, "robot_state_publisher");
-            while (!parameters_client->wait_for_service(std::chrono::seconds(1)))
+            if (!parameters_client->wait_for_service(std::chrono::seconds(3)))
             {
                 if (!rclcpp::ok())
                 {
@@ -17,9 +17,18 @@ namespace helpers
                     rclcpp::shutdown();
                     return {};
                 }
-                RCLCPP_INFO(rclcpp::get_logger("helpers"), "service not available, waiting again...");
+                RCLCPP_INFO(rclcpp::get_logger("helpers"), "Could not connect to robot_state_publisher parameters");
+                return {};
             }
-            std::string robot_urdf = parameters_client->get_parameter<std::string>("robot_description");
+            std::string robot_urdf = "";
+            try
+            {
+                robot_urdf = parameters_client->get_parameter<std::string>("robot_description");
+            }
+            catch(const std::runtime_error& e)
+            {
+                RCLCPP_ERROR(rclcpp::get_logger("helpers"), e.what());
+            }
             return robot_urdf;
         }
 
@@ -38,17 +47,17 @@ namespace helpers
             return link_names;
         }
 
-        RobotInfo getRobotInfo(const std::string &side)
+        std::optional<RobotInfo> getRobotInfo(const std::string &side)
         {
             RobotInfo robot_info;
 
             std::string robot_urdf = getRobotDescription();
             if (robot_urdf.empty())
             {
-                robot_info.valid = false;
-                return robot_info;
+                RCLCPP_ERROR(rclcpp::get_logger("helpers"), "Cannot read robot description");
+                return std::nullopt;
             }
-            robot_info.valid = true;
+
             urdf::ModelInterfaceSharedPtr model = urdf::parseURDF(robot_urdf);
 
             robot_info.robot_name = model->getName();
@@ -80,14 +89,13 @@ namespace helpers
                     if (!joint_info->limits)
                     {
                         RCLCPP_ERROR_STREAM(rclcpp::get_logger("helpers"), "There are not joint limits specify for joint \"" << joint_name << "\". Exiting...");
-                        robot_info.valid = false;
-                        return robot_info;                     
+                        return std::nullopt;                     
                     }
                     robot_info.limits.push_back(Limits(joint_info->limits->lower, joint_info->limits->upper));
                     if (joint_info->safety)
                         robot_info.soft_limits.push_back(Limits(joint_info->safety->soft_lower_limit, joint_info->safety->soft_upper_limit));
                     else
-                        RCLCPP_DEBUG(rclcpp::get_logger("helpers"), "There not no soft limits in URDF. This is values might now be available, so just skipping them");
+                        RCLCPP_DEBUG(rclcpp::get_logger("helpers"), "There not no soft limits in URDF. This values might not be available, so just use them wisely");
                 }
                 else if (joint_info->type == urdf::Joint::FIXED)
                 {
@@ -98,7 +106,10 @@ namespace helpers
             robot_info.nr_fixed_joints = robot_info.fixed_joint_names.size();
 
             if (robot_info.link_names.size() == 0)
-                std::runtime_error("URDF is ill formed. There is no links in it. Fix URDF");
+            {
+                RCLCPP_ERROR(rclcpp::get_logger("helpers"), "URDF is ill formed. There is no links in it. Fix URDF");
+                return std::nullopt;
+            }
 
             // Extract working side
             std::string working_side;

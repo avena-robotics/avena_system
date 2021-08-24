@@ -64,7 +64,6 @@ namespace helpers
       size_t nr_links;
       std::vector<Limits> limits;
       std::vector<Limits> soft_limits;
-      bool valid;
 
       GripperInfo gripper_info;
     };
