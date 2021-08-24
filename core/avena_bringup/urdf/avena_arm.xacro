@@ -3,120 +3,252 @@
   <xacro:macro name="avena_arm" params="arm_id:='avena' description_pkg:='avena_bringup'">
     <link name="${arm_id}_link_0">
       <visual>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 0.01" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/base_link.stl" />
+          <cylinder radius="0.074744" length="0.02"/>
         </geometry>
         <material name="">
-          <color rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+          <color rgba="0.5 0.5 0.5 1" />
         </material>
       </visual>
-      <collision>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+      <visual>
+        <origin xyz="0 0 0.03375" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/base_link.stl" />
+          <cylinder radius="0.06" length="0.0275"/>
+        </geometry>
+        <material name="">
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0 0 0.0525" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.04125" length="0.0125"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0.01" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.074744" length="0.02"/>
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0 0.03375" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.06" length="0.0275"/>
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0 0.0525" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.04125" length="0.0125"/>
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_1">
       <visual>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 -0.06" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_1.stl" />
+          <cylinder radius="0.0455" length="0.12" />
         </geometry>
         <material name="">
-          <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0 0.03 -0.0675" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="0.045" length="0.06" />
+        </geometry>
+        <material name="">
+          <color rgba="0.5 0.5 0.5 1" />
         </material>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 -0.06" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_1.stl" />
+          <cylinder radius="0.0455" length="0.12" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0.03 -0.0675" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="0.045" length="0.06" />
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_2">
       <visual>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 0.06" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_2.stl" />
+          <cylinder radius="0.045" length="0.12" />
         </geometry>
         <material name="">
-          <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0 0.225 0.0675" rpy="${-pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="0.045" length="0.45" />
+        </geometry>
+        <material name="">
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0 0.4525 0.06" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.045" length="0.12" />
+        </geometry>
+        <material name="">
+          <color rgba="0.5 0.5 0.5 1" />
         </material>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 0.06" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_2.stl" />
+          <cylinder radius="0.045" length="0.12" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0.225 0.0675" rpy="${-pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="0.045" length="0.45" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0.4525 0.06" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.045" length="0.12" />
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_3">
       <visual>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 -0.0475" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_3.stl" />
+          <cylinder radius="0.045" length="0.12" />
         </geometry>
         <material name="">
-          <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0 0.225 -0.056" rpy="${-pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="0.045" length="0.45" />
+        </geometry>
+        <material name="">
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0 0.4475 -0.045" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.04" length="0.115" />
+        </geometry>
+        <material name="">
+          <color rgba="0.5 0.5 0.5 1" />
         </material>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 -0.0475" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_3.stl" />
+          <cylinder radius="0.045" length="0.12" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0.225 -0.056" rpy="${-pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="0.045" length="0.45" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0.4475 -0.045" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.04" length="0.115" />
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_4">
       <visual>
-        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <origin xyz="0 0.0125 0.055" rpy="${pi/2} 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_4.stl" />
+          <cylinder radius="0.04" length="0.115" />
         </geometry>
         <material name="">
-          <color rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0 0 0.025" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.04" length="0.05" />
+        </geometry>
+        <material name="">
+          <color rgba="0.5 0.5 0.5 1" />
         </material>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="${pi/2} 0 0" />
+        <origin xyz="0 0.0125 0.055" rpy="${pi/2} 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_4.stl" />
+          <cylinder radius="0.04" length="0.115" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0 0.025" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.04" length="0.05" />
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_5">
       <visual>
-        <origin xyz="0 0 0" rpy="${-pi/2} 0 0" />
+        <origin xyz="0 0 0.025" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_5.stl" />
+          <cylinder radius="0.04" length="0.05" />
         </geometry>
         <material name="">
-          <color rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+          <color rgba="0.5 0.5 0.5 1" />
+        </material>
+      </visual>
+      <visual>
+        <origin xyz="0 0.011 0.055" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="0.04" length="0.115" />
+        </geometry>
+        <material name="">
+          <color rgba="0.5 0.5 0.5 1" />
         </material>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="${-pi/2} 0 0" />
+        <origin xyz="0 0 0.025" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_5.stl" />
+          <cylinder radius="0.04" length="0.05" />
+        </geometry>
+      </collision>
+      <collision>
+        <origin xyz="0 0.011 0.055" rpy="${pi/2} 0 0" />
+        <geometry>
+          <cylinder radius="0.04" length="0.115" />
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_6">
       <visual>
-        <origin xyz="0 0 0" rpy="${-pi/2} 0 0" />
+        <origin xyz="0 0 0.0088" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_6.stl" />
+          <cylinder radius="0.04" length="0.018" />
         </geometry>
         <material name="">
-          <color rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+          <color rgba="0.5 0.5 0.5 1" />
         </material>
       </visual>
       <collision>
-        <origin xyz="0 0 0" rpy="${-pi/2} 0 0" />
+        <origin xyz="0 0 0.0088" rpy="0 0 0" />
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/Link_6.stl" />
+          <cylinder radius="0.04" length="0.018" />
         </geometry>
       </collision>
     </link>
