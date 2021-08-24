@@ -115,6 +115,7 @@ namespace security
         Bool security_pause_msg, gui_warning_msg;
         security_pause_msg.data = false;
         gui_warning_msg.data = false;
+        std::lock_guard<std::mutex> lock(_status_mutex);
         while (status != custom_interfaces::msg::Heartbeat::STOPPED)
         {
             std::tie(sp, gw, count1, count2) = _truth_table(_danger_tool_in_hand, _security_trigger, count1, count2);
