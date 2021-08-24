@@ -26,6 +26,8 @@ namespace get_cameras_data
                                                                              //  ptclds.header.frame_id = ""
                                                                              ptclds.cam1_ptcld = *mgs;
                                                                              ptclds.cam2_ptcld = *mgs;
+                                                                             ptclds.cam1_ptcld.header.frame_id = "camera_1/rgb_camera_link";
+                                                                             ptclds.cam2_ptcld.header.frame_id = "camera_2/rgb_camera_link";
                                                                              ptclds.header.stamp = mgs->header.stamp;
                                                                              _ptclds_pub->publish(ptclds);
                                                                          });
@@ -77,13 +79,19 @@ namespace get_cameras_data
         };
         convertBGRAtoBGR(cam1_rgb, cam1_rgb_output);
         convertBGRAtoBGR(cam2_rgb, cam2_rgb_output);
+
+
         rgb_images_data->cam1_rgb = cam1_rgb_output;
         rgb_images_data->cam2_rgb = cam2_rgb_output;
+        rgb_images_data->cam1_rgb.header.frame_id = "camera_1/rgb_camera_link";
+        rgb_images_data->cam2_rgb.header.frame_id = "camera_2/rgb_camera_link";
 
         depth_images_data->header.stamp = timestamp;
         depth_images_data->cam1_depth = *cam1_depth;
         depth_images_data->cam2_depth = *cam2_depth;
 
+        depth_images_data->cam1_depth.header.frame_id = "camera_1/rgb_camera_link";
+        depth_images_data->cam2_depth.header.frame_id = "camera_2/rgb_camera_link";
         {
             helpers::Timer timer("GetCamerasData::publish", get_logger());
             // cv::Mat mat;

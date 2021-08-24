@@ -164,11 +164,28 @@ def generate_launch_description():
         remappings=[
             ("/zed2/zed_node/rgb_raw/camera_info","/rgb/camera_info"),
             ("/zed2/zed_node/rgb_raw/image_raw_color", "/rgb/image_raw"),
-            ("/zed2/zed_node/depth/camera_info","/depth_to_rgb/camera_info"),
+            ("/zed2/zed_node/depth/camera_info","depth_to_rgb/camera_info"),
             ("/zed2/zed_node/depth/depth_registered", "/depth_to_rgb/image_raw"),
             ("/zed2/zed_node/point_cloud/cloud_registered", "/points2")
         ]
+        # zed2_left_camera_optical_frame - rgb
+        # zed2_left_camera_optical_frame - depth 
+        
     )
+    
+    camera_rgb_link_remap = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        output='both',
+        arguments=['0', '0', '0', '0', '0', '0', '1', 'zed2_left_camera_optical_frame', 'rgb_camera_link']
+        )    
+    
+    camera_base_link_remap = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        output='both',
+        arguments=['0', '0', '0', '0', '0', '0', '1', 'camera_base', 'base_link']
+        )
 
     # Define LaunchDescription variable and return it
     ld = LaunchDescription()
@@ -191,5 +208,7 @@ def generate_launch_description():
 
     ld.add_action(rsp_node)
     ld.add_action(zed_wrapper_node)
+    ld.add_action(camera_rgb_link_remap)
+    ld.add_action(camera_base_link_remap)
 
     return ld
