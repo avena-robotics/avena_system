@@ -8,5 +8,6 @@ def generate_launch_description():
             package='visualization_tools',
             executable='go_to_pose_command_node',
             output='both',
+            parameters=[{'log_level': 'info'}],
         ),
     ])

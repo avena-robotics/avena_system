@@ -135,6 +135,7 @@ ament_target_dependencies(${LIBRARY_NAME}
   interactive_markers
   custom_interfaces
   helpers_vision
+  helpers_commons
 )
 target_compile_definitions(${LIBRARY_NAME} PRIVATE "DEBUGGING_TOOLS_BUILDING_LIBRARY")
 rclcpp_components_register_node(${LIBRARY_NAME}
