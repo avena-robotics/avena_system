@@ -11,9 +11,10 @@ namespace compose_items
           _debug(debug)
     {
         status = custom_interfaces::msg::Heartbeat::STOPPED;
-        RCLCPP_INFO(this->get_logger(), "started Node");
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
         helpers::commons::setLoggerLevelFromParameter(this);
+        RCLCPP_INFO(this->get_logger(), "started Node");
+
     }
 
     void ComposeItems::initNode()
@@ -24,7 +25,8 @@ namespace compose_items
         _publisher = this->create_publisher<Response>("compose_items", qos_settings);
         // _initializeSubscribers(qos_settings);
         _getCamerasParameters();
-
+        if (status == custom_interfaces::msg::Heartbeat::STOPPED)
+            return;
         _readLabels();
         _readAreasParameters();
         this->_action_server = rclcpp_action::create_server<ComposeItemsAction>(
@@ -165,59 +167,35 @@ namespace compose_items
         auto get_camera_parameters = [this](std::string camera_frame)
         {
             std::optional<Eigen::Affine3f> camera_affine_opt;
-            // while (true)
-            // {
 
-                camera_affine_opt = helpers::vision::getCameraTransformAffine("world", camera_frame);
-            //     if (camera_affine_opt)
-            //         break;
-            //     RCLCPP_WARN_STREAM_THROTTLE(get_logger(), *get_clock(), 1000, "Compose items - cannot obtain transform to \"" + camera_frame + "\" trying again...");
-            // }
+            camera_affine_opt = helpers::vision::getCameraTransformAffine("world", camera_frame);
 
-          if (camera_affine_opt == std::nullopt)
+
+            if (camera_affine_opt == std::nullopt)
             {
-                RCLCPP_WARN(this->get_logger(), "Estimate shape  - cannot obtain transform to \"" + camera_frame);
-                throw(std::runtime_error(std::string("Estimate shape  - cannot obtain transform to \"") + camera_frame));
+                RCLCPP_WARN(this->get_logger(), "Compose items - cannot obtain transform to \"" + camera_frame + "\" shuting down node...");
+                shutDownNode();
+                return std::pair<Eigen::Affine3f, CameraParameters>();
             }
-
 
             Eigen::Affine3f cam_aff = *camera_affine_opt;
 
             CameraParameters camera_data;
-            // try
-            // {
-            //     auto cam_intrinsic = helpers::commons::getCameraIntrinsic(get_node_topics_interface(), camera_frame);
-            //     if (!cam_intrinsic)
-            //     {
-            //         rclcpp::shutdown();
-            //         throw std::runtime_error("Compose items - cannot obtain intrinsic parameters from " + camera_frame + " camera");
-            //     }
-            //     camera_data.width = cam_intrinsic->width;
-            //     camera_data.height = cam_intrinsic->height;
-            //     camera_data.cx = cam_intrinsic->cx;
-            //     camera_data.cy = cam_intrinsic->cy;
-            //     camera_data.fx = cam_intrinsic->fx;
-            //     camera_data.fy = cam_intrinsic->fy;
-            // }
-            // catch (json::exception &e)
-            // {
-            //     RCLCPP_FATAL_STREAM(this->get_logger(), "Exception with ID: " << e.id << "; message: " << e.what());
-            //     rclcpp::shutdown();
-            // }
-            //FIXME this is only removed for ZED camera (single cameraapproach - its necessery to have a frame with 2 cameras)
-            camera_frame = "";
-            for (;;)
+
+            try
             {
-                try
+                auto cam_intrinsic = helpers::vision::getCameraIntrinsic(get_node_topics_interface(), camera_frame);
+                if (cam_intrinsic == std::nullopt)
                 {
-                    auto cam_intrinsic = helpers::vision::getCameraIntrinsic(get_node_topics_interface(), camera_frame);
-                    if (!cam_intrinsic)
+                    cam_intrinsic = helpers::vision::getCameraIntrinsic(get_node_topics_interface(), "");
+                    if (cam_intrinsic == std::nullopt)
                     {
-                        RCLCPP_WARN_STREAM_THROTTLE(get_logger(), *get_clock(), 1000, "Compose items - cannot obtain camera intrinsic to \"" + camera_frame + "\" trying again...");
-                        continue;
-                        // rclcpp::shutdown();
-                        // throw std::runtime_error("Compose items - cannot obtain intrinsic parameters from " + camera_frame + " camera");
+                        RCLCPP_WARN_STREAM(get_logger(), "Compose items - cannot obtain camera intrinsic to \"" + camera_frame + "\" shuting down node...");
+                        shutDownNode();
+                        return std::pair<Eigen::Affine3f, CameraParameters>();
                     }
+                }
+
                     camera_data.width = cam_intrinsic->width;
                     camera_data.height = cam_intrinsic->height;
                     camera_data.cx = cam_intrinsic->cx;
@@ -225,21 +203,22 @@ namespace compose_items
                     camera_data.fx = cam_intrinsic->fx;
                     camera_data.fy = cam_intrinsic->fy;
                     RCLCPP_INFO(this->get_logger(), " Succesfully obtained camera parameters");
-                    break;
-                }
-                catch (json::exception &e)
-                {
-                    RCLCPP_FATAL_STREAM(this->get_logger(), "Exception with ID: " << e.id << "; message: " << e.what());
-                    rclcpp::shutdown();
-                }
+            }
+            catch (json::exception &e)
+            {
+                RCLCPP_FATAL_STREAM(this->get_logger(), "Exception with ID: " << e.id << "; message: " << e.what());
+                rclcpp::shutdown();
             }
 
             std::pair<Eigen::Affine3f, CameraParameters> camera_pair(cam_aff, camera_data);
             return camera_pair;
+         
         };
 
         auto cam1_data = get_camera_parameters("camera_1");
         auto cam2_data = get_camera_parameters("camera_2");
+        if (status == custom_interfaces::msg::Heartbeat::STOPPED)
+            return;
         transform_map camera_transform;
         Frames frames;
         camera_transform[frames.camera_frame] = cam1_data.first;
