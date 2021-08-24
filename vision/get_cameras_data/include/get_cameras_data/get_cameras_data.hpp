@@ -59,6 +59,8 @@ namespace get_cameras_data
     const std::string _camera1_frame = "";
     const std::string _camera2_frame = "";
 
+
+
     const std::string _rgb_topic = "/rgb/image_raw";
     const std::string _depth_topic = "/depth_to_rgb/image_raw";
     const std::string _ptcld_topic = "/points2";

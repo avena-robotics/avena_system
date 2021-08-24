@@ -62,15 +62,10 @@ namespace estimate_shape
         //                                                                             RCLCPP_DEBUG(get_logger(), "Composed items message received");
         //                                                                             _compose_items_msg = compose_items_msg;
         //                                                                         });
-        try
-        {
-            _getParametersFromServer(_labels, _cams_params);
-        }
-        catch (const std::exception &e)
-        {
-            RCLCPP_FATAL_STREAM(LOGGER, "Get parameters from the server error: " << e.what() << ". Exiting...");
-            rclcpp::shutdown();
-        }
+  
+        _getParametersFromServer(_labels, _cams_params);
+        if (status == custom_interfaces::msg::Heartbeat::STOPPED)
+            return;
         
         _estimate_shape_manager = std::make_unique<EstimateShapeManager>(_cams_params, _labels);
 
@@ -279,14 +274,15 @@ namespace estimate_shape
             
             if (camera_affine_opt == std::nullopt)
             {
-                RCLCPP_WARN(this->get_logger(), "Estimate shape  - cannot obtain transform to \"" + camera_frame);
-                throw(std::runtime_error(std::string("Estimate shape  - cannot obtain transform to \"") + camera_frame));
+                camera_affine_opt = helpers::vision::getCameraTransformAffine("world", "");
+                if (camera_affine_opt == std::nullopt)
+                {
+
+                    RCLCPP_WARN(this->get_logger(), "Estimate shape - cannot obtain transform to \"" + camera_frame + "\" shuting down node...");
+                    return std::nullopt;
+                }
             }
-            // else
-            // {
-            //     Eigen::Affine3f cam_aff = *camera_affine_opt;
-            //     return cam_aff;
-            // }
+
                     
             Eigen::Translation3f translation(camera_affine_opt->translation());
             Eigen::Quaternionf quaternion(camera_affine_opt->rotation());
@@ -296,12 +292,12 @@ namespace estimate_shape
         if (auto cam1_params = get_camera_affine("camera_1"))
             out_cameras_parameters.push_back(*cam1_params);
         else
-            throw std::runtime_error("Error occured while reading camera_1 from parameter server");
+            shutDownNode();
 
         if (auto cam2_params = get_camera_affine("camera_2"))
             out_cameras_parameters.push_back(*cam2_params);
         else
-            throw std::runtime_error("Error occured while reading camera_2 from parameter server");
+            shutDownNode();
 
         return 0;
     }
