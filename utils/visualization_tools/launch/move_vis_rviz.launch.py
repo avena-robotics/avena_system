@@ -15,6 +15,7 @@ def generate_launch_description():
             package='visualization_tools',
             executable='movement_visualization_node',
             output='both',
+            parameters=[{'log_level': 'info'}],
         ),
         Node(
             package='visualization_tools',

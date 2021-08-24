@@ -5,7 +5,8 @@ namespace visualization_tools
     MovementVisualization::MovementVisualization(const rclcpp::NodeOptions &options)
         : Node("movement_visualization", options)
     {
-        helpers::commons::setLoggerLevel(get_logger(), "debug");
+        helpers::commons::setLoggerLevelFromParameter(this);
+        RCLCPP_INFO(get_logger(), "Initialize movement visualization node");
         _getParametersFromServer();
 
         const std::string urdf_xml = helpers::commons::getRobotDescription();
@@ -33,16 +34,17 @@ namespace visualization_tools
 
     int MovementVisualization::_getParametersFromServer()
     {
-        RCLCPP_INFO_ONCE(get_logger(), "Reading parameters from the server");
+        RCLCPP_INFO(get_logger(), "Reading parameters from the server");
 
-        nlohmann::json parameters = helpers::commons::getParameter("robot");
+        nlohmann::json parameters = helpers::commons::getParameter("robot", std::chrono::seconds(1));
         if (parameters.empty())
-            std::runtime_error("Cannot read \"robot\" parameters from server");
+            throw std::runtime_error("Cannot read \"robot\" parameters from server");
+        RCLCPP_DEBUG_STREAM(get_logger(), "Parameters: " << std::setw(4) << parameters);
         const std::string working_side = parameters["working_side"];
         if (auto robot_info = helpers::commons::getRobotInfo(working_side))
             _robot_info = *robot_info;
         else
-            std::runtime_error("Cannot read robot info");
+            throw std::runtime_error("Cannot read robot info");
         _end_effector_name = _robot_info.connection;
 
         RCLCPP_INFO(get_logger(), "Parameters read successfully...");

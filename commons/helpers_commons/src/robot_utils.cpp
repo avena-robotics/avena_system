@@ -118,7 +118,7 @@ namespace helpers
             else if (robot_info.link_names[0].find("right") != std::string::npos)
                 working_side = "right";
             else
-                std::runtime_error("URDF is ill formed. There is no working side in links names. Fix URDF");
+                throw std::runtime_error("URDF is ill formed. There is no working side in links names. Fix URDF");
             robot_info.robot_prefix = working_side + "_" + robot_info.robot_name;
             robot_info.connection = robot_info.robot_prefix + "_gripper_connection";
 

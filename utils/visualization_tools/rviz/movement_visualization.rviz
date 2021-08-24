@@ -62,52 +62,41 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        right_franka_calibration_mat:
+        left_avena_gripper_connection:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_avena_link_0:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_gripper_connection:
+        left_avena_link_1:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_0:
+        left_avena_link_2:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_1:
+        left_avena_link_3:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_2:
+        left_avena_link_4:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_3:
+        left_avena_link_5:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_4:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_franka_link_5:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_franka_link_6:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_franka_link_7:
+        left_avena_link_6:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -122,26 +111,22 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        right_franka_calibration_mat:
+        left_avena_gripper_connection:
           Value: true
-        right_franka_gripper_connection:
+        left_avena_link_0:
           Value: true
-        right_franka_link_0:
-          Value: false
-        right_franka_link_1:
-          Value: false
-        right_franka_link_2:
-          Value: false
-        right_franka_link_3:
-          Value: false
-        right_franka_link_4:
-          Value: false
-        right_franka_link_5:
-          Value: false
-        right_franka_link_6:
-          Value: false
-        right_franka_link_7:
-          Value: false
+        left_avena_link_1:
+          Value: true
+        left_avena_link_2:
+          Value: true
+        left_avena_link_3:
+          Value: true
+        left_avena_link_4:
+          Value: true
+        left_avena_link_5:
+          Value: true
+        left_avena_link_6:
+          Value: true
         world:
           Value: true
       Marker Scale: 0.5
@@ -151,17 +136,15 @@ Visualization Manager:
       Show Names: false
       Tree:
         world:
-          right_franka_link_0:
-            right_franka_link_1:
-              right_franka_link_2:
-                right_franka_link_3:
-                  right_franka_link_4:
-                    right_franka_link_5:
-                      right_franka_link_6:
-                        right_franka_link_7:
-                          right_franka_gripper_connection:
-                            right_franka_calibration_mat:
-                              {}
+          left_avena_link_0:
+            left_avena_link_1:
+              left_avena_link_2:
+                left_avena_link_3:
+                  left_avena_link_4:
+                    left_avena_link_5:
+                      left_avena_link_6:
+                        left_avena_gripper_connection:
+                          {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -228,52 +211,41 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        right_franka_calibration_mat:
+        left_avena_gripper_connection:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_avena_link_0:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_gripper_connection:
+        left_avena_link_1:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_0:
+        left_avena_link_2:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_1:
+        left_avena_link_3:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_2:
+        left_avena_link_4:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_3:
+        left_avena_link_5:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        right_franka_link_4:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_franka_link_5:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_franka_link_6:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        right_franka_link_7:
+        left_avena_link_6:
           Alpha: 1
           Show Axes: false
           Show Trail: false
