@@ -164,7 +164,7 @@ def generate_launch_description():
         remappings=[
             ("/zed2/zed_node/rgb_raw/camera_info","/rgb/camera_info"),
             ("/zed2/zed_node/rgb_raw/image_raw_color", "/rgb/image_raw"),
-            ("/zed2/zed_node/depth/camera_info","depth_to_rgb/camera_info"),
+            ("/zed2/zed_node/depth/camera_info","/depth_to_rgb/camera_info"),
             ("/zed2/zed_node/depth/depth_registered", "/depth_to_rgb/image_raw"),
             ("/zed2/zed_node/point_cloud/cloud_registered", "/points2")
         ]
@@ -184,8 +184,10 @@ def generate_launch_description():
         package='tf2_ros',
         executable='static_transform_publisher',
         output='both',
-        arguments=['0', '0', '0', '0', '0', '0', '1', 'camera_base', 'base_link']
-        )
+        arguments=['0', '0', '0', '0', '0', '0', '1', 'camera_1/camera_base', 'base_link']
+        )      
+    
+
 
     # Define LaunchDescription variable and return it
     ld = LaunchDescription()

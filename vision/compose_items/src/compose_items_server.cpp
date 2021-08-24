@@ -14,7 +14,6 @@ namespace compose_items
         _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
         helpers::commons::setLoggerLevelFromParameter(this);
         RCLCPP_INFO(this->get_logger(), "started Node");
-
     }
 
     void ComposeItems::initNode()
@@ -167,15 +166,20 @@ namespace compose_items
         auto get_camera_parameters = [this](std::string camera_frame)
         {
             std::optional<Eigen::Affine3f> camera_affine_opt;
-
+            
             camera_affine_opt = helpers::vision::getCameraTransformAffine("world", camera_frame);
-
-
+            std::cout << camera_frame << std::endl;
             if (camera_affine_opt == std::nullopt)
             {
-                RCLCPP_WARN(this->get_logger(), "Compose items - cannot obtain transform to \"" + camera_frame + "\" shuting down node...");
-                shutDownNode();
-                return std::pair<Eigen::Affine3f, CameraParameters>();
+                camera_affine_opt = helpers::vision::getCameraTransformAffine("world", "");
+
+                if (camera_affine_opt == std::nullopt)
+                {
+
+                    RCLCPP_WARN(this->get_logger(), "Compose items - cannot obtain transform to \"" + camera_frame + "\" shuting down node...");
+                    shutDownNode();
+                    return std::pair<Eigen::Affine3f, CameraParameters>();
+                }
             }
 
             Eigen::Affine3f cam_aff = *camera_affine_opt;
@@ -196,14 +200,15 @@ namespace compose_items
                     }
                 }
 
-                    camera_data.width = cam_intrinsic->width;
-                    camera_data.height = cam_intrinsic->height;
-                    camera_data.cx = cam_intrinsic->cx;
-                    camera_data.cy = cam_intrinsic->cy;
-                    camera_data.fx = cam_intrinsic->fx;
-                    camera_data.fy = cam_intrinsic->fy;
-                    RCLCPP_INFO(this->get_logger(), " Succesfully obtained camera parameters");
+                camera_data.width = cam_intrinsic->width;
+                camera_data.height = cam_intrinsic->height;
+                camera_data.cx = cam_intrinsic->cx;
+                camera_data.cy = cam_intrinsic->cy;
+                camera_data.fx = cam_intrinsic->fx;
+                camera_data.fy = cam_intrinsic->fy;
+                RCLCPP_INFO(this->get_logger(), " Succesfully obtained camera parameters");
             }
+            
             catch (json::exception &e)
             {
                 RCLCPP_FATAL_STREAM(this->get_logger(), "Exception with ID: " << e.id << "; message: " << e.what());

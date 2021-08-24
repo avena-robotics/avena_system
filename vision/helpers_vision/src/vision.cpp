@@ -303,15 +303,14 @@ namespace helpers
         }
 
         std::optional<Eigen::Affine3f> getCameraTransformAffine(const std::string &target_frame, const std::string &source_frame, const std::chrono::duration<float> &timeout)
-        {
-            return getTransformAffine(target_frame, source_frame + "/rgb_camera_link", timeout);
+        {   
+            std::string frame = (source_frame == "") ? "rgb_camera_link" : "/rgb_camera_link";
+            return getTransformAffine(target_frame, source_frame + frame, timeout);
         }
 
         std::optional<CameraIntrinsic> getCameraIntrinsic(rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr node_topics_interface, const std::string &camera_frame, const std::chrono::duration<float> &timeout)
         {   
 
-
-            
             auto sub = rclcpp::create_subscription<sensor_msgs::msg::CameraInfo>(node_topics_interface, camera_frame + "/depth_to_rgb/camera_info", 1, [](const sensor_msgs::msg::CameraInfo::SharedPtr) {});
 
             sensor_msgs::msg::CameraInfo cam_info;

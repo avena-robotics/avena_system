@@ -59,4 +59,4 @@ def generate_launch_description():
             'estimate_shape'), 'launch', 'estimate_shape.launch.py'))
     )
 
-    return LaunchDescription([parameters_server, rgbd_sync, octomap_generator, data_store, get_cameras_data,compose_items,estimate_shape])
+    return LaunchDescription([parameters_server, rgbd_sync, data_store, get_cameras_data,compose_items,estimate_shape, detect_server])
