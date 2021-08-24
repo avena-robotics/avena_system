@@ -40,6 +40,8 @@ void StartSystem::connectSlotsToSignals()
     connect(_ui_ptr->startBulletButton, SIGNAL(clicked()), this, SLOT(startBullet()));
     connect(_ui_ptr->startGeneratePathButton, SIGNAL(clicked(bool)), this, SLOT(startGeneratePath()));
     connect(_ui_ptr->startGenerateTrajectoryButton, SIGNAL(clicked(bool)), this, SLOT(startGenerateTrajectory()));
+
+    connect(_ui_ptr->startSystemButton, SIGNAL(clicked(bool)), this, SLOT(startVisionSystem()));
 }
 
 void StartSystem::addLaunches()
@@ -54,7 +56,9 @@ void StartSystem::addLaunches()
         "security_rgb",
         "parameters_server",
         "generate_path",
-        "generate_trajectory"
+        "generate_trajectory",
+        "detect_server",
+        "heartbeat"
     };
 
     std::for_each(
@@ -67,7 +71,7 @@ void StartSystem::addLaunches()
     );
 }
 
-bool StartSystem::startNode(const QString name,const QStringList args)
+bool StartSystem::startNode(const QString name,const QStringList args, unsigned int ms_waiting)
 {
     auto node_it = _nodes_map_ref.find(name.toStdString());
     if(node_it != _nodes_map_ref.end())
@@ -94,7 +98,7 @@ bool StartSystem::startNode(const QString name,const QStringList args)
         return true;
     };
     writeToConsole("Waiting 3 seconds for " + name.toStdString() + " to initialize", _ui_ptr->startSystemLogConsole);
-    return it->second->run(post_start_check, 3000);
+    return it->second->run(post_start_check, ms_waiting);
 }
 
 void StartSystem::startCamera()
@@ -158,8 +162,16 @@ void StartSystem::startGenerateTrajectory()
 
 void StartSystem::startVisionSystem()
 {
-    writeToConsole("Start System button is not implemented yet", _ui_ptr->startSystemLogConsole);
-    // _ui_ptr->startSystemButton->setEnabled(false);
+    // writeToConsole("Start System button is not implemented yet", _ui_ptr->startSystemLogConsole);
+    writeToConsole("Starting system nodes", _ui_ptr->startSystemLogConsole);
+    bool starting_result = startNode("heartbeat", {"launch", "avena_bringup", "heartbeats_test_launch.py"});
+    if(starting_result){
+        // _ui_ptr->startDatastoreButton->setEnabled(false);
+        writeToConsole("Successfully started heartbeat_test nodes", _ui_ptr->startSystemLogConsole);
+    }
+    else
+        writeToConsole("Error while running heartbeat_test nodes. Check terminal for more complex informations.", _ui_ptr->startSystemLogConsole);
+    
 }
 
 void StartSystem::startParametersServer()
@@ -187,7 +199,14 @@ void StartSystem::startDataStore()
 }
 void StartSystem::startDetect()
 {
-    _detectron_runner->startDetectron();
+    writeToConsole("Starting detect_server node", _ui_ptr->startSystemLogConsole);
+    bool starting_result = startNode("detect_server", {"launch", "detect_server", "detect_server.launch.py"});
+    if(starting_result){
+        // _ui_ptr->startSecurityRGBButton->setEnabled(false);
+        writeToConsole("Successfully started detect_server node", _ui_ptr->startSystemLogConsole);
+    }
+    else
+        writeToConsole("Error while running detect_server node. Check terminal for more complex informations.", _ui_ptr->startSystemLogConsole);
 }
 
 void StartSystem::startSecurityRGB()
