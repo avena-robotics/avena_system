@@ -29,6 +29,7 @@ namespace avena_view
         _start_system = std::make_shared<StartSystem>(&_ui, node_, _nodes_list->nodes_map);
         _fast_loop = std::make_shared<FastLoop>(&_ui, node_, _widget);
         _robot_control = std::make_shared<RobotControl>(&_ui, node_);
+        _vision_actions = std::make_shared<VisionActions>(&_ui, node_);
     }
 
     void AvenaView::shutdownPlugin(){
@@ -36,6 +37,7 @@ namespace avena_view
         _start_system = nullptr;
         _fast_loop = nullptr;
         _robot_control = nullptr;
+        _vision_actions = nullptr;
     }
 
     void AvenaView::saveSettings([[maybe_unused]] qt_gui_cpp::Settings &plugin_settings, [[maybe_unused]] qt_gui_cpp::Settings &instance_settings) const {}
