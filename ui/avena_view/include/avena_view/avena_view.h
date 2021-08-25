@@ -8,6 +8,7 @@
 #include <avena_view/start_system.h>
 #include <avena_view/fast_loop.h>
 #include <avena_view/robot_control.h>
+#include <avena_view/vision_actions.h>
 
 
 namespace avena_view
@@ -36,6 +37,7 @@ namespace avena_view
         std::shared_ptr<StartSystem> _start_system;
         std::shared_ptr<FastLoop> _fast_loop;
         std::shared_ptr<RobotControl> _robot_control;
+        std::shared_ptr<VisionActions> _vision_actions;
     };
 }
 

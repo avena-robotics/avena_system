@@ -40,6 +40,7 @@ set(avena_view_SRCS
   src/avena_view/start_system.cpp
   src/avena_view/fast_loop.cpp
   src/avena_view/robot_control.cpp
+  src/avena_view/vision_actions.cpp
 )
 
 set(avena_view_HDRS
@@ -51,6 +52,7 @@ set(avena_view_HDRS
   include/avena_view/start_system.h
   include/avena_view/fast_loop.h
   include/avena_view/robot_control.h
+  include/avena_view/vision_actions.h
 )
 
 set(avena_view_UIS
