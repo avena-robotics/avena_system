@@ -1,304 +1,175 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="avena">
+  <material name="gray">
+    <color rgba="0.5 0.5 0.5 1.0" />
+  </material>
+
   <xacro:macro name="avena_arm" params="arm_id:='avena' description_pkg:='avena_bringup'">
     <link name="${arm_id}_link_0">
       <visual>
-        <origin xyz="0 0 0.01" rpy="0 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <cylinder radius="0.074744" length="0.02"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_0.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0 0.03375" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.06" length="0.0275"/>
-        </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0 0.0525" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.04125" length="0.0125"/>
-        </geometry>
+        <material name="gray" />
       </visual>
       <collision>
-        <origin xyz="0 0 0.01" rpy="0 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <cylinder radius="0.074744" length="0.02"/>
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0 0.03375" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.06" length="0.0275"/>
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0 0.0525" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.04125" length="0.0125"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_0.stl" scale="0.001 0.001 0.001" />
         </geometry>
       </collision>
     </link>
+
     <link name="${arm_id}_link_1">
       <visual>
-        <origin xyz="0 0 -0.06" rpy="0 0 0" />
+        <origin xyz="0 0 0.0495" rpy="${pi} 0 ${-pi/2}" />
         <geometry>
-          <cylinder radius="0.0455" length="0.12" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_1.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0.03 -0.0675" rpy="${pi/2} 0 0" />
-        <geometry>
-          <cylinder radius="0.045" length="0.06" />
-        </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
+        <material name="gray" />
       </visual>
       <collision>
-        <origin xyz="0 0 -0.06" rpy="0 0 0" />
+        <origin xyz="0 0 0.0495" rpy="${pi} 0 ${-pi/2}" />
         <geometry>
-          <cylinder radius="0.0455" length="0.12" />
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0.03 -0.0675" rpy="${pi/2} 0 0" />
-        <geometry>
-          <cylinder radius="0.045" length="0.06" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_1.stl" scale="0.001 0.001 0.001" />
         </geometry>
       </collision>
     </link>
+
     <link name="${arm_id}_link_2">
       <visual>
-        <origin xyz="0 0 0.06" rpy="0 0 0" />
+        <origin xyz="0 0 0.0495" rpy="0 ${pi} ${pi/2}" />
         <geometry>
-          <cylinder radius="0.045" length="0.12" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_2.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0.225 0.0675" rpy="${-pi/2} 0 0" />
-        <geometry>
-          <cylinder radius="0.045" length="0.45" />
-        </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0.4525 0.06" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.045" length="0.12" />
-        </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
+        <material name="gray" />
       </visual>
       <collision>
-        <origin xyz="0 0 0.06" rpy="0 0 0" />
+        <origin xyz="0 0 0.0495" rpy="0 ${pi} ${pi/2}" />
         <geometry>
-          <cylinder radius="0.045" length="0.12" />
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0.225 0.0675" rpy="${-pi/2} 0 0" />
-        <geometry>
-          <cylinder radius="0.045" length="0.45" />
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0.4525 0.06" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.045" length="0.12" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_2.stl" scale="0.001 0.001 0.001" />
         </geometry>
       </collision>
     </link>
+
     <link name="${arm_id}_link_3">
       <visual>
-        <origin xyz="0 0 -0.0475" rpy="0 0 0" />
+        <origin xyz="0 0 0.0721" rpy="0 ${pi} ${-pi/2}" />
         <geometry>
-          <cylinder radius="0.045" length="0.12" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_3.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0.225 -0.056" rpy="${-pi/2} 0 0" />
-        <geometry>
-          <cylinder radius="0.045" length="0.45" />
-        </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0.4475 -0.045" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.04" length="0.115" />
-        </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
+        <material name="gray" />
       </visual>
       <collision>
-        <origin xyz="0 0 -0.0475" rpy="0 0 0" />
+        <origin xyz="0 0 0.0721" rpy="0 ${pi} ${-pi/2}" />
         <geometry>
-          <cylinder radius="0.045" length="0.12" />
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0.225 -0.056" rpy="${-pi/2} 0 0" />
-        <geometry>
-          <cylinder radius="0.045" length="0.45" />
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0.4475 -0.045" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.04" length="0.115" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_3.stl" scale="0.001 0.001 0.001" />
         </geometry>
       </collision>
     </link>
+
     <link name="${arm_id}_link_4">
       <visual>
-        <origin xyz="0 0.0125 0.055" rpy="${pi/2} 0 0" />
+        <origin xyz="0 0 0.064" rpy="${pi/2} 0 ${pi/2}" />
         <geometry>
-          <cylinder radius="0.04" length="0.115" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_4.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0 0.025" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.04" length="0.05" />
-        </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
+        <material name="gray" />
       </visual>
       <collision>
-        <origin xyz="0 0.0125 0.055" rpy="${pi/2} 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <cylinder radius="0.04" length="0.115" />
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0 0.025" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="0.04" length="0.05" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_4.stl" scale="0.001 0.001 0.001" />
         </geometry>
       </collision>
     </link>
+
     <link name="${arm_id}_link_5">
       <visual>
-        <origin xyz="0 0 0.025" rpy="0 0 0" />
+        <origin xyz="0 0 0.064" rpy="${pi/2} 0 ${pi/2}" />
         <geometry>
-          <cylinder radius="0.04" length="0.05" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_5.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
-      </visual>
-      <visual>
-        <origin xyz="0 0.011 0.055" rpy="${pi/2} 0 0" />
-        <geometry>
-          <cylinder radius="0.04" length="0.115" />
-        </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
+        <material name="gray" />
       </visual>
       <collision>
-        <origin xyz="0 0 0.025" rpy="0 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <cylinder radius="0.04" length="0.05" />
-        </geometry>
-      </collision>
-      <collision>
-        <origin xyz="0 0.011 0.055" rpy="${pi/2} 0 0" />
-        <geometry>
-          <cylinder radius="0.04" length="0.115" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_5.stl" scale="0.001 0.001 0.001" />
         </geometry>
       </collision>
     </link>
+
     <link name="${arm_id}_link_6">
       <visual>
-        <origin xyz="0 0 0.0088" rpy="0 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <cylinder radius="0.04" length="0.018" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_6.stl" scale="0.001 0.001 0.001" />
         </geometry>
-        <material name="">
-          <color rgba="0.5 0.5 0.5 1" />
-        </material>
+        <material name="gray" />
       </visual>
       <collision>
-        <origin xyz="0 0 0.0088" rpy="0 0 0" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <cylinder radius="0.04" length="0.018" />
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_6.stl" scale="0.001 0.001 0.001" />
         </geometry>
       </collision>
     </link>
+
     <link name="${arm_id}_gripper_connection"/>
 
     <!-- Joints -->
     <joint name="${arm_id}_joint_1" type="revolute">
-      <origin xyz="0 0 0.047" rpy="${pi} 0 ${pi/2}" />
+      <origin xyz="0 0 0.063" rpy="0 0 0" />
       <parent link="${arm_id}_link_0" />
       <child link="${arm_id}_link_1" />
       <axis xyz="0 0 1" />
       <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
     </joint>
+
     <joint name="${arm_id}_joint_2" type="revolute">
-      <origin xyz="0 0.048 -0.0679" rpy="-${pi/2} 0 0" />
+      <origin xyz="0.064 0 0.0495" rpy="0 ${pi/2} 0" />
       <parent link="${arm_id}_link_1" />
       <child link="${arm_id}_link_2" />
       <axis xyz="0 0 1" />
       <limit lower="-1.57" upper="1.57" effort="0" velocity="0" />
     </joint>
+
     <joint name="${arm_id}_joint_3" type="revolute">
-      <origin xyz="0 0.452 0" rpy="0 0 0" />
+      <origin xyz="-0.452 0 0" rpy="0 ${pi} 0" />
       <parent link="${arm_id}_link_2" />
       <child link="${arm_id}_link_3" />
       <axis xyz="0 0 1" />
       <limit lower="-2.9" upper="2.9" effort="0" velocity="0" />
     </joint>
+
     <joint name="${arm_id}_joint_4" type="revolute">
-      <origin xyz="0 0.447 0.0006" rpy="0 0 0" />
+      <origin xyz="0.452 0 0.0226" rpy="${pi} 0 0" />
       <parent link="${arm_id}_link_3" />
       <child link="${arm_id}_link_4" />
       <axis xyz="0 0 1" />
       <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
     </joint>
+
     <joint name="${arm_id}_joint_5" type="revolute">
-      <origin xyz="0 0.0567 0.055" rpy="${pi/2} 0 ${pi}" />
+      <origin xyz="0.0495 0 0.064" rpy="0 ${pi/2} 0" />
       <parent link="${arm_id}_link_4" />
       <child link="${arm_id}_link_5" />
       <axis xyz="0 0 1" />
       <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
     </joint>
+
     <joint name="${arm_id}_joint_6" type="revolute">
-      <origin xyz="0 0.055 0.0567" rpy="${-pi/2} 0 0" />
+      <origin xyz="0.0495 0 0.064" rpy="0 ${pi/2} 0" />
       <parent link="${arm_id}_link_5" />
       <child link="${arm_id}_link_6" />
       <axis xyz="0 0 1" />
       <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
     </joint>
+
     <joint name="${arm_id}_joint_7" type="fixed">
-      <origin rpy="0 0 0" xyz="0 0 0.018"/>
+      <origin rpy="0 0 0" xyz="0 0 0.0181"/>
       <parent link="${arm_id}_link_6"/>
       <child link="${arm_id}_gripper_connection"/>
       <axis xyz="0 0 0" />

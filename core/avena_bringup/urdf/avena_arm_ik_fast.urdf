@@ -1,58 +1,59 @@
 <?xml version="1.0" ?>
 <robot name="avena">
-  <link name="left_avena_link_0"/>
-  <link name="left_avena_link_1"/>
-  <link name="left_avena_link_2"/>
-  <link name="left_avena_link_3"/>
-  <link name="left_avena_link_4"/>
-  <link name="left_avena_link_5"/>
-  <link name="left_avena_link_6"/>
-  <link name="left_avena_gripper_connection"/>
+  <link name="left_avena_link_0" />
+  <link name="left_avena_link_1" />
+  <link name="left_avena_link_2" />
+  <link name="left_avena_link_3" />
+  <link name="left_avena_link_4" />
+  <link name="left_avena_link_5" />
+  <link name="left_avena_link_6" />
+  <link name="left_avena_gripper_connection" />
+
   <!-- Joints -->
   <joint name="left_avena_joint_1" type="revolute">
-    <origin rpy="3.141592653589793 0 1.5707963267948966" xyz="0 0 0.047"/>
+    <origin rpy="0 0 0" xyz="0 0 0.063"/>
     <parent link="left_avena_link_0"/>
     <child link="left_avena_link_1"/>
     <axis xyz="0 0 1"/>
     <limit effort="0" lower="-3.05" upper="3.05" velocity="0"/>
   </joint>
   <joint name="left_avena_joint_2" type="revolute">
-    <origin rpy="-1.5707963267948966 0 0" xyz="0 0.048 -0.0679"/>
+    <origin rpy="0 1.5707963267948966 0" xyz="0.064 0 0.0495"/>
     <parent link="left_avena_link_1"/>
     <child link="left_avena_link_2"/>
     <axis xyz="0 0 1"/>
     <limit effort="0" lower="-1.57" upper="1.57" velocity="0"/>
   </joint>
   <joint name="left_avena_joint_3" type="revolute">
-    <origin rpy="0 0 0" xyz="0 0.452 0"/>
+    <origin rpy="0 3.141592653589793 0" xyz="-0.452 0 0"/>
     <parent link="left_avena_link_2"/>
     <child link="left_avena_link_3"/>
     <axis xyz="0 0 1"/>
     <limit effort="0" lower="-2.9" upper="2.9" velocity="0"/>
   </joint>
   <joint name="left_avena_joint_4" type="revolute">
-    <origin rpy="0 0 0" xyz="0 0.447 0.0006"/>
+    <origin rpy="3.141592653589793 0 0" xyz="0.452 0 0.0226"/>
     <parent link="left_avena_link_3"/>
     <child link="left_avena_link_4"/>
     <axis xyz="0 0 1"/>
     <limit effort="0" lower="-3.05" upper="3.05" velocity="0"/>
   </joint>
   <joint name="left_avena_joint_5" type="revolute">
-    <origin rpy="1.5707963267948966 0 3.141592653589793" xyz="0 0.0567 0.055"/>
+    <origin rpy="0 1.5707963267948966 0" xyz="0.0495 0 0.064"/>
     <parent link="left_avena_link_4"/>
     <child link="left_avena_link_5"/>
     <axis xyz="0 0 1"/>
     <limit effort="0" lower="-3.05" upper="3.05" velocity="0"/>
   </joint>
   <joint name="left_avena_joint_6" type="revolute">
-    <origin rpy="-1.5707963267948966 0 0" xyz="0 0.055 0.0567"/>
+    <origin rpy="0 1.5707963267948966 0" xyz="0.0495 0 0.064"/>
     <parent link="left_avena_link_5"/>
     <child link="left_avena_link_6"/>
     <axis xyz="0 0 1"/>
     <limit effort="0" lower="-3.05" upper="3.05" velocity="0"/>
   </joint>
   <joint name="left_avena_joint_7" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 0.018"/>
+    <origin rpy="0 0 0" xyz="0 0 0.0181"/>
     <parent link="left_avena_link_6"/>
     <child link="left_avena_gripper_connection"/>
     <axis xyz="0 0 0"/>

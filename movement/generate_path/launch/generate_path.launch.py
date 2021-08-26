@@ -15,7 +15,7 @@ def generate_launch_description():
                     package='generate_path',
                     plugin='generate_path::GeneratePath',
                     name='generate_path',
-                    parameters=[{'log_level': 'info'}],
+                    parameters=[{'log_level': 'debug'}],
                 ),
             ],
             output='screen',
