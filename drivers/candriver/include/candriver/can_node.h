@@ -21,7 +21,7 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 
 #include "std_msgs/msg/int16.hpp"
-
+#include "helpers_commons/helpers_commons.hpp"
 #include "types.h"
 
 // write a class of can node here?
@@ -111,35 +111,48 @@ std::queue<int32_t> *position_2_buffer;
 void get_params();
 // bool get_position_service(candriver::srv::GetValue::Request &req, candriver::srv::GetValue::Response &res);
 
-class CanNode : public rclcpp::Node
+class CanNode : public rclcpp::Node, public helpers::WatchdogInterface
 {
 public:
+    void initNode() override
+    {
+        status = custom_interfaces::msg::Heartbeat::RUNNING;
+    };
+    void shutDownNode() override
+    {
+        status = custom_interfaces::msg::Heartbeat::STOPPED;
+        return;
+    };
+    helpers::Watchdog::SharedPtr _watchdog;
     CanNode() : Node("can_node")
     {
+
+        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
+        status = custom_interfaces::msg::Heartbeat::STOPPED;
         _can.initSocket();
         // _can.readOnlyPosition();
         auto send_torque_service = [this](const std::shared_ptr<custom_interfaces::srv::SetArmTorques::Request> request,
                                           std::shared_ptr<custom_interfaces::srv::SetArmTorques::Response> response) -> void
         {
             auto t_current = std::chrono::steady_clock::now();
-            RCLCPP_INFO(this->get_logger(), "Set service is called");
-            
+            // RCLCPP_INFO(this->get_logger(), "Set service is called");
+
             // RCLCPP_INFO(this->get_logger(),"request torque: ",devices.at(0).turn_motor);
             // RCLCPP_INFO(this->get_logger(),"request torque: ",request->torques.at(0));
             // RCLCPP_INFO(this->get_logger(),"request motor turn: ",request->turn_motor.at(0));
             // RCLCPP_INFO(this->get_logger(),"device read status: ",devices.at(0).read_status);
             for (size_t jnt_idx = 0; jnt_idx < JOINTS_NUMBER; jnt_idx++)
             {
-                RCLCPP_INFO(this->get_logger(), "dupa1 %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
+                // RCLCPP_INFO(this->get_logger(), "dupa1 %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
                 // const std::lock_guard<std::mutex> lock(device_mutex_t_); // check if working good
-                RCLCPP_INFO(this->get_logger(), "dupa2 %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
+                // RCLCPP_INFO(this->get_logger(), "dupa2 %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
                 devices.at(jnt_idx).command_torque = static_cast<int32_t>(request->torques.at(jnt_idx) * double(INT16_MAX) / MOTOR_MAX_CURRENT / TORQUE_CONSTANT / double(_can.gears_ratio.at(jnt_idx)));
-                RCLCPP_INFO(this->get_logger(), "dupa3 %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
+                // RCLCPP_INFO(this->get_logger(), "dupa3 %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
                 devices.at(jnt_idx).turn_motor = request->turn_motor.at(jnt_idx);
-                RCLCPP_INFO(this->get_logger(), "dupa4 %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
+                // RCLCPP_INFO(this->get_logger(), "dupa4 %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
                 // response->error.at(jnt_idx) = devices.at(jnt_idx).read_status;
             }
-            RCLCPP_INFO_STREAM(this->get_logger(), "tq: "<<request->torques.at(0));
+            // RCLCPP_INFO_STREAM(this->get_logger(), "tq: "<<request->torques.at(0));
             // RCLCPP_INFO(this->get_logger(),"after filling");
             // torque_1_buffer->push(request->torque);
 
@@ -176,7 +189,7 @@ public:
                     response->error.at(jnt_idx) = ErrorCode::SUCCESS;
             }
             publishStateMsg(res_msg);
-            RCLCPP_INFO(this->get_logger(), "Set %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
+            // RCLCPP_INFO(this->get_logger(), "Set %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
             // RCLCPP_INFO(this->get_logger(), "sent set response: %i", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
         };
 
@@ -184,7 +197,7 @@ public:
                                           std::shared_ptr<custom_interfaces::srv::GetArmState::Response> response) -> void
         {
             auto t_current = std::chrono::steady_clock::now();
-            RCLCPP_INFO(this->get_logger(), "Get service is called");
+            // RCLCPP_INFO(this->get_logger(), "Get service is called");
             // auto t_current = std::chrono::steady_clock::now();
             // const std::lock_guard<std::mutex> lock(device_mutex_p_); // check if working good
             (void)request;
@@ -216,7 +229,6 @@ public:
             // _can.createMessage(req_msg);
             _can.createBroadcastMessage(req_msg);
 
-
             // send request and read response messages
             CAN_response_msg_t res_msg;
             // res_msg = _can.writeReadMessage();
@@ -224,21 +236,21 @@ public:
 
             for (size_t jnt_idx = 0; jnt_idx < devices.size(); jnt_idx++)
             {
-                std::cout<<"int val: "<<res_msg.at(jnt_idx).position<<" X "<<(2 * M_PI / GEAR_CONST / double(_can.gears_ratio.at(jnt_idx)))<<std::endl;
+                std::cout << "int val: " << res_msg.at(jnt_idx).position << " X " << (2 * M_PI / GEAR_CONST / double(_can.gears_ratio.at(jnt_idx))) << std::endl;
                 response->arm_current_positions.at(jnt_idx) = double(res_msg.at(jnt_idx).position) * (2 * M_PI / GEAR_CONST / double(_can.gears_ratio.at(jnt_idx)));
                 response->arm_current_torques.at(jnt_idx) = res_msg.at(jnt_idx).torque * TORQUE_CONSTANT * _can.gears_ratio.at(jnt_idx) * MOTOR_MAX_CURRENT / INT16_MAX;
                 response->arm_current_temperature.at(jnt_idx) = res_msg.at(jnt_idx).temperature;
                 response->arm_current_status.at(jnt_idx) = res_msg.at(jnt_idx).joint_status;
             }
             publishStateMsg(res_msg);
-            RCLCPP_INFO(this->get_logger(), "Get %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
+            // RCLCPP_INFO(this->get_logger(), "Get %i",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
             // RCLCPP_INFO(this->get_logger(), "sent get response: %i", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count());
         };
 
         // command_subscription_ = this->create_subscription<custom_interfaces::msg::JointCommand>(
         //     "Joint_commands", 10, std::bind(&CanNode::subscribeCommand, this, std::placeholders::_1));
 
-        state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("arm_joint_states", 10);
+        state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
         send_service_ = this->create_service<custom_interfaces::srv::SetArmTorques>("/arm_controller/set_torques", send_torque_service);
         read_service_ = this->create_service<custom_interfaces::srv::GetArmState>("/arm_controller/get_current_arm_state", read_status_service);
         // timer_ = this->create_wall_timer(loop_rate, std::bind(&CanNode::loop, this));

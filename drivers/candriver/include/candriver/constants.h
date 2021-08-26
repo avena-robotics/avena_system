@@ -1,6 +1,6 @@
 #pragma once
 
-#define JOINTS_NUMBER 3
+#define JOINTS_NUMBER 6
 #define DELTA_T 0.004    //unused
 #define INTERVAL 20     //unused
 

@@ -5,6 +5,9 @@
 #include "custom_interfaces/srv/set_trajectory.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
+#include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/int32.hpp>
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "PID.hpp"
 
@@ -50,6 +53,8 @@ public:
     void shutDownNode() override
     {
         status = custom_interfaces::msg::Heartbeat::STOPPED;
+        rclcpp::shutdown();
+        return;
     };
 
 private:
@@ -58,7 +63,7 @@ private:
     helpers::Watchdog::SharedPtr _watchdog;
 
     //TODO:
-    const double _trajectory_rate = 250;
+    const double _trajectory_rate = 500;
 
     //parameters
     int _joints_number;
@@ -75,7 +80,7 @@ private:
 
     std::vector<PID> _pid_ctrl;
 
-    double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _error, _c_friction_comp;
+    double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _error, _c_friction_comp, _set_vel;
     int _trajectory_index;
     int _torque_sign, _vel_sign, _time, _remaining_time, _acc_sign;
     int _controller_state;
@@ -83,7 +88,7 @@ private:
     const int _avg_samples = 50;
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;
-    std::vector<double> _frick_acc;
+    std::vector<double> _frick_acu;
 
     std::vector<std::vector<std::vector<friction_comp>>> _friction_chart;
     std::vector<std::vector<friction_comp>> measured_friction_comp;
@@ -95,15 +100,27 @@ private:
     std::chrono::microseconds _time_accumulator, _slowdown_duration;
     double _time_factor, _prev_time_factor;
 
+    sensor_msgs::msg::JointState _log_msg;
+    trajectory_msgs::msg::JointTrajectory _trajectory;
+
+    trajectory_msgs::msg::JointTrajectory _saved_trajectory;
+
+
     //communication
 
     //change to comply with execute_move
     //services
     rclcpp::Service<custom_interfaces::srv::ControlCommand>::SharedPtr _command_service;
-    rclcpp::Service<custom_interfaces::srv::SetTrajectory>::SharedPtr _trajectory_service;
+
 
     //publishers
-    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _log_publisher;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _set_joint_states_pub;
+    rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr _controller_state_pub;
+
+    //subscribers
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _security_trigger_sub;
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr _time_factor_sub;
+    rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr _trajectory_sub;
 
     //clients
     rclcpp::Client<custom_interfaces::srv::SetArmTorques>::SharedPtr _set_client;
@@ -111,11 +128,6 @@ private:
 
     std::shared_future<std::shared_ptr<custom_interfaces::srv::SetArmTorques_Response>> _set_result;
     std::shared_future<std::shared_ptr<custom_interfaces::srv::GetArmState_Response>> _get_result;
-
-    sensor_msgs::msg::JointState _log_msg;
-    trajectory_msgs::msg::JointTrajectory _trajectory;
-
-    trajectory_msgs::msg::JointTrajectory _saved_trajectory;
 
     //methods
 
@@ -126,6 +138,9 @@ private:
     void setCommand();
     void setTrajectory(const std::shared_ptr<custom_interfaces::srv::SetTrajectory::Request> request,
                        std::shared_ptr<custom_interfaces::srv::SetTrajectory::Response> response);
-    void setState(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
-                  std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
+    void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
+                    std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
+    void setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg);
+    void setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg);
+    void securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr);
 };
