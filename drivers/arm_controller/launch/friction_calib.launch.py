@@ -13,14 +13,14 @@ def launch_setup(context, *args, **kwargs):
 
     config_path=os.path.join(os.path.split(os.path.abspath(os.pardir))[0],"config")
 
-    pkg_share = FindPackageShare('custom_controllers').find('custom_controllers')
+    pkg_share = FindPackageShare('arm_controller').find('arm_controller')
     config = os.path.join(pkg_share,'config')
-    params = os.path.join(config,'simple_controller.yaml')
+    params = os.path.join(config,'simple_controller_friction.yaml')
 
     return [
         Node(
-            package='custom_controllers',
-            executable='simple_controller',
+            package='arm_controller',
+            executable='friction_calibration',
             output='both',
             parameters=[params, {'config_path':config}]
         )

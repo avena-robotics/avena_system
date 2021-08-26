@@ -20,6 +20,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(custom_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(helpers_commons REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(sensor_msgs REQUIRED)
 # find_package(socketcan REQUIRED)
@@ -41,6 +42,7 @@ target_include_directories(can_node PRIVATE include)
 ament_target_dependencies(can_node
   pluginlib
   rclcpp
+  helpers_commons
   std_msgs 
   custom_interfaces
   sensor_msgs

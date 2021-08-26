@@ -48,7 +48,7 @@ int CanOperations::getFrameId(int joint_number)
 // }
 CAN_response_msg_t CanOperations::writeReadFdMessage()
 {
-    auto t_current=std::chrono::steady_clock::now();
+    auto t_current = std::chrono::steady_clock::now();
     CAN_response_msg_t result_msg;
     CAN_single_response_msg_t temp_msg;
     if (write(sock, &frames[0], sizeof(struct canfd_frame)) != sizeof(struct canfd_frame))
@@ -59,14 +59,14 @@ CAN_response_msg_t CanOperations::writeReadFdMessage()
         //                                                              << std::hex << (int)frames[joint_number].data[0]);
         // RCLCPP_INFO_STREAM(rclcpp::get_logger("Can operations"), "toruqe byte 1: " <<
         //                                                              std::hex << (int)frames[joint_number].data[1]);
-        
+
         //why
         std::this_thread::sleep_for(std::chrono::microseconds(1));
         try
         {
             // result_msg[joint_number] = readMessage(joint_number);
-            temp_msg=readJointMessage(joint_number);
-            std::cout<<"got joint "<<temp_msg.joint_id<<"\t"<<temp_msg.position<<std::endl;
+            temp_msg = readJointMessage(joint_number);
+            // std::cout<<"got joint "<<temp_msg.joint_id<<"\t"<<temp_msg.position<<std::endl;
             result_msg[temp_msg.joint_id] = temp_msg;
             // RCLCPP_INFO_STREAM(rclcpp::get_logger("Can operations"), "msg id: "<<temp_msg.joint_id);
             // RCLCPP_INFO_STREAM(rclcpp::get_logger("Can operations"), "msg pos: "<<result_msg[temp_msg.joint_id].position);
@@ -79,7 +79,7 @@ CAN_response_msg_t CanOperations::writeReadFdMessage()
             // writeEmergencyStop(); // TODO przekazać wyjątek dalej?
         }
     }
-    std::cout<<"writeReadFdMessage "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
+    // std::cout<<"writeReadFdMessage "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
     return result_msg;
 }
 //
@@ -113,7 +113,7 @@ CAN_response_msg_t CanOperations::writeReadFdMessage()
 
 bool CanOperations::createBroadcastMessage(CAN_request_msg_t message)
 {
-    auto t_current=std::chrono::steady_clock::now();
+    auto t_current = std::chrono::steady_clock::now();
     std::array<int16_t, JOINTS_NUMBER> torques;
     std::array<int16_t, JOINTS_NUMBER> turn_motor;
     // intialize frame to zero
@@ -128,7 +128,11 @@ bool CanOperations::createBroadcastMessage(CAN_request_msg_t message)
         try
         {
             torques.at(joint) = static_cast<int16_t>(message[joint].torque);
-            std::cout<<"sending tq: "<<torques.at(joint)<<std::endl;
+            // if (torques.at(joint) == 0)
+            // {
+            //     torques.at(joint)++;
+            // }
+            // std::cout<<"sending tq: "<<torques.at(joint)<<std::endl;
             turn_motor.at(joint) = message[joint].turn_motor;
             frames[0].data[2 * joint] = torques.at(joint) >> 8;
             frames[0].data[2 * joint + 1] = torques.at(joint);
@@ -198,7 +202,7 @@ bool CanOperations::createBroadcastMessage(CAN_request_msg_t message)
         frames[0].data[14] = ((turn_motor.at(2) << 4) ^ turn_motor.at(3));
         frames[0].data[15] = ((turn_motor.at(4) << 4) ^ turn_motor.at(5));
     }
-    std::cout<<"createBroadcastMessage "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
+    // std::cout<<"createBroadcastMessage "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
     return true;
 }
 
@@ -266,7 +270,7 @@ bool CanOperations::createBroadcastMessage(CAN_request_msg_t message)
 
 CAN_single_response_msg_t CanOperations::readJointMessage(int joint)
 {
-    auto t_current=std::chrono::steady_clock::now();
+    auto t_current = std::chrono::steady_clock::now();
     int nbytes = -1;
 
     nbytes = read(sock, &frames[joint], sizeof(struct canfd_frame));
@@ -282,8 +286,8 @@ CAN_single_response_msg_t CanOperations::readJointMessage(int joint)
     CAN_single_response_msg_t result;
     //useless
     //if (joint == getFrameId(joint))
-    if(1)
-    {   
+    if (1)
+    {
         int16_t position_temp = static_cast<int16_t>((frames[joint].data[0] << 8) ^ (frames[joint].data[1]));
         int16_t torque_temp = static_cast<int16_t>((frames[joint].data[2] << 8) ^ (frames[joint].data[3]));
         uint8_t temperature_temp = static_cast<uint8_t>((frames[joint].data[4]));
@@ -295,14 +299,14 @@ CAN_single_response_msg_t CanOperations::readJointMessage(int joint)
         // last_motor_msg_value[joint] = motor_status_temp;
 
         // set obtained form CAN msg values of position and torque
-        result.joint_id=((frames[joint].can_id / 16) - 10); //?
+        result.joint_id = ((frames[joint].can_id / 16) - 10); //?
         result.position = position_temp;
         result.torque = torque_temp;
         result.temperature = temperature_temp;
         result.joint_status = joint_status;
         result.error_code = error_code;
 
-        std::cout<<result.joint_id<<std::endl<<result.position<<std::endl<<result.torque<<std::endl<<result.temperature<<std::endl<<result.joint_status<<std::endl<<result.error_code<<std::endl;
+        // std::cout<<result.joint_id<<std::endl<<result.position<<std::endl<<result.torque<<std::endl<<result.temperature<<std::endl<<result.joint_status<<std::endl<<result.error_code<<std::endl;
         // result.active_error = active_error;
 
         // if (motor_error != 0)
@@ -330,7 +334,7 @@ CAN_single_response_msg_t CanOperations::readJointMessage(int joint)
     //     pos_can << static_cast<double>(last_postion_msg_value[0] * 2 * M_PI / GEAR_CONST / gears_ratio[0]) << "\n";
     //     pos_can.flush();
     // }
-    std::cout<<"readJointMessage "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
+    // std::cout<<"readJointMessage "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
     return result;
 
     // result.position = static_cast<double>(position_temp * 2 * M_PI / GEAR_CONST / gears_ratio[joint]);

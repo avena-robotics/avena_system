@@ -123,7 +123,7 @@ CAN_request_msg_t CanNode::getSrvMessage()
 
     // request[1].torque = devices[1].command_torque;
     // request[1].turn_motor = devices[1].turn_motor;
-    std::cout<<"getSrvMessage "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
+    // std::cout<<"getSrvMessage "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
     return request;
 }
 
@@ -154,7 +154,7 @@ void CanNode::publishStateMsg(CAN_response_msg_t response)
     message->header.stamp = rclcpp::Clock().now();
     this->state_publisher_->publish(std::move(message));
     // this->state_publisher_->publish(message);
-    std::cout<<"publishStateMsg "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
+    // std::cout<<"publishStateMsg "<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-t_current).count()<<std::endl;
 }
 
 // void CanNode::setSrvMessage(CAN_response_msg_t response)
