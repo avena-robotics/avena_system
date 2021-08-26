@@ -431,7 +431,6 @@ namespace generate_path
         }
         else if (_robot_info.robot_name == "franka")
         {
-            using namespace ik_franka;
             // Franka
             const auto free_joint_idx = ik_franka::GetFreeIndices();
             const double joint_state_increment = 0.1;

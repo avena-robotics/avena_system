@@ -7,96 +7,96 @@
   <link name="${arm_id}_link_0">
       <visual>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link0.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link0.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link0.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link0.dae"/>
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_1">
       <visual>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link1.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link1.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link1.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link1.dae"/>
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_2">
       <visual>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link2.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link2.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link2.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link2.dae"/>
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_3">
       <visual>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link3.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link3.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link3.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link3.dae"/>
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_4">
       <visual>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link4.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link4.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link4.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link4.dae"/>
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_5">
       <visual>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link5.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link5.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link5.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link5.dae"/>
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_6">
       <visual>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link6.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link6.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link6.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link6.dae"/>
         </geometry>
       </collision>
     </link>
     <link name="${arm_id}_link_7">
       <visual>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link7.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link7.dae"/>
         </geometry>
       </visual>
       <collision>
         <geometry>
-          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/visual/link7.dae"/>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/franka/link7.dae"/>
         </geometry>
       </collision>
     </link>
