@@ -66,6 +66,21 @@ namespace helpers
       std::vector<Limits> soft_limits;
 
       GripperInfo gripper_info;
+
+      void reduceSoftJointsRange(float joint_range_coeff)
+      {
+        if (joint_range_coeff < 0)
+          return;
+        soft_limits.resize(limits.size());
+        for (size_t i = 0; i < limits.size(); ++i)
+        {
+          auto range_middle = (limits[i].lower + limits[i].upper) / 2.0;
+          auto range_middle_to_limit_dist = limits[i].upper - range_middle;
+          auto offset = (range_middle_to_limit_dist * (1.0 - joint_range_coeff)) / 2.0;
+          soft_limits[i].lower = limits[i].lower + offset;
+          soft_limits[i].upper = limits[i].upper - offset;
+        }
+      }
     };
   } // namespace commons
 } // namespace helpers

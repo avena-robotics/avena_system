@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>generate_path</name>
+  <name>physics_client_handler</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="bartlomiej.styczen@pomagier.info">Bartlomiej Styczen</maintainer>
@@ -9,14 +9,12 @@
 
   <buildtool_depend>ament_cmake_ros</buildtool_depend>
 
-  <depend>custom_interfaces</depend>
+  <depend>bullet_client</depend>
   <depend>helpers_commons</depend>
-  <depend>helpers_vision</depend>
-  <depend>inverse_kinematics</depend>
-  <depend>physics_client_handler</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>
