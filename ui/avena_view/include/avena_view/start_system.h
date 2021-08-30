@@ -8,7 +8,7 @@
 
 #include "avena_view/utils.h"
 #include "avena_view/nodes_list.h"
-#include "avena_view/detectron_runner.h"
+// #include "avena_view/detectron_runner.h"
 
 class StartSystem : public QObject
 {
@@ -46,5 +46,5 @@ class StartSystem : public QObject
         Ui::AvenaViewWidget *_ui_ptr; 
         rclcpp::Node::SharedPtr _node_shared_ptr;
         NodesMap& _nodes_map_ref;
-        std::shared_ptr<DetectronRunner> _detectron_runner;
+        // std::shared_ptr<DetectronRunner> _detectron_runner;
 };

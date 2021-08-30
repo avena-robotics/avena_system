@@ -239,7 +239,7 @@ namespace bullet_server
             front_plane2_collision,
             side_plane_collision,
             side_plane2_collision,
-            top_plane_collision,
+            // top_plane_collision,
             stick1_collision,
             stick2_collision,
             camera1_collision,
@@ -261,7 +261,7 @@ namespace bullet_server
             front_plane2_visual,
             side_plane_visual,
             side_plane2_visual,
-            top_plane_visual,
+            // top_plane_visual,
             stick1_visual,
             stick2_visual,
             camera1_visual,
@@ -285,7 +285,7 @@ namespace bullet_server
             btVector3(TABLE_WIDTH_HALF + 2 * 0.005 + 0.2, 0, collision_wall_height / 2),
             btVector3(0, -TABLE_LENGTH_HALF - 2 * 0.005, collision_wall_height / 2),
             btVector3(0, TABLE_LENGTH_HALF + 2 * 0.005, collision_wall_height / 2),
-            btVector3(0, 0, 1.05 + wall_thickness / 2),
+            // btVector3(0, 0, 1.05 + wall_thickness / 2),
             btVector3(0.38, 1.18, 0.7),
             btVector3(0.38, -1.18, 0.7),
             btVector3(0.35, 1.15, 1.05),
@@ -329,8 +329,8 @@ namespace bullet_server
         sim->changeVisualShape(visual);
         visual.m_linkIndex = 3;
         sim->changeVisualShape(visual);
-        visual.m_linkIndex = 4;
-        sim->changeVisualShape(visual);
+        // visual.m_linkIndex = 4;
+        // sim->changeVisualShape(visual);
         ////////////////////////////////////////////////////////////////////////////////////////////
 
         // // Calibration mat params

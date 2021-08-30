@@ -140,7 +140,7 @@ void CanNode::publishStateMsg(CAN_response_msg_t response)
         // RCLCPP_INFO_STREAM(rclcpp::get_logger("publish"), " i : "<< jnt_idx);
         // message->position.emplace_back(static_cast<double>(response[jnt_idx].position));
         // message->effort.emplace_back(static_cast<double>(response[jnt_idx].torque));
-
+        message->name.emplace_back("left_avena_joint_"+std::to_string(jnt_idx+1));
         message->position.emplace_back(static_cast<double>(response[jnt_idx].position * 2 * M_PI / GEAR_CONST / _can.gears_ratio.at(jnt_idx)));
         message->effort.emplace_back(static_cast<double>(response[jnt_idx].torque * TORQUE_CONSTANT * _can.gears_ratio.at(jnt_idx) * MOTOR_MAX_CURRENT / INT16_MAX));
         // message->effort.emplace_back(static_cast<double>(response[jnt_idx].torque));

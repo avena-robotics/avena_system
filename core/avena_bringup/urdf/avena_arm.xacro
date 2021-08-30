@@ -13,6 +13,11 @@
         </geometry>
         <material name="gray" />
       </visual>
+      <inertial>
+        <origin xyz="0. -0.0129 0.00034" rpy="0. 0. 0."/>
+        <mass value="0.75"/>
+        <inertia ixx="1."  ixy="0."  ixz="0." iyy="1." iyz="0." izz="1." />
+      </inertial>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
@@ -29,6 +34,11 @@
         </geometry>
         <material name="gray" />
       </visual>
+      <inertial>
+        <origin xyz="0.019 0. 0.0445 " rpy="0. 0. ${pi/2}"/>
+        <mass value="1.798"/>
+        <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
+      </inertial>
       <collision>
         <origin xyz="0 0 0.0495" rpy="${pi} 0 ${-pi/2}" />
         <geometry>
@@ -45,6 +55,11 @@
         </geometry>
         <material name="gray" />
       </visual>
+      <inertial>
+        <origin xyz="-0.226 0 0.0334" rpy="0. 0. ${pi/2}"/>
+        <mass value="4.406"/>
+        <inertia ixx="1.941e-01"  ixy="0."  ixz="0." iyy="5.522e-03" iyz="0." izz="1.941e-01" />
+      </inertial>
       <collision>
         <origin xyz="0 0 0.0495" rpy="0 ${pi} ${pi/2}" />
         <geometry>
@@ -55,12 +70,17 @@
 
     <link name="${arm_id}_link_3">
       <visual>
-        <origin xyz="0 0 0.0721" rpy="0 ${pi} ${-pi/2}" />
+        <origin xyz="0. 0. 0.0721" rpy="0 ${pi} ${-pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_3.stl" scale="0.001 0.001 0.001" />
         </geometry>
         <material name="gray" />
       </visual>
+      <inertial>
+        <origin xyz="0.3046 0. 0.0588" rpy="0 0 ${pi/2}"/>
+        <mass value="3.267"/>
+        <inertia ixx="1.149e-01"  ixy="0"  ixz="0" iyy="4.518e-03" iyz="0" izz="1.148e-01" />
+      </inertial>
       <collision>
         <origin xyz="0 0 0.0721" rpy="0 ${pi} ${-pi/2}" />
         <geometry>
@@ -77,6 +97,11 @@
         </geometry>
         <material name="gray" />
       </visual>
+      <inertial>
+        <origin xyz="0.019 0. 0.059 " rpy="0. 0. ${pi/2}"/>
+        <mass value="1.798"/>
+        <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
+      </inertial>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
@@ -93,6 +118,11 @@
         </geometry>
         <material name="gray" />
       </visual>
+      <inertial>
+        <origin xyz="0.019 0 0.059" rpy="0. 0. ${pi/2}"/>
+        <mass value="1.798"/>
+        <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
+      </inertial>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
@@ -109,6 +139,11 @@
         </geometry>
         <material name="gray" />
       </visual>
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="8.200e-02"/>
+        <inertia ixx="4.100e-05"  ixy="0"  ixz="0" iyy="4.200e-05" iyz="0" izz="8.000e-05" />
+      </inertial>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
@@ -125,7 +160,7 @@
       <parent link="${arm_id}_link_0" />
       <child link="${arm_id}_link_1" />
       <axis xyz="0 0 1" />
-      <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
+      <limit lower="-3.05" upper="3.05" effort="80" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_2" type="revolute">
@@ -133,7 +168,7 @@
       <parent link="${arm_id}_link_1" />
       <child link="${arm_id}_link_2" />
       <axis xyz="0 0 1" />
-      <limit lower="-1.57" upper="1.57" effort="0" velocity="0" />
+      <limit lower="-1.57" upper="1.57" effort="120" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_3" type="revolute">
@@ -141,7 +176,7 @@
       <parent link="${arm_id}_link_2" />
       <child link="${arm_id}_link_3" />
       <axis xyz="0 0 1" />
-      <limit lower="-2.9" upper="2.9" effort="0" velocity="0" />
+      <limit lower="-2.9" upper="2.9" effort="80" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_4" type="revolute">
@@ -149,7 +184,7 @@
       <parent link="${arm_id}_link_3" />
       <child link="${arm_id}_link_4" />
       <axis xyz="0 0 1" />
-      <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
+      <limit lower="-3.05" upper="3.05" effort="60" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_5" type="revolute">
@@ -157,7 +192,7 @@
       <parent link="${arm_id}_link_4" />
       <child link="${arm_id}_link_5" />
       <axis xyz="0 0 1" />
-      <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
+      <limit lower="-3.05" upper="3.05" effort="40" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_6" type="revolute">
@@ -165,7 +200,7 @@
       <parent link="${arm_id}_link_5" />
       <child link="${arm_id}_link_6" />
       <axis xyz="0 0 1" />
-      <limit lower="-3.05" upper="3.05" effort="0" velocity="0" />
+      <limit lower="-3.05" upper="3.05" effort="40" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_7" type="fixed">
