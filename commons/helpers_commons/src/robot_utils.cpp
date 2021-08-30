@@ -92,10 +92,10 @@ namespace helpers
                         return std::nullopt;                     
                     }
                     robot_info.limits.push_back(Limits(joint_info->limits->lower, joint_info->limits->upper));
-                    if (joint_info->safety)
-                        robot_info.soft_limits.push_back(Limits(joint_info->safety->soft_lower_limit, joint_info->safety->soft_upper_limit));
-                    else
-                        RCLCPP_DEBUG(rclcpp::get_logger("helpers"), "There not no soft limits in URDF. This values might not be available, so just use them wisely");
+                    // if (joint_info->safety)
+                    //     robot_info.soft_limits.push_back(Limits(joint_info->safety->soft_lower_limit, joint_info->safety->soft_upper_limit));
+                    // else
+                    //     RCLCPP_DEBUG(rclcpp::get_logger("helpers"), "There not no soft limits in URDF. This values might not be available, so just use them wisely");
                 }
                 else if (joint_info->type == urdf::Joint::FIXED)
                 {
@@ -122,6 +122,7 @@ namespace helpers
             robot_info.robot_prefix = working_side + "_" + robot_info.robot_name;
             robot_info.connection = robot_info.robot_prefix + "_gripper_connection";
 
+            robot_info.reduceSoftJointsRange(0.95);
             return robot_info;
         }
 

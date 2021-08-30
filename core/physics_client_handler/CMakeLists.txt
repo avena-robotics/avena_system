@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(generate_path)
+project(physics_client_handler)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -14,46 +14,29 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
-set(CMAKE_BUILD_TYPE RELEASE)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_action REQUIRED)
-find_package(rclcpp_components REQUIRED)
-find_package(custom_interfaces REQUIRED)
 find_package(helpers_commons REQUIRED)
-find_package(helpers_vision REQUIRED)
-find_package(inverse_kinematics REQUIRED)
-find_package(physics_client_handler REQUIRED)
-find_package(ompl REQUIRED)
+find_package(bullet_client REQUIRED)
+find_package(Eigen3 REQUIRED)
 
-add_library(${PROJECT_NAME} SHARED 
-  src/generate_path.cpp
-  src/planner.cpp
+add_library(${PROJECT_NAME} SHARED
+  src/physics_client_handler.cpp
 )
-target_include_directories(${PROJECT_NAME} 
-  PUBLIC
-    ${OMPL_INCLUDE_DIRS}
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
-)
-target_compile_definitions(${PROJECT_NAME} PRIVATE "GENERATE_PATH_BUILDING_LIBRARY")
-target_link_libraries(${PROJECT_NAME}
-  ${OMPL_LIBRARIES}
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${EIGEN3_INCLUDE_DIR}>
+  $<INSTALL_INTERFACE:include>
 )
 ament_target_dependencies(${PROJECT_NAME}
-  rclcpp
-  custom_interfaces
-  rclcpp_action
-  rclcpp_components
   helpers_commons
-  helpers_vision
-  inverse_kinematics
-  physics_client_handler
+  bullet_client
+  Eigen3
 )
-rclcpp_components_register_nodes(${PROJECT_NAME} "generate_path::GeneratePath")
+target_compile_definitions(${PROJECT_NAME} PRIVATE "PHYSICS_CLIENT_HANDLER_BUILDING_LIBRARY")
+
 install(
   DIRECTORY include/
   DESTINATION include
@@ -64,11 +47,6 @@ install(
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
-)
-
-install(
-  DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}
 )
 
 # if(BUILD_TESTING)
@@ -90,6 +68,13 @@ ament_export_libraries(
 )
 ament_export_targets(
   export_${PROJECT_NAME}
+  HAS_LIBRARY_TARGET
+)
+ament_export_dependencies(
+  bullet_client
+  Eigen3
+  helpers_commons 
+  helpers_vision
 )
 
 ament_package()
