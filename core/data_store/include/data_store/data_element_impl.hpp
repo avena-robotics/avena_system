@@ -11,11 +11,17 @@ namespace data_store
         _insert_server = node_ptr->create_service<INSERT>(data_element_name + "_insert", std::bind(&DataElement::_insert, this, std::placeholders::_1, std::placeholders::_2));
         _get_list_server = node_ptr->create_service<GETLIST>(data_element_name + "_get_list", std::bind(&DataElement::_getList, this, std::placeholders::_1, std::placeholders::_2));
         _delete_server = node_ptr->create_service<DELETE>(data_element_name + "_delete", std::bind(&DataElement::_delete, this, std::placeholders::_1, std::placeholders::_2));
+
+        rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+        _change_flag_publisher = node_ptr->create_publisher<String>(data_element_name + "_change_flag", qos_settings);
+        _change_flag_message = String();
+        _change_flag_message.data = data_element_name;
     }
     template <typename SELECT, typename INSERT, typename GETLIST, typename DELETE>
     void DataElement<SELECT, INSERT, GETLIST, DELETE>::_insert(const std::shared_ptr<typename INSERT::Request> request,
-                                                               std::shared_ptr<typename INSERT::Response> response)
+                                                                               std::shared_ptr<typename INSERT::Response> response)
     {
+        std::lock_guard<std::mutex> lock(_container_mutex);
         if (request)
         {
             auto result_msg = std_msgs::msg::Bool();
@@ -36,6 +42,7 @@ namespace data_store
                     // _data_element_container.insert_or_assign(_msg.value().time_stamp.data, _msg.value());
                     result_msg.data = true;
                     response->result = result_msg;
+                    _change_flag_publisher->publish(_change_flag_message);
                     // _msg.reset();
                 }
                 else
@@ -55,8 +62,9 @@ namespace data_store
     }
     template <typename SELECT, typename INSERT, typename GETLIST, typename DELETE>
     void DataElement<SELECT, INSERT, GETLIST, DELETE>::_delete(const std::shared_ptr<typename DELETE::Request> request,
-                                                               std::shared_ptr<typename DELETE::Response> response)
+                                                                               std::shared_ptr<typename DELETE::Response> response)
     {
+        std::lock_guard<std::mutex> lock(_container_mutex);
         if (request)
         {
             auto result_msg = std_msgs::msg::Bool();
@@ -77,8 +85,9 @@ namespace data_store
     }
     template <typename SELECT, typename INSERT, typename GETLIST, typename DELETE>
     void DataElement<SELECT, INSERT, GETLIST, DELETE>::_getList(const std::shared_ptr<typename GETLIST::Request> request,
-                                                                std::shared_ptr<typename GETLIST::Response> response)
+                                                                                std::shared_ptr<typename GETLIST::Response> response)
     {
+        std::lock_guard<std::mutex> lock(_container_mutex);
         if (request)
         {
             try
@@ -99,8 +108,9 @@ namespace data_store
     }
     template <typename SELECT, typename INSERT, typename GETLIST, typename DELETE>
     void DataElement<SELECT, INSERT, GETLIST, DELETE>::_select(const std::shared_ptr<typename SELECT::Request> request,
-                                                               std::shared_ptr<typename SELECT::Response> response)
+                                                                               std::shared_ptr<typename SELECT::Response> response)
     {
+        std::lock_guard<std::mutex> lock(_container_mutex);
         if (request)
         {
             try
