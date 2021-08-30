@@ -250,7 +250,7 @@ public:
         // command_subscription_ = this->create_subscription<custom_interfaces::msg::JointCommand>(
         //     "Joint_commands", 10, std::bind(&CanNode::subscribeCommand, this, std::placeholders::_1));
 
-        state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
+        state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/arm_joint_states", 10);
         send_service_ = this->create_service<custom_interfaces::srv::SetArmTorques>("/arm_controller/set_torques", send_torque_service);
         read_service_ = this->create_service<custom_interfaces::srv::GetArmState>("/arm_controller/get_current_arm_state", read_status_service);
         // timer_ = this->create_wall_timer(loop_rate, std::bind(&CanNode::loop, this));

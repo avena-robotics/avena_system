@@ -8,8 +8,11 @@ SimpleController::SimpleController(int argc, char **argv)
     rclcpp::init(argc, argv);
     _node = rclcpp::Node::make_shared("simple_controller");
     _watchdog = std::make_shared<helpers::Watchdog>(_node.get(), this, "system_monitor");
-    status = custom_interfaces::msg::Heartbeat::STOPPED;
+    status = custom_interfaces::msg::Heartbeat::RUNNING;
 
+    //COMMUNICATION INIT
+    _set_client = _node->create_client<custom_interfaces::srv::SetArmTorques>("/arm_controller/set_torques");
+    _get_client = _node->create_client<custom_interfaces::srv::GetArmState>("/arm_controller/get_current_arm_state");
     _command_service = _node->create_service<custom_interfaces::srv::ControlCommand>("/arm_controller/commands", std::bind(&SimpleController::setStateCb, this, std::placeholders::_1, std::placeholders::_2));
     _trajectory_sub = _node->create_subscription<trajectory_msgs::msg::JointTrajectory>("/trajectory", 10000, std::bind(&SimpleController::setTrajectoryCb, this, std::placeholders::_1));
     _time_factor_sub = _node->create_subscription<std_msgs::msg::Float64>("/arm_controller/time_factor", 10, std::bind(&SimpleController::setTimeFactorCb, this, std::placeholders::_1));
@@ -143,7 +146,7 @@ double SimpleController::compensateFriction(double vel, double temp, int jnt_idx
     }
     t = t_n;
     // std::cout << v << " " << t << std::endl;
-    std::cout << _friction_chart[jnt_idx][v][t].vel << std::string("\t") << _friction_chart[jnt_idx][v][t].temp << std::string("\t") << _friction_chart[jnt_idx][v][t].tq << std::endl;
+    // std::cout << _friction_chart[jnt_idx][v][t].vel << std::string("\t") << _friction_chart[jnt_idx][v][t].temp << std::string("\t") << _friction_chart[jnt_idx][v][t].tq << std::endl;
 
     return _friction_chart[jnt_idx][v][t].tq;
     // //linear interpolation
@@ -234,18 +237,18 @@ void SimpleController::setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::Sh
     _saved_trajectory = *msg;
 }
 //TODO: replace with action?
-void SimpleController::setTrajectory(const std::shared_ptr<custom_interfaces::srv::SetTrajectory::Request> request,
-                                     std::shared_ptr<custom_interfaces::srv::SetTrajectory::Response> response)
-{
-    _trajectory = request.get()->trajectory;
+// void SimpleController::setTrajectory(const std::shared_ptr<custom_interfaces::srv::SetTrajectory::Request> request,
+//                                      std::shared_ptr<custom_interfaces::srv::SetTrajectory::Response> response)
+// {
+//     _trajectory = request.get()->trajectory;
 
-    if (_trajectory.joint_names.size() != _joints_number)
-    {
-        RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Trajectory joint number does not match robot configuration");
-        response->error = "Trajectory joint number does not match robot configuration";
-        return;
-    }
-}
+//     if (_trajectory.joint_names.size() != _joints_number)
+//     {
+//         RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Trajectory joint number does not match robot configuration");
+//         response->error = "Trajectory joint number does not match robot configuration";
+//         return;
+//     }
+// }
 
 void SimpleController::securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr msg)
 {
@@ -369,9 +372,7 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
 void SimpleController::init()
 {
 
-    //initialize driver client
-    _set_client = _node->create_client<custom_interfaces::srv::SetArmTorques>("/arm_controller/set_torques");
-    _get_client = _node->create_client<custom_interfaces::srv::GetArmState>("/arm_controller/get_current_arm_state");
+    //JOINT COMMUNICATION INIT
 
     auto set_request = std::make_shared<custom_interfaces::srv::SetArmTorques::Request>();
     auto get_request = std::make_shared<custom_interfaces::srv::GetArmState::Request>();
@@ -384,16 +385,7 @@ void SimpleController::init()
         return;
     }
     RCLCPP_INFO(_node->get_logger(), "Getting joints...");
-    //get joints
-    //temp solution for candriver - need to set before getting
-    // set_request->torques.resize(1);
-    // set_request->turn_motor.resize(1);
-    // set_request->torques.at(0) = 0;
-    // set_request->turn_motor.at(0) = 0;
-    // _set_result=_set_client->async_send_request(set_request);
-    // rclcpp::spin_until_future_complete(_node, _set_result);
     _get_result = _get_client->async_send_request(get_request);
-    // _set_result = _set_client->async_send_request(set_request);
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
 
     if (rclcpp::spin_until_future_complete(_node, _get_result) == rclcpp::executor::FutureReturnCode::SUCCESS)
@@ -414,6 +406,7 @@ void SimpleController::init()
         return;
     }
     RCLCPP_INFO(_node->get_logger(), "Joint number: %i", _joints_number);
+
     set_request->torques.resize(_joints_number);
     set_request->turn_motor.resize(_joints_number);
 
@@ -426,23 +419,40 @@ void SimpleController::init()
     _i_clamp_h.resize(_joints_number);
     _i_clamp_l.resize(_joints_number);
     _c_friction_val.resize(_joints_number);
-
-    std::string urdf_path = "/home/avena/avena_system/src/avena_system/avena_bringup/urdf/avena_arm.urdf.xacro";
-
-    //initialize ID
-    RCLCPP_INFO_STREAM(_node->get_logger(), "Loading robot model from: " << urdf_path);
-    pinocchio::Model model;
-    pinocchio::urdf::buildModel(urdf_path, model, true);
-
-    pinocchio::Data data(model);
+    
+    _log_msg.position.resize(_joints_number);
+    _log_msg.velocity.resize(_joints_number);
+    _log_msg.effort.resize(_joints_number);
 
     _q.resize(_joints_number);
     _qd.resize(_joints_number);
     _qdd.resize(_joints_number);
 
+    _avg_acc.resize(_joints_number);
+    _avg_pos.resize(_joints_number);
+    _avg_vel.resize(_joints_number);
+    _avg_temp.resize(_joints_number);
+    _avg_tau.resize(_joints_number);
+    _prev_pos.resize(_joints_number);
+
+    _avg_acc_b.resize(_joints_number);
+    _avg_pos_b.resize(_joints_number);
+    _avg_vel_b.resize(_joints_number);
+    _avg_temp_b.resize(_joints_number);
+    _avg_tau_b.resize(_joints_number);
+    _frick_acu.resize(_joints_number);
+
+
+    //ID INIT
+    std::string urdf = helpers::commons::getRobotDescription();
+    pinocchio::Model model;
+    pinocchio::urdf::buildModelFromXML(urdf, model, true);
+
+    pinocchio::Data data(model);
+
     RCLCPP_INFO(_node->get_logger(), "Done loading robot model.");
 
-    //parameters
+    //PARAMETERS INIT
     _node->declare_parameter<double>("error_margin", 0);
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
@@ -473,59 +483,12 @@ void SimpleController::init()
         _pid_ctrl.push_back(PID(_Kp[i], _Ki[i], _Kd[i], 1.0 / _trajectory_rate, _i_clamp_l[i], _i_clamp_h[i], _avg_samples));
     }
     RCLCPP_INFO(_node->get_logger(), "Done setting PIDs");
-    //initialize log topic
-    _log_msg.position.resize(_joints_number);
-    _log_msg.velocity.resize(_joints_number);
-    _log_msg.effort.resize(_joints_number);
-
-
-    _get_result = _get_client->async_send_request(get_request);
-
-    if (rclcpp::spin_until_future_complete(_node, _get_result) == rclcpp::executor::FutureReturnCode::SUCCESS)
-    {
-        _trajectory.points.resize(1);
-        _trajectory.points[0].positions.resize(_joints_number);
-        _trajectory.points[0].velocities.resize(_joints_number);
-        _trajectory.points[0].accelerations.resize(_joints_number);
-        for (int i = 0; i < _joints_number; i++)
-        {
-            _trajectory.points[0].positions[i] = _get_result.get()->arm_current_positions[i];
-            _trajectory.points[0].velocities[i] = 0.;
-            _trajectory.points[0].accelerations[i] = 0.;
-            _trajectory.points[0].time_from_start.sec = 0.;
-            _trajectory.points[0].time_from_start.nanosec = 0.;
-        }
-    }
-
-    //load trajectory from txt (for testing purposes)
-
-    loadTrajTxt("/home/avena/avena_system/src/avena_system/drivers/arm_controller/trajectory/");
-    RCLCPP_INFO(_node->get_logger(), "Loaded test trajectory");
+    
+    //FRICTION INIT
     loadFrictionChart(_config_path + std::string("/friction_chart_"));
     RCLCPP_INFO(_node->get_logger(), "Loaded friction chart");
-    // for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
-    // {
 
-    //     set_request->torques.at(jnt_idx) = 0;
-    //     set_request->turn_motor.at(jnt_idx) = 1;
-    // }
-
-    _avg_acc.resize(_joints_number);
-    _avg_pos.resize(_joints_number);
-    _avg_vel.resize(_joints_number);
-    _avg_temp.resize(_joints_number);
-    _avg_tau.resize(_joints_number);
-    _prev_pos.resize(_joints_number);
-
-    _avg_acc_b.resize(_joints_number);
-    _avg_pos_b.resize(_joints_number);
-    _avg_vel_b.resize(_joints_number);
-    _avg_temp_b.resize(_joints_number);
-    _avg_tau_b.resize(_joints_number);
-    _frick_acu.resize(_joints_number);
-
-    int loop_it = 0;
-
+    //MEASUREMENT INIT
     for (int i = 0; i < _joints_number; i++)
     {
         _frick_acu[i] = 0;
@@ -544,6 +507,26 @@ void SimpleController::init()
         }
     }
 
+    //GET STARTING POSITION - HOLD TRAJECTORY
+    _get_result = _get_client->async_send_request(get_request);
+
+    if (rclcpp::spin_until_future_complete(_node, _get_result) == rclcpp::executor::FutureReturnCode::SUCCESS)
+    {
+        _trajectory.points.resize(1);
+        _trajectory.points[0].positions.resize(_joints_number);
+        _trajectory.points[0].velocities.resize(_joints_number);
+        _trajectory.points[0].accelerations.resize(_joints_number);
+        for (int i = 0; i < _joints_number; i++)
+        {
+            _trajectory.points[0].positions[i] = _get_result.get()->arm_current_positions[i];
+            _trajectory.points[0].velocities[i] = 0.;
+            _trajectory.points[0].accelerations[i] = 0.;
+            _trajectory.points[0].time_from_start.sec = 0.;
+            _trajectory.points[0].time_from_start.nanosec = 0.;
+        }
+    }
+
+
     if (!_set_client->wait_for_service(1s) && !_get_client->wait_for_service(1s))
     {
         RCLCPP_INFO(_node->get_logger(), "service not available, shutting down...");
@@ -552,6 +535,8 @@ void SimpleController::init()
         return;
     }
 
+    //TIME INIT
+    int loop_it = 0;
     _t_start = std::chrono::steady_clock::now();
     _time_accumulator = std::chrono::microseconds(0);
     _controller_state = 1;
@@ -561,17 +546,20 @@ void SimpleController::init()
     _t_stop = std::chrono::steady_clock::now();
     _slowdown_duration = std::chrono::microseconds(1000000);
 
-    //loop
+    //CONTROL LOOP
     std::this_thread::sleep_for(std::chrono::microseconds(10));
     RCLCPP_INFO(_node->get_logger(), "Done initializing, entering control loop");
 
     while (rclcpp::ok())
     {
+        //GET TIME
         // RCLCPP_INFO(_node->get_logger(), "Controller state: %i", _controller_state);
         _time_accumulator += std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _t_current) * _time_factor);
         _t_current = std::chrono::steady_clock::now();
         //std::chrono::time_point<std::chrono::steady_clock> _t_current = std::chrono::steady_clock::now();
-        _t_measure = std::chrono::steady_clock::now();
+        // _t_measure = std::chrono::steady_clock::now();
+
+        //GET JOINT STATES
         _get_result = _get_client->async_send_request(get_request);
         if (rclcpp::spin_until_future_complete(_node, _get_result) == rclcpp::executor::FutureReturnCode::SUCCESS)
         {
@@ -607,6 +595,7 @@ void SimpleController::init()
             return;
         }
         // RCLCPP_INFO(_node->get_logger(), "get_result1: %i", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_measure).count());
+
         //STATES
         //stop
         if (_controller_state == 3)
@@ -638,12 +627,13 @@ void SimpleController::init()
         _trajectory_index = int(std::min(double(_trajectory.points.size() - 1), std::floor(float(std::chrono::duration_cast<std::chrono::microseconds>(_time_accumulator).count()) / 1000000 * _trajectory_rate)));
         // RCLCPP_INFO(_node->get_logger(), "t_index: %i", _trajectory_index);
 
+        //GO INTO HOLD IF TRAJECTORY FINISHED 
         if (_trajectory_index == _trajectory.points.size() - 1)
         {
             if (_time_factor != 0.0)
             {
                 _prev_time_factor = _time_factor;
-                _time_accumulator = std::chrono::microseconds(0);
+                // _time_accumulator = std::chrono::microseconds(0);
                 RCLCPP_INFO(_node->get_logger(), "Finished trajectory");
                 _time_factor = 0.0;
                 _controller_state = 3;
@@ -653,27 +643,29 @@ void SimpleController::init()
             // _time_accumulator = std::chrono::microseconds(0);
         }
 
-        //calculate torques
+        //TORQUE CALCULATION
         //ID
-        // RCLCPP_INFO(_node->get_logger(), "getting ID");
-        _t_measure = std::chrono::steady_clock::now();
+
+        // _t_measure = std::chrono::steady_clock::now();
         // _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].positions.data(), _trajectory.points[_trajectory_index].positions.size());
         _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_get_result.get()->arm_current_positions.data(), _get_result.get()->arm_current_positions.size());
         _qd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].velocities.data(), _trajectory.points[_trajectory_index].velocities.size());
         _qdd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].accelerations.data(), _trajectory.points[_trajectory_index].accelerations.size());
         pinocchio::rnea(model, data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
-        _tau = data.tau;
 
-        // RCLCPP_INFO_STREAM(node_->get_logger(), "q: "<<q_.transpose());
-        // RCLCPP_INFO_STREAM(node_->get_logger(), "qd: "<<qd_.transpose());
-        // RCLCPP_INFO_STREAM(node_->get_logger(), "qdd: "<<qdd_.transpose());
-        RCLCPP_INFO_STREAM(_node->get_logger(), "tau: " << _tau.transpose());
+        _tau = data.tau;
+        
+
+        // RCLCPP_INFO_STREAM(_node->get_logger(), "q: "<<_q.transpose());
+        // RCLCPP_INFO_STREAM(_node->get_logger(), "qd: "<<_qd.transpose());
+        // RCLCPP_INFO_STREAM(_node->get_logger(), "qdd: "<<_qdd.transpose());
+        // RCLCPP_INFO_STREAM(_node->get_logger(), "tau: " << _tau.transpose());
 
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
 
             // RCLCPP_INFO_STREAM(_node->get_logger(), "jnt: " << jnt_idx);
-            RCLCPP_INFO_STREAM(_node->get_logger(), "pos: " << _get_result.get()->arm_current_positions[jnt_idx]);
+            // RCLCPP_INFO_STREAM(_node->get_logger(), "pos: " << _get_result.get()->arm_current_positions[jnt_idx]);
             // RCLCPP_INFO_STREAM(_node->get_logger(), "v_avg: " << _avg_vel[jnt_idx]);
             // RCLCPP_INFO_STREAM(_node->get_logger(), "temp: " << _avg_temp[jnt_idx]);
             // RCLCPP_INFO_STREAM(_node->get_logger(), "tq: " << set_request->torques.at(jnt_idx));
@@ -714,18 +706,22 @@ void SimpleController::init()
 
             // _set_torque_val += _c_friction_comp;
             _set_torque_val += compensateFriction(_set_vel * _time_factor, 30, jnt_idx);
+            // _set_torque_val = _tau[jnt_idx];
 
-            int f_acu_sign = ((_frick_acu[jnt_idx] > 0) - (_frick_acu[jnt_idx] < 0));
 
-            if (std::abs(_avg_vel[jnt_idx]) > 0.015 || (_acc_sign != _vel_sign && std::abs(_set_vel) < 0.01) || (f_acu_sign != error_sign && std::abs(_frick_acu[jnt_idx]) > 1))
-            {
-                _frick_acu[jnt_idx] = _frick_acu[jnt_idx] * 0.95;
-            }
-            else
-            {
-                if (std::abs(_set_torque_val + _frick_acu[jnt_idx]) < model.effortLimit[jnt_idx])
-                    _frick_acu[jnt_idx] += (error_sign * 0.1);
-            }
+            //FRICTION SPIKE
+
+            // int f_acu_sign = ((_frick_acu[jnt_idx] > 0) - (_frick_acu[jnt_idx] < 0));
+
+            // if (std::abs(_avg_vel[jnt_idx]) > 0.015 || (_acc_sign != _vel_sign && std::abs(_set_vel) < 0.01) || (f_acu_sign != error_sign && std::abs(_frick_acu[jnt_idx]) > 1))
+            // {
+            //     _frick_acu[jnt_idx] = _frick_acu[jnt_idx] * 0.95;
+            // }
+            // else
+            // {
+            //     if (std::abs(_set_torque_val + _frick_acu[jnt_idx]) < model.effortLimit[jnt_idx])
+            //         _frick_acu[jnt_idx] += (error_sign * 0.1);
+            // }
 
             // _set_torque_val += _frick_acu[jnt_idx];
             _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
@@ -737,7 +733,7 @@ void SimpleController::init()
                     _set_torque_val = model.effortLimit[jnt_idx] * _torque_sign;
             }
 
-            // TODO: min tq
+            // TODO: min tq?
             // if (std::abs(_set_vel) > 0.01 && std::abs(_avg_vel[jnt_idx]<0.01))
             // {
             //     if (std::abs(_set_torque_val) < 6.5)
@@ -760,11 +756,11 @@ void SimpleController::init()
             _log_msg.effort[jnt_idx] = _set_torque_val;
             _log_msg.header.stamp = rclcpp::Clock().now();
         }
-        //debug
+
         // RCLCPP_INFO(_node->get_logger(), "calc time: %i", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_measure).count());
         std_msgs::msg::Int32 state_msg;
         state_msg.set__data(_controller_state);
-        _t_measure = std::chrono::steady_clock::now();
+        // _t_measure = std::chrono::steady_clock::now();
         _set_joint_states_pub->publish(_log_msg);
         _controller_state_pub->publish(state_msg);
         _set_result = _set_client->async_send_request(set_request);
@@ -798,7 +794,7 @@ void SimpleController::init()
         std::this_thread::sleep_for(std::chrono::microseconds(_remaining_time));
     }
 
-    for (size_t i = 0; i < measured_friction_comp.size(); i++)
+    for (size_t i = 0; i < _joints_number; i++)
     {
         set_request->torques.at(i) = 0;
         set_request->turn_motor.at(i) = 0;

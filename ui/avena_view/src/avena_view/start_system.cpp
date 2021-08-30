@@ -6,7 +6,7 @@ StartSystem::StartSystem(Ui::AvenaViewWidget *ui_ptr, rclcpp::Node::SharedPtr no
     _launch_file_manager = std::make_shared<LaunchFileManager>();
     addLaunches();
 
-    _detectron_runner = std::make_shared<DetectronRunner>(_ui_ptr);
+    // _detectron_runner = std::make_shared<DetectronRunner>(_ui_ptr);
     connectSlotsToSignals();
 }
 StartSystem::~StartSystem()
@@ -19,7 +19,7 @@ StartSystem::~StartSystem()
         launch_file.second->terminate();
     }
 
-    _detectron_runner->stopDetectron();
+    // _detectron_runner->stopDetectron();
 }
 
 void StartSystem::connectSlotsToSignals()

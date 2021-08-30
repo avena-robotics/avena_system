@@ -210,18 +210,18 @@ void SimpleController::updateParams(PID &pid, int joint_index)
 }
 
 //TODO: replace with action?
-void SimpleController::setTrajectory(const std::shared_ptr<custom_interfaces::srv::SetTrajectory::Request> request,
-                                     std::shared_ptr<custom_interfaces::srv::SetTrajectory::Response> response)
-{
-    _trajectory = request.get()->trajectory;
+// void SimpleController::setTrajectory(const std::shared_ptr<custom_interfaces::srv::SetTrajectory::Request> request,
+//                                      std::shared_ptr<custom_interfaces::srv::SetTrajectory::Response> response)
+// {
+//     _trajectory = request.get()->trajectory;
 
-    if (_trajectory.joint_names.size() != _joints_number)
-    {
-        RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Trajectory joint number does not match robot configuration");
-        response->error = "Trajectory joint number does not match robot configuration";
-        return;
-    }
-}
+//     if (_trajectory.joint_names.size() != _joints_number)
+//     {
+//         RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Trajectory joint number does not match robot configuration");
+//         response->error = "Trajectory joint number does not match robot configuration";
+//         return;
+//     }
+// }
 
 //TODO:
 void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
@@ -331,7 +331,7 @@ void SimpleController::init()
     _c_friction_val.resize(_joints_number);
     _i_clamp_h.resize(_joints_number);
     _i_clamp_l.resize(_joints_number);
-    measured_friction_comp.resize(_joints_number);
+    _measured_friction_comp.resize(_joints_number);
 
     // std::string urdf_path = "/root/ros2_ws/src/avena_ros2_control/avena_bringup/urdf/v4.urdf.xacro";
 
@@ -433,7 +433,7 @@ void SimpleController::init()
         chart.resize(_joints_number);
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
-            measured_friction_comp[jnt_idx].clear();
+            _measured_friction_comp[jnt_idx].clear();
             int file_i = 0;
             std::string filename = std::string("/f_chart_joint_") + std::to_string(jnt_idx);
             vel_achi[jnt_idx] = false;
@@ -555,12 +555,12 @@ void SimpleController::init()
                                 temp_fc.tq = 0.;
                                 temp_fc.vel = 0.;
                                 temp_fc.temp = temp_avg_s[jnt_idx];
-                                measured_friction_comp[jnt_idx].push_back(temp_fc);
+                                _measured_friction_comp[jnt_idx].push_back(temp_fc);
                             }
                             temp_fc.tq = tq_acc[jnt_idx] / double(tq_inc[jnt_idx]);
                             temp_fc.vel = goal_v_avg_acc[jnt_idx] / double(tq_inc[jnt_idx]);
                             temp_fc.temp = temp_avg_s[jnt_idx];
-                            measured_friction_comp[jnt_idx].push_back(temp_fc);
+                            _measured_friction_comp[jnt_idx].push_back(temp_fc);
                             //*chart[jnt_idx]<< set_vel << " " << (tq_acc / double(tq_inc))<<std::endl;
                             // chart[jnt_idx]->write(temp_str.c_str(), temp_str.size());
                             //chart[jnt_idx]->flush();
@@ -647,17 +647,17 @@ void SimpleController::init()
             if (all_done)
                 break;
         }
-        std::cout << measured_friction_comp.size() << std::endl;
+        std::cout << _measured_friction_comp.size() << std::endl;
 
-        for (size_t i = 0; i < measured_friction_comp.size(); i++)
+        for (size_t i = 0; i < _measured_friction_comp.size(); i++)
         {
             set_request->torques.at(i) = 0;
             set_request->turn_motor.at(i) = 0;
-            for (size_t j = 0; j < measured_friction_comp[i].size(); j++)
+            for (size_t j = 0; j < _measured_friction_comp[i].size(); j++)
             {
-                std::cout << measured_friction_comp[i].size() << std::endl;
+                std::cout << _measured_friction_comp[i].size() << std::endl;
                 std::cout << "writing" << std::endl;
-                *chart[i] << std::to_string(measured_friction_comp[i][j].vel) << " " << std::to_string(measured_friction_comp[i][j].tq) << " " << std::to_string(measured_friction_comp[i][j].temp) << std::endl;
+                *chart[i] << std::to_string(_measured_friction_comp[i][j].vel) << " " << std::to_string(_measured_friction_comp[i][j].tq) << " " << std::to_string(_measured_friction_comp[i][j].temp) << std::endl;
             }
             chart[i]->flush();
             chart[i]->close();

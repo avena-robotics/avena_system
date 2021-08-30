@@ -33,7 +33,7 @@ find_package(rclcpp_action REQUIRED)
 
 set(avena_view_SRCS
   src/avena_view/avena_view.cpp
-  src/avena_view/detectron_runner.cpp
+  # src/avena_view/detectron_runner.cpp
   src/avena_view/utils.cpp
   src/avena_view/launch_files_manager.cpp
   src/avena_view/nodes_list.cpp
@@ -45,7 +45,7 @@ set(avena_view_SRCS
 
 set(avena_view_HDRS
   include/avena_view/avena_view.h
-  include/avena_view/detectron_runner.h
+  # include/avena_view/detectron_runner.h
   include/avena_view/utils.h
   include/avena_view/launch_files_manager.h
   include/avena_view/nodes_list.h
