@@ -28,6 +28,12 @@ namespace data_store
         RCLCPP_INFO(this->get_logger(), "shut Down Node");
         if (status != custom_interfaces::msg::Heartbeat::STOPPED)
             status = custom_interfaces::msg::Heartbeat::STOPPED;
+        _tracker_element_ptr.reset();            
+        _cameras_data_element_ptr.reset();            
+        _detectron_element_ptr.reset();            
+        _items_element_ptr.reset();            
+        _scene_element_ptr.reset();
+        // add other data elements here            
     }
     DataStore::~DataStore()
     {
