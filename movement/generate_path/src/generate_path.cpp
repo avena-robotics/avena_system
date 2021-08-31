@@ -72,7 +72,7 @@ namespace generate_path
 
         try
         {
-            _physics_client_handler = std::make_shared<physics_client_handler::PhysicsClientHandler>(_robot_info);
+            _physics_client_handler = std::make_shared<physics_client_handler::PhysicsClientHandler>(_robot_info, get_logger());
         }
         catch (const std::exception &e)
         {
@@ -128,7 +128,7 @@ namespace generate_path
         _generated_path_pub.reset();
         _action_server_pose.reset();
         _physics_client_handler.reset();
-        _ik_engine.reset();
+        // _ik_engine.reset();
         // _scene_info.reset();
         // _robot_info.limits.clear();
         return ReturnCode::SUCCESS;
@@ -207,6 +207,7 @@ namespace generate_path
         // Check initial state validity
         try
         {
+            RCLCPP_DEBUG(get_logger(), "Validating initial state.");
             _validateArmConfiguration(path_planning_input.start_state);
         }
         catch(const std::runtime_error& e)
@@ -218,12 +219,12 @@ namespace generate_path
         }
         
         // Inverse kinematics
+        RCLCPP_DEBUG(get_logger(), "Inverse kinematics calculation");
         auto goal_end_effector_pose_ros = goal_handle.get()->get_goal()->end_effector_pose;
-        Eigen::Affine3d goal_end_effector_pose;
-        helpers::converters::geometryToEigenAffine(goal_end_effector_pose_ros, goal_end_effector_pose);
-        path_planning_input.goal_end_effector_pose = goal_end_effector_pose;
-        _physics_client_handler->drawCoordinateAxes(goal_end_effector_pose);
-        path_planning_input.goal_state = _ik_engine->computeIk(goal_end_effector_pose);
+        helpers::converters::geometryToEigenAffine(goal_end_effector_pose_ros, path_planning_input.goal_end_effector_pose);
+        _physics_client_handler->drawCoordinateAxes(path_planning_input.goal_end_effector_pose);
+        _physics_client_handler->setJointStates(path_planning_input.start_state);
+        path_planning_input.goal_state = _ik_engine->computeIk(path_planning_input.goal_end_effector_pose);
 
         if (path_planning_input.goal_state.size() == 0)
         {
@@ -274,10 +275,10 @@ namespace generate_path
     {
         _physics_client_handler->setJointStates(joint_state);
         if (_checkJointLimits(joint_state, _robot_info.limits) != ReturnCode::SUCCESS)
-            throw std::runtime_error("Invalid initial state. Joint states are outside of limits");
+            throw std::runtime_error("Invalid state. Joint states are outside of limits");
 
         if (_physics_client_handler->inCollision())
-            throw std::runtime_error("Invalid initial state. Robot is in collision with scene or itself");
+            throw std::runtime_error("Invalid state. Robot is in collision with scene or itself");
     }
 
     ReturnCode GeneratePath::_checkJointLimits(const ArmConfiguration &joint_states, const std::vector<Limits> &joint_limits)

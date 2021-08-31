@@ -29,6 +29,8 @@ find_package(physics_client_handler REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/inverse_kinematics.cpp
+  src/ik_franka.cpp
+  src/ik_avena.cpp
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

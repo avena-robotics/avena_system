@@ -24,6 +24,7 @@ find_package(rosbag2_cpp REQUIRED)
 find_package(custom_interfaces REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(urdf REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 add_library(helpers_commons SHARED 
   src/generic_subscription.cpp
@@ -35,7 +36,9 @@ add_library(helpers_commons SHARED
 target_include_directories(helpers_commons 
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${EIGEN3_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:${EIGEN3_INCLUDE_DIR}>
 )
 target_compile_definitions(helpers_commons PRIVATE "HELPERS_COMMONS_BUILDING_LIBRARY")
 ament_target_dependencies(helpers_commons
@@ -44,6 +47,7 @@ ament_target_dependencies(helpers_commons
   nlohmann_json
   urdf
   rosbag2_cpp
+  Eigen3
 )
 
 install(
@@ -58,16 +62,19 @@ install(
   RUNTIME DESTINATION bin
 )
 
-# if(BUILD_TESTING)
-#   find_package(ament_lint_auto REQUIRED)
-#   # the following line skips the linter which checks for copyrights
-#   # uncomment the line when a copyright and license is not present in all source files
-#   #set(ament_cmake_copyright_FOUND TRUE)
-#   # the following line skips cpplint (only works in a git repo)
-#   # uncomment the line when this package is not in a git repo
-#   #set(ament_cmake_cpplint_FOUND TRUE)
-#   ament_lint_auto_find_test_dependencies()
-# endif()
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_lint_auto_find_test_dependencies()
+
+  ament_add_gtest(test_geometry
+    test/test_geometry.cpp
+  )
+  target_link_libraries(test_geometry
+    helpers_commons
+  )
+endif()
 
 ament_export_include_directories(
   include
@@ -77,7 +84,15 @@ ament_export_libraries(
 )
 ament_export_targets(
   export_${PROJECT_NAME}
+  HAS_LIBRARY_TARGET
 )
-ament_export_dependencies(rclcpp custom_interfaces nlohmann_json urdf rosbag2_cpp)
+ament_export_dependencies(
+  rclcpp 
+  custom_interfaces 
+  nlohmann_json 
+  urdf 
+  rosbag2_cpp
+  Eigen3
+)
 
 ament_package()

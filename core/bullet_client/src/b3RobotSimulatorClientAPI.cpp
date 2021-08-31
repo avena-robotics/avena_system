@@ -80,7 +80,7 @@ namespace bullet_client
 			b3CalculateInverseKinematicsSetCurrentPositions(command, args.m_numDegreeOfFreedom, &args.m_currentJointPositions[0]);
 		}
 
-		b3CalculateInverseKinematicsSetResidualThreshold(command, 1e-3);
+		b3CalculateInverseKinematicsSetResidualThreshold(command, 1e-4);
 		b3CalculateInverseKinematicsSetMaxNumIterations(command, 1000);
 		b3CalculateInverseKinematicsSelectSolver(command, IK_DLS);
 
@@ -102,6 +102,28 @@ namespace bullet_client
 																&results.m_calculatedJointPositions[0]) != 0;
 		}
 		return result;
+	}
+
+	btQuaternion b3RobotSimulatorClientAPI::getDifferenceQuaternion(const btQuaternion &quaternionStart, const btQuaternion &quaternionEnd)
+	{
+		double quatStart[] = {quaternionStart.getX(), quaternionStart.getY(), quaternionStart.getZ(), quaternionStart.getW()};
+		double quatEnd[] = {quaternionEnd.getX(), quaternionEnd.getY(), quaternionEnd.getZ(), quaternionEnd.getW()};
+		int physicsClientId = 0;
+		int hasQuatStart = 0;
+		int hasQuatEnd = 0;
+
+		double quatOut[4];
+		b3GetQuaternionDifference(quatStart, quatEnd, quatOut);
+
+		if (!quatOut)
+			return btQuaternion();
+
+		btQuaternion quat_diff;
+		quat_diff[0] = quatOut[0];
+		quat_diff[1] = quatOut[1];
+		quat_diff[2] = quatOut[2];
+		quat_diff[3] = quatOut[3];
+		return quat_diff;
 	}
 
 	void b3RobotSimulatorClientAPI::renderScene()
