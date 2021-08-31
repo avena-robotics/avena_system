@@ -35,6 +35,8 @@ namespace inverse_kinematics
     {
         helpers::Timer timer(__func__, _logger);
 
+        auto current_state = _physics_server_handler->getJointStates();
+
         // Read collision from physics server using physics client handler
         physics_client_handler::Obstacles collision_objects;
         {
@@ -42,6 +44,31 @@ namespace inverse_kinematics
             collision_objects = _physics_server_handler->getCollisionObjectsHandles();
         }
 
+        ArmConfiguration goal_configuration;
+
+        // Solving with IK Fast
+        RCLCPP_INFO(_logger, "[IK]: Solving with IK Fast");
+        goal_configuration = _solveWithIkFast(end_effector_pose, joint_limits, collision_objects, in_robot_base_frame);
+
+        if (goal_configuration.size() == 0)
+        {
+            // Solving with Bullet
+            RCLCPP_INFO(_logger, "[IK]: Cannot solve with IK Fast. Solving IK with Bullet");
+            _physics_server_handler->setJointStates(current_state);
+            goal_configuration = _physics_server_handler->computeIk(end_effector_pose, joint_limits, collision_objects);
+        }
+        else
+            RCLCPP_INFO(_logger, "Found IK solution with IK Fast");
+
+        _physics_server_handler->setJointStates(current_state);
+        return goal_configuration;
+    }
+
+    ArmConfiguration InverseKinematics::_solveWithIkFast(const Eigen::Affine3d &end_effector_pose,
+                                                         const std::vector<Limits> &joint_limits,
+                                                         const physics_client_handler::Obstacles &collision_objects,
+                                                         bool in_robot_base_frame)
+    {
         // Get end effector transform relative to robot base
         Eigen::Affine3d end_effector_pose_robot_frame;
         if (!in_robot_base_frame)
@@ -102,7 +129,7 @@ namespace inverse_kinematics
                     // ///////////////////////////////////////////////////////////////////////
 
                     // Validate calculated configuration
-                    if (_validateArmConfiguration(solvalues, joint_limits, collision_objects) != ReturnCode::SUCCESS)
+                    if (_validateArmConfiguration(end_effector_pose, solvalues, joint_limits, collision_objects) != ReturnCode::SUCCESS)
                     {
                         RCLCPP_DEBUG(_logger, "[IK]: Checking another configuration...");
                         continue;
@@ -146,7 +173,7 @@ namespace inverse_kinematics
                         sol.GetSolution(&solvalues[0], vsolfree.size() > 0 ? &vsolfree[0] : NULL);
 
                         // Validate calculated configuration
-                        if (_validateArmConfiguration(solvalues, joint_limits, collision_objects) != ReturnCode::SUCCESS)
+                        if (_validateArmConfiguration(end_effector_pose, solvalues, joint_limits, collision_objects) != ReturnCode::SUCCESS)
                         {
                             RCLCPP_DEBUG(_logger, "[IK]: Checking another configuration...");
                             continue;
@@ -204,7 +231,8 @@ namespace inverse_kinematics
         return goal_configuration;
     }
 
-    ReturnCode InverseKinematics::_validateArmConfiguration(const ArmConfiguration &joint_state,
+    ReturnCode InverseKinematics::_validateArmConfiguration(const Eigen::Affine3d &end_effector_pose,
+                                                            const ArmConfiguration &joint_state,
                                                             const std::vector<Limits> &joint_limits,
                                                             const std::vector<int> &obstacles)
     {
@@ -215,6 +243,20 @@ namespace inverse_kinematics
         }
 
         _physics_server_handler->setJointStates(joint_state);
+        if (auto ee_pose_opt = _physics_server_handler->getEndEffectorPose())
+        {
+            if (_validateEndEffectorPose(end_effector_pose, *ee_pose_opt) != ReturnCode::SUCCESS)
+            {
+                RCLCPP_DEBUG(_logger, "[IK]: End effector for calculated configuration is in wrong pose");
+                return ReturnCode::FAILURE;
+            }
+        }
+        else
+        {
+            RCLCPP_DEBUG(_logger, "[IK]: Cannot read end effector from physics server");
+            return ReturnCode::FAILURE;
+        }
+
         if (_physics_server_handler->inCollision(obstacles))
         {
             RCLCPP_DEBUG(_logger, "[IK]: Invalid final state. Robot is in collision with scene or itself");
@@ -231,7 +273,7 @@ namespace inverse_kinematics
             RCLCPP_WARN_STREAM(_logger, "[IK]: Amount of joint states (" << joint_states.size() << ") is different than amount of joint limits (" << joint_limits.size() << ")");
             return ReturnCode::FAILURE;
         }
-        ReturnCode error_code = ReturnCode::SUCCESS;
+        auto error_code = ReturnCode::SUCCESS;
         for (size_t i = 0; i < joint_states.size(); ++i)
         {
             if (joint_states[i] < joint_limits[i].lower || joint_states[i] > joint_limits[i].upper)
@@ -243,6 +285,17 @@ namespace inverse_kinematics
                 RCLCPP_DEBUG_STREAM(_logger, "[IK]: Joint: " << i + 1 << ": value: " << joint_states[i] << ", limits: (" << joint_limits[i].lower << ", " << joint_limits[i].upper << ")");
         }
         return error_code;
+    }
+
+    ReturnCode InverseKinematics::_validateEndEffectorPose(const Eigen::Affine3d &end_effector_pose,
+                                                           const Eigen::Affine3d &calculated_end_effector_pose)
+    {
+        auto aff_diff = helpers::commons::getDiffBetweenAffines(end_effector_pose, calculated_end_effector_pose);
+        bool close_enough = (aff_diff[0] < POSITION_THRESHOLD) &&
+                            std::abs(aff_diff[1]) < ORIENTATION_THRESHOLD &&
+                            std::abs(aff_diff[2]) < ORIENTATION_THRESHOLD &&
+                            std::abs(aff_diff[3]) < ORIENTATION_THRESHOLD;
+        return close_enough ? ReturnCode::SUCCESS : ReturnCode::FAILURE;
     }
 
     // void InverseKinematics::_updateJointLimits(const float &joint_range_coeff)

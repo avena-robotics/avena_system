@@ -23,6 +23,8 @@ namespace bullet_client
 
     bool calculateIK(const struct b3RobotSimulatorInverseKinematicArgs& args, struct b3RobotSimulatorInverseKinematicsResults& results);
 
+    btQuaternion getDifferenceQuaternion(const btQuaternion &quaternionStart, const btQuaternion &quaternionEnd);
+
     virtual bool connect(int mode, const std::string &hostName = "localhost", int portOrKey = -1);
 
     virtual void renderScene();

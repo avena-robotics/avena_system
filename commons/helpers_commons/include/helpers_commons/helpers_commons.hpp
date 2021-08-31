@@ -11,5 +11,6 @@
 #include "helpers_commons/subscriptions_manager.hpp"
 #include "helpers_commons/timers.hpp"
 #include "helpers_commons/watchdog.hpp"
+#include "helpers_commons/geometry.hpp"
 
 #endif // HELPERS_COMMONS__HELPERS_COMMONS_HPP_

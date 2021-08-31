@@ -13,6 +13,8 @@ namespace physics_client_handler
 {
   using Obstacles = std::vector<int>;
   using ArmConfiguration = std::vector<double>;
+  using Limits = helpers::commons::Limits;
+  
   const int INVALID_HANDLE = -1;
 
   class PhysicsClientHandlerError : public std::exception
