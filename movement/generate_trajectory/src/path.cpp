@@ -36,7 +36,7 @@
  *   POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "path.h"
+#include "generate_trajectory/path.h"
 #include <fstream>
 #include <iostream>
 #include <vector>

@@ -1,18 +1,20 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>generate_trajectory</name>
+  <name>motion_planning</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="majunkier@wp.pl">root</maintainer>
+  <maintainer email="bartlomiej.styczen@pomagier.info">Bartlomiej Styczen</maintainer>
   <license>TODO: License declaration</license>
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_ros</buildtool_depend>
 
-  <depend>rclcpp</depend>
-  <depend>trajectory_msgs</depend>
+  <depend>generate_path</depend>
+  <depend>generate_trajectory</depend>
   <depend>custom_interfaces</depend>
   <depend>helpers_commons</depend>
+  <depend>helpers_vision</depend>
+
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 

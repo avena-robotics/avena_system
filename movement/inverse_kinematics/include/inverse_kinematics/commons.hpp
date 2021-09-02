@@ -25,12 +25,14 @@ namespace inverse_kinematics
   class IkError : public std::exception
   {
   public:
-    IkError(const std::string &error)
-        : _error(error) {}
+    IkError(const std::string &error) 
+    {
+      _error = "[IK engine]: " + error; 
+    }
 
     virtual const char *what() const noexcept override
     {
-      return ("[IK engine]: " + _error).c_str();
+      return _error.c_str();
     }
 
   private:

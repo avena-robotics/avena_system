@@ -14,46 +14,57 @@ set(CMAKE_BUILD_TYPE RELEASE)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(trajectory_msgs REQUIRED)
-find_package(rclcpp_action REQUIRED)
 find_package(custom_interfaces REQUIRED)
 find_package(helpers_commons REQUIRED)
-find_package(rclcpp_components REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-# include_directories(include)
-
-add_library(generate_trajectory SHARED 
+add_library(${PROJECT_NAME} SHARED 
   src/generate_trajectory.cpp src/path.cpp 
   src/trajectory.cpp
 )
-target_include_directories(generate_trajectory PUBLIC
+target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-target_compile_definitions(generate_trajectory PRIVATE "GENERATE_TRAJECTORY_BUILDING_LIBRARY")
-ament_target_dependencies(generate_trajectory
+target_compile_definitions(${PROJECT_NAME} PRIVATE "GENERATE_TRAJECTORY_BUILDING_LIBRARY")
+ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   trajectory_msgs
-  rclcpp_action
   custom_interfaces
   helpers_commons
-  rclcpp_components
   Eigen3
 )
-rclcpp_components_register_node(generate_trajectory
-  PLUGIN "generate_trajectory::GenerateTrajectory"
-  EXECUTABLE generate_trajectory_node)
 
-install(TARGETS
-  generate_trajectory
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
+install(
+  DIRECTORY include/
+  DESTINATION include
 )
 
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT export_${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
+
+ament_export_include_directories(
+  include
+)
+ament_export_libraries(
+  ${PROJECT_NAME}
+)
+ament_export_targets(
+  export_${PROJECT_NAME}
+)
+
+ament_export_dependencies(
+  rclcpp
+  trajectory_msgs
+  custom_interfaces
+  helpers_commons
+  Eigen3
 )
 
 ament_package()

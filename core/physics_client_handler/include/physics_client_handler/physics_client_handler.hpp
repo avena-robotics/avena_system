@@ -33,7 +33,7 @@ namespace physics_client_handler
     ArmConfiguration computeIk(const Eigen::Affine3d &end_effector_pose,
                                const std::vector<Limits> &joint_limits,
                                const Obstacles &collision_objects);
-
+    void initializeConnection();
     using SharedPtr = std::shared_ptr<PhysicsClientHandler>;
 
   private:

@@ -34,7 +34,7 @@ def load_labels_parameters():
 
 
 def launch_setup(context, *args, **kwargs):
-    working_side = LaunchConfiguration('working_side').perform(context)
+    # working_side = LaunchConfiguration('working_side').perform(context)
 
     parameters = load_labels_parameters()
     for root, dirs, files in os.walk(os.path.join(get_package_share_directory('parameters_server'), 'config', 'parameters')):
@@ -43,10 +43,10 @@ def launch_setup(context, *args, **kwargs):
                 parameters_config_path = os.path.join(root, file_name)
                 parameters.update(load_parameters(parameters_config_path))
     
-    # Update 'working_side' parameter
-    robot = json.loads(parameters['robot'])
-    robot['working_side'] = working_side
-    parameters['robot'] = json.dumps(robot)
+    # # Update 'working_side' parameter
+    # robot = json.loads(parameters['robot'])
+    # robot['working_side'] = working_side
+    # parameters['robot'] = json.dumps(robot)
 
     parameters_server = ComposableNodeContainer(
         name='parameters_server_container',
@@ -66,11 +66,11 @@ def launch_setup(context, *args, **kwargs):
 
 def generate_launch_description():
     return launch.LaunchDescription([
-        DeclareLaunchArgument(
-            name='working_side',
-            default_value='right',
-            description='Side on which robot is working. Choose between "left" or "right"'
-        ),
+        # DeclareLaunchArgument(
+        #     name='working_side',
+        #     default_value='right',
+        #     description='Side on which robot is working. Choose between "left" or "right"'
+        # ),
         OpaqueFunction(
             function=launch_setup
         )

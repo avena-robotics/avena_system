@@ -19,6 +19,8 @@ namespace data_store
         _detectron_element_ptr = std::make_unique<Detectron>(shared_from_this(), "detectron");
         _items_element_ptr = std::make_unique<Items>(shared_from_this(), "items");
         _scene_element_ptr = std::make_unique<Scene>(shared_from_this(), "scene");
+        _movement_sequence_element_ptr = std::make_unique<MovementSequence>(shared_from_this(), "movement_sequence");
+        _trajectory_element_ptr = std::make_unique<Trajectory>(shared_from_this(), "trajectory");
         // add other data elements here
         status = custom_interfaces::msg::Heartbeat::RUNNING;
     }
@@ -33,6 +35,8 @@ namespace data_store
         _detectron_element_ptr.reset();            
         _items_element_ptr.reset();            
         _scene_element_ptr.reset();
+        _movement_sequence_element_ptr.reset();
+        _trajectory_element_ptr.reset();
         // add other data elements here            
     }
     DataStore::~DataStore()

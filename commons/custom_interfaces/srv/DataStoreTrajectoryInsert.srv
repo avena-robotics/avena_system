@@ -1,0 +1,4 @@
+std_msgs/Float64 time_stamp
+trajectory_msgs/JointTrajectory data
+---
+std_msgs/Bool result

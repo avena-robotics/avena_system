@@ -30,20 +30,11 @@ def launch_setup(context, *args, **kwargs):
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-                'parameters_server'), 'launch', 'parameters_server.launch.py')),
-            launch_arguments={'working_side': working_side}.items()
-        ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
                 'camera_extrinsics_calibration'), 'launch', 'calibrate.launch.py')),
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-                'generate_trajectory'), 'launch', 'generate_trajectory.launch.py'))
-        ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-                'generate_path'), 'launch', 'generate_path.launch.py'))
+                'motion_planning'), 'launch', 'motion_planning.launch.py'))
         ),
     ]
 

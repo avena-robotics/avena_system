@@ -1,9 +1,6 @@
 #ifndef GENERATE_PATH__PLANNER_HPP_
 #define GENERATE_PATH__PLANNER_HPP_
 
-// ___ROS___
-#include <geometry_msgs/msg/pose.hpp>
-
 // ___OMPL___
 #include <ompl/base/SpaceInformation.h>
 #include <ompl/base/spaces/SE3StateSpace.h>
@@ -24,9 +21,12 @@ namespace generate_path
   {
   public:
 
-    Planner();
+    Planner(const rclcpp::Logger &logger);
     virtual ~Planner() = default;
     virtual ReturnCode solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path);
+  
+  private:
+    rclcpp::Logger _logger;
   };
 
 } // namespace generate_path

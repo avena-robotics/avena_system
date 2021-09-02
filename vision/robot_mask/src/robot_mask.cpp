@@ -75,8 +75,7 @@ namespace robot_mask
         nlohmann::json parameters = helpers::commons::getParameter("robot");
         if (parameters.empty())
             return 1;
-        const std::string working_side = parameters["working_side"];
-        if (auto robot_info = helpers::commons::getRobotInfo(working_side))
+        if (auto robot_info = helpers::commons::getRobotInfo())
             _robot_info = *robot_info;
         else
             return 1;

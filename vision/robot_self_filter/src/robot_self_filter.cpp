@@ -112,8 +112,7 @@ namespace robot_self_filter
         if (!parameters.empty())
          return;
         
-        const std::string working_side = parameters["working_side"];
-        if (auto robot_info = helpers::commons::getRobotInfo(working_side))
+        if (auto robot_info = helpers::commons::getRobotInfo())
             _robot_info = *robot_info;
         else
             return;
