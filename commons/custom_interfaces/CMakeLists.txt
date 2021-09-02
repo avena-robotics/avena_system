@@ -55,6 +55,7 @@ set(msg_files
   "msg/GuiBtMessage.msg"
   "msg/RgbdSync.msg"
   "msg/Tracker.msg"
+  "msg/EndEffectorPose.msg"
 )
 
 set(srv_files
@@ -101,13 +102,22 @@ set(srv_files
   "srv/DataStoreCamerasDataGetList.srv"
   "srv/DataStoreCamerasDataSelect.srv"
 
+  "srv/DataStoreTrajectoryDelete.srv"
+  "srv/DataStoreTrajectoryInsert.srv"
+  "srv/DataStoreTrajectoryGetList.srv"
+  "srv/DataStoreTrajectorySelect.srv"
+
+  "srv/DataStoreMovementSequenceDelete.srv"
+  "srv/DataStoreMovementSequenceInsert.srv"
+  "srv/DataStoreMovementSequenceGetList.srv"
+  "srv/DataStoreMovementSequenceSelect.srv"
 )
 
 set(action_files
   # "action/ManagerPreparePickAndPlaceDataAction.action"
   # "action/GeneratePathPickAction.action"
   # "action/GeneratePathPlaceAction.action"
-  "action/GeneratePathPose.action"
+  # "action/GeneratePathPose.action"
   # "action/GraspAction.action"
   "action/SimpleAction.action"
   # "action/ItemSelect.action"

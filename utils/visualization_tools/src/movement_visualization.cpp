@@ -25,8 +25,9 @@ namespace visualization_tools
 
         auto qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
         _nav_path_pub = create_publisher<nav_msgs::msg::Path>("nav_path", qos_settings);
-        _generated_path_sub = create_subscription<GeneratedPath>("generated_path", qos_settings, std::bind(&MovementVisualization::_callbackGeneratedPath, this, std::placeholders::_1));
-        _trajectory_sub = create_subscription<trajectory_msgs::msg::JointTrajectory>("trajectory", qos_settings, std::bind(&MovementVisualization::_callbackTrajectory, this, std::placeholders::_1));
+        _trajectory_change_flag_sub = create_subscription<TrajectoryChangeFlag>("trajectory_change_flag", qos_settings, std::bind(&MovementVisualization::_trajectoryUpdated, this, std::placeholders::_1));
+        _trajectory_select_client = create_client<TrajectorySelect>("trajectory_select");
+        _generated_path_sub_debug = create_subscription<GeneratedPath>("/debug/generated_path", qos_settings, std::bind(&MovementVisualization::_callbackGeneratedPath, this, std::placeholders::_1));
 
         _tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(this);
         _static_tf_broadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
@@ -40,8 +41,7 @@ namespace visualization_tools
         if (parameters.empty())
             throw std::runtime_error("Cannot read \"robot\" parameters from server");
         RCLCPP_DEBUG_STREAM(get_logger(), "Parameters: " << std::setw(4) << parameters);
-        const std::string working_side = parameters["working_side"];
-        if (auto robot_info = helpers::commons::getRobotInfo(working_side))
+        if (auto robot_info = helpers::commons::getRobotInfo())
             _robot_info = *robot_info;
         else
             throw std::runtime_error("Cannot read robot info");
@@ -51,35 +51,64 @@ namespace visualization_tools
         return 0;
     }
 
-    void MovementVisualization::_callbackGeneratedPath(const GeneratedPath::SharedPtr generated_path)
+    void MovementVisualization::_trajectoryUpdated(const TrajectoryChangeFlag::SharedPtr /*trajectory_change_flag_msg*/)
     {
-        helpers::Timer timer(__func__, get_logger());
-        RCLCPP_INFO(get_logger(), "Received generated path as trajectory positions");
+        std::thread([this]()
+                    {
+                        RCLCPP_INFO(get_logger(), "Reading trajectory from server");
+                        // Reading trajectory from server
+                        auto trajectory_req = std::make_shared<TrajectorySelect::Request>();
+                        trajectory_req->time_stamp.data = 0.0; // Currently it does not matter
+                        auto trajectory_res = _trajectory_select_client->async_send_request(trajectory_req);
+                        if (trajectory_res.wait_for(std::chrono::seconds(1)) != std::future_status::ready)
+                        {
+                            RCLCPP_ERROR(get_logger(), "Cannot read generated trajectory from server");
+                            return;
+                        }
 
-        if (generated_path->path_segments.size() == 0)
-        {
-            RCLCPP_WARN(get_logger(), "There is no path segments in received message.");
-            return;
-        }
+                        const auto &trajectory = trajectory_res.get()->data;
 
-        const std::vector<std::string> joint_names = generated_path->path_segments.front().joint_names;
-        std_msgs::msg::Header out_header;
-        out_header.frame_id = "world";
-        out_header.stamp = generated_path->header.stamp;
-
-        nav_msgs::msg::Path::UniquePtr end_effector_path(new nav_msgs::msg::Path);
-        end_effector_path->header = out_header;
-
-        for (auto &path_segment : generated_path->path_segments)
-        {
-            auto end_effector_path_segment = _getEndEffectorPathForPathSegment(path_segment, out_header.stamp);
-            end_effector_path->poses.insert(end_effector_path->poses.end(), end_effector_path_segment->poses.begin(), end_effector_path_segment->poses.end());
-        }
-
-        _nav_path_pub->publish(std::move(end_effector_path));
+                        // Simulate arm movements using generated trajectory
+                        auto trajectory_ptr = std::make_shared<trajectory_msgs::msg::JointTrajectory>(trajectory);
+                        _publishGeneratedTrajectory(trajectory_ptr);
+                    })
+            .detach();
     }
 
-    void MovementVisualization::_callbackTrajectory(const trajectory_msgs::msg::JointTrajectory::SharedPtr trajectory)
+    void MovementVisualization::_callbackGeneratedPath(const GeneratedPath::SharedPtr generated_path)
+    {
+        std::thread([this](const GeneratedPath::SharedPtr generated_path)
+                    {
+                        helpers::Timer timer(__func__, get_logger());
+                        RCLCPP_INFO(get_logger(), "Received generated path as trajectory positions");
+
+                        if (generated_path->path_segments.size() == 0)
+                        {
+                            RCLCPP_WARN(get_logger(), "There is no path segments in received message.");
+                            return;
+                        }
+
+                        const std::vector<std::string> joint_names = generated_path->path_segments.front().joint_names;
+                        std_msgs::msg::Header out_header;
+                        out_header.frame_id = "world";
+                        out_header.stamp = generated_path->header.stamp;
+
+                        nav_msgs::msg::Path::UniquePtr end_effector_path = std::make_unique<nav_msgs::msg::Path>();
+                        end_effector_path->header = out_header;
+
+                        for (auto &path_segment : generated_path->path_segments)
+                        {
+                            auto end_effector_path_segment = _getEndEffectorPathForPathSegment(path_segment, out_header.stamp);
+                            end_effector_path->poses.insert(end_effector_path->poses.end(), end_effector_path_segment->poses.begin(), end_effector_path_segment->poses.end());
+                        }
+
+                        _nav_path_pub->publish(std::move(end_effector_path));
+                    },
+                    generated_path)
+            .detach();
+    }
+
+    void MovementVisualization::_publishGeneratedTrajectory(const trajectory_msgs::msg::JointTrajectory::SharedPtr trajectory)
     {
         auto ros_time_to_chrono = [](const builtin_interfaces::msg::Duration &duration) -> std::chrono::duration<double> {
             return std::chrono::duration<double>(duration.sec + duration.nanosec / 1e9);

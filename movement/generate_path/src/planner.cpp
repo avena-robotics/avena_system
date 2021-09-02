@@ -2,13 +2,14 @@
 
 namespace generate_path
 {
-    Planner::Planner()
+    Planner::Planner(const rclcpp::Logger &logger)
+        : _logger(logger)
     {
     }
 
     ReturnCode Planner::solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path)
     {
-        helpers::Timer timer(__func__, LOGGER);
+        helpers::Timer timer(__func__, _logger);
         auto space = std::make_shared<ompl::base::RealVectorStateSpace>(path_planning_input.limits.size());
 
         // Joints constraints

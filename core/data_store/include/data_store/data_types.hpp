@@ -33,6 +33,19 @@
 #include "custom_interfaces/srv/data_store_scene_select.hpp"
 #include "custom_interfaces/srv/data_store_scene_get_list.hpp"
 
+//path planning
+#include "custom_interfaces/srv/data_store_movement_sequence_insert.hpp"
+#include "custom_interfaces/srv/data_store_movement_sequence_delete.hpp"
+#include "custom_interfaces/srv/data_store_movement_sequence_select.hpp"
+#include "custom_interfaces/srv/data_store_movement_sequence_get_list.hpp"
+
+//trajectory
+#include "custom_interfaces/srv/data_store_trajectory_insert.hpp"
+#include "custom_interfaces/srv/data_store_trajectory_delete.hpp"
+#include "custom_interfaces/srv/data_store_trajectory_select.hpp"
+#include "custom_interfaces/srv/data_store_trajectory_get_list.hpp"
+
+
 // add other data elements here
 
 namespace data_store
@@ -73,6 +86,20 @@ namespace data_store
     using SceneSelect = custom_interfaces::srv::DataStoreSceneSelect;
     using SceneGetList = custom_interfaces::srv::DataStoreSceneGetList;
     using Scene = DataElement<SceneSelect, SceneInsert, SceneGetList, SceneDelete>;
+
+    //motion planning
+    using MovementSequenceInsert = custom_interfaces::srv::DataStoreMovementSequenceInsert;
+    using MovementSequenceDelete = custom_interfaces::srv::DataStoreMovementSequenceDelete;
+    using MovementSequenceSelect = custom_interfaces::srv::DataStoreMovementSequenceSelect;
+    using MovementSequenceGetList = custom_interfaces::srv::DataStoreMovementSequenceGetList;
+    using MovementSequence = DataElement<MovementSequenceSelect, MovementSequenceInsert, MovementSequenceGetList, MovementSequenceDelete>;
+
+    //trajectory
+    using TrajectoryInsert = custom_interfaces::srv::DataStoreTrajectoryInsert;
+    using TrajectoryDelete = custom_interfaces::srv::DataStoreTrajectoryDelete;
+    using TrajectorySelect = custom_interfaces::srv::DataStoreTrajectorySelect;
+    using TrajectoryGetList = custom_interfaces::srv::DataStoreTrajectoryGetList;
+    using Trajectory = DataElement<TrajectorySelect, TrajectoryInsert, TrajectoryGetList, TrajectoryDelete>;
 
     // add other data elements here
 

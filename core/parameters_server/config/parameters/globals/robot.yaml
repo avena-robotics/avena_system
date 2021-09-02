@@ -1,8 +1,12 @@
 maximum_robot_reach: 0.855
-working_side: "left"
 calibration_mat:
   dims:
     x: 0.17 
     y: 0.02306 
     z: 0.21 
-controller_frequency: 500
+
+franka:
+  controller_frequency: 30
+
+avena:
+  controller_frequency: 500

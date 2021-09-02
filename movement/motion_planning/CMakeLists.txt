@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(generate_path)
+project(motion_planning)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -14,42 +14,39 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
-set(CMAKE_BUILD_TYPE RELEASE)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(custom_interfaces REQUIRED)
+find_package(generate_path REQUIRED)
+find_package(generate_trajectory REQUIRED)
 find_package(helpers_commons REQUIRED)
 find_package(helpers_vision REQUIRED)
-find_package(inverse_kinematics REQUIRED)
-find_package(physics_client_handler REQUIRED)
-find_package(ompl REQUIRED)
 
-add_library(${PROJECT_NAME} SHARED 
-  src/generate_path.cpp
-  src/planner.cpp
+add_library(${PROJECT_NAME} SHARED
+  src/motion_planning.cpp
 )
-target_include_directories(${PROJECT_NAME} 
-  PUBLIC
-    ${OMPL_INCLUDE_DIRS}
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
 )
-target_compile_definitions(${PROJECT_NAME} PRIVATE "GENERATE_PATH_BUILDING_LIBRARY")
-target_link_libraries(${PROJECT_NAME}
-  ${OMPL_LIBRARIES}
-)
+target_compile_definitions(${PROJECT_NAME} PRIVATE "MOTION_PLANNING_BUILDING_LIBRARY")
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
+  rclcpp_action
+  rclcpp_components
   custom_interfaces
-  helpers_commons
   helpers_vision
-  inverse_kinematics
-  physics_client_handler
+  helpers_commons
+  generate_path
+  generate_trajectory
 )
-# rclcpp_components_register_nodes(${PROJECT_NAME} "generate_path::GeneratePath")
+rclcpp_components_register_nodes(${PROJECT_NAME} "motion_planning::MotionPlanning")
+
 install(
   DIRECTORY include/
   DESTINATION include
@@ -60,6 +57,10 @@ install(
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
+)
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
 )
 
 # if(BUILD_TESTING)
@@ -77,18 +78,10 @@ ament_export_include_directories(
   include
 )
 ament_export_libraries(
-  ${PROJECT_NAME}
+  motion_planning
 )
 ament_export_targets(
   export_${PROJECT_NAME}
-)
-ament_export_dependencies(
-  rclcpp
-  custom_interfaces
-  helpers_commons
-  helpers_vision
-  inverse_kinematics
-  physics_client_handler
 )
 
 ament_package()

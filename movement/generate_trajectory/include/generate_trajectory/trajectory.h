@@ -38,7 +38,7 @@
 
 #pragma once
 
-#include "path.h"
+#include "generate_trajectory/path.h"
 #include "vector"
 namespace generate_trajectory
 {

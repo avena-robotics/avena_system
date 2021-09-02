@@ -20,12 +20,14 @@ namespace physics_client_handler
   class PhysicsClientHandlerError : public std::exception
   {
   public:
-    PhysicsClientHandlerError(const std::string &error)
-        : _error(error) {}
-
-    virtual const char *what() const noexcept override
+    explicit PhysicsClientHandlerError(const std::string &error)
     {
-      return ("[Physics client handler]: " + _error).c_str();
+      _error = "[Physics client handler]: " + error;
+    }
+
+    const char *what() const noexcept override
+    {
+      return _error.c_str();
     }
 
   private:

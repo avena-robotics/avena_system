@@ -184,6 +184,10 @@ namespace physics_client_handler
 
     void PhysicsClientHandler::setJointStates(const ArmConfiguration &joint_states)
     {
+        if (joint_states.size() != _joint_handles.size())
+            throw PhysicsClientHandlerError("Number of joint states to be set is invalid. Input joint state size: " +
+                                            std::to_string(joint_states.size()) + " and it should be equal to " + std::to_string(_joint_handles.size()));
+
         for (size_t i = 0; i < _joint_handles.size(); i++)
             _bullet_client->resetJointState(_robot_idx, _joint_handles[i], joint_states[i]);
     }
@@ -328,6 +332,12 @@ namespace physics_client_handler
     void PhysicsClientHandler::syncWithPhysicsServer()
     {
         _bullet_client->syncBodies();
+    }
+
+    void PhysicsClientHandler::initializeConnection()
+    {
+        syncWithPhysicsServer();
+        cleanDebugItems();
     }
 
 } // namespace physics_client_handler
