@@ -34,17 +34,17 @@ namespace generate_path
                                                                                     });
 
         if (_getParametersFromServer() != ReturnCode::SUCCESS)
-            throw std::runtime_error("Cannot read parameters from server");
+            throw GeneratePathError("Cannot read parameters from server");
         
         _physics_client_handler = std::make_shared<physics_client_handler::PhysicsClientHandler>(_robot_info, _node->get_logger());
-        _ik_engine = std::make_shared<inverse_kinematics::InverseKinematics>(_physics_client_handler, _robot_info, _node->get_logger());
+        _kinematics_engine = std::make_shared<kinematics::Kinematics>(_physics_client_handler, _robot_info, _node->get_logger());
     }
 
     void GeneratePath::_shutdown()
     {
         _joint_state_sub.reset();
         _physics_client_handler.reset();
-        _ik_engine.reset();
+        _kinematics_engine.reset();
     }
 
     GeneratedPath::SharedPtr GeneratePath::generatePath(const InputData::SharedPtr generate_path_input)
@@ -56,21 +56,24 @@ namespace generate_path
 
         auto current_joint_states = _getCurrentJointStates();
         if (!current_joint_states)
-            throw std::runtime_error("There is no joint values coming to module");
+            throw GeneratePathError("There is no joint values coming to module");
 
         RCLCPP_INFO(_node->get_logger(), "[Generate path] Generating pose path");
-        _physics_client_handler->initializeConnection();
+        _physics_client_handler->refreshConnection();
         if (!_physics_client_handler->isSceneValid())
-            throw std::runtime_error("Scene in physics server is not valid");
+            throw GeneratePathError("Scene in physics server is not valid");
 
         auto current_joint_values = _getJointStatesFromTopic(current_joint_states);
 
         PathPlanningInput path_planning_input;
         // Save start and goal state and scene info
         path_planning_input.physics_client_handler = _physics_client_handler;
-        path_planning_input.state_space_size = _robot_info.nr_joints;
+        path_planning_input.kinematics_engine = _kinematics_engine;
+        path_planning_input.num_dof = _robot_info.nr_joints;
         path_planning_input.limits = _robot_info.soft_limits;
         path_planning_input.start_state = current_joint_values;
+        path_planning_input.obstacles = _physics_client_handler->getCollisionObjectsHandles();
+        path_planning_input.timeout = std::chrono::seconds(30);
         
         // Check initial state validity
         RCLCPP_DEBUG(_node->get_logger(), "[Generate path] Validating initial state.");
@@ -78,7 +81,7 @@ namespace generate_path
 
         GeneratedPath::SharedPtr generated_path = std::make_shared<GeneratedPath>();
         generated_path->path_segments.resize(generate_path_input->movement_sequence.size());
-
+        
         // Iterate over all request end effector poses, generate path for each of them
         for (size_t seq_element_id = 0; seq_element_id < generate_path_input->movement_sequence.size(); seq_element_id++)
         {
@@ -91,32 +94,24 @@ namespace generate_path
             helpers::converters::geometryToEigenAffine(req_end_effector_pose.pose, path_planning_input.goal_end_effector_pose);
             _physics_client_handler->drawCoordinateAxes(path_planning_input.goal_end_effector_pose);
             _physics_client_handler->setJointStates(path_planning_input.start_state);
-            path_planning_input.goal_state = _ik_engine->computeIk(path_planning_input.goal_end_effector_pose);
+            path_planning_input.goal_states = _kinematics_engine->ik->computeAllIk(path_planning_input.goal_end_effector_pose, std::chrono::milliseconds(25));
+            if (path_planning_input.goal_states.size() == 0)
+                throw GeneratePathError("Cannot generate any final state (IK failed for requested end effector pose)");
+            RCLCPP_DEBUG_STREAM(_node->get_logger(), "[Generate path]: Passing " << path_planning_input.goal_states.size() << " goal configurations");
 
-            if (path_planning_input.goal_state.size() == 0)
-                throw std::runtime_error("Could not find valid arm configuration for provided end effector pose");
-
-            // TODO: Handle "path_type" and choose different planner according to type
-            switch (req_end_effector_pose.path_type)
-            {
-            case EndEffectorPose::PATH:
-                RCLCPP_INFO(_node->get_logger(), "[Generate path] Path type: PATH");
-                break;
-            case EndEffectorPose::LINEAR:
-                RCLCPP_INFO(_node->get_logger(), "[Generate path] Path type: LINEAR");
-                break;
-            }
+            // Set joint states back to initial state before planning
+            path_planning_input.start_end_effector_pose = _kinematics_engine->fk->computeFk(path_planning_input.start_state);
 
             // Path planning
-            // Set joint states back to initial state before planning
-            _physics_client_handler->setJointStates(path_planning_input.start_state);
+            IPlanner::SharedPtr path_planner = FactoryPlanner::createPlanner(_node->get_logger(), req_end_effector_pose.path_type);
+            if (!path_planner)
+                throw GeneratePathError("Cannot generate path with requested planner because it is not implemented yet");
 
             Path out_path;
-            Planner planer(_node->get_logger());
-            if (planer.solve(path_planning_input, out_path) != ReturnCode::SUCCESS)
-                throw std::runtime_error("Error occured while planning path");
+            if (path_planner->solve(path_planning_input, out_path) != ReturnCode::SUCCESS)
+                throw GeneratePathError("Error occured while planning path");
 
-            // Set arm to last config for visualization and begging of next
+            // Set arm to last config for visualization and start state for next requested pose
             auto last_arm_config = out_path.back();
             _physics_client_handler->setJointStates(last_arm_config);
 
@@ -133,10 +128,10 @@ namespace generate_path
     {
         _physics_client_handler->setJointStates(joint_state);
         if (_checkJointLimits(joint_state, _robot_info.limits) != ReturnCode::SUCCESS)
-            throw std::runtime_error("Invalid state. Joint states are outside of limits");
+            throw GeneratePathError("Invalid state. Joint states are outside of limits");
 
         if (_physics_client_handler->inCollision())
-            throw std::runtime_error("Invalid state. Robot is in collision with scene or itself");
+            throw GeneratePathError("Invalid state. Robot is in collision with scene or itself");
     }
 
     ReturnCode GeneratePath::_checkJointLimits(const ArmConfiguration &joint_states, const std::vector<Limits> &joint_limits)

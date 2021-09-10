@@ -4,7 +4,7 @@
 // ___Package___
 #include "generate_path/visibility_control.h"
 #include "generate_path/commons.hpp"
-#include "generate_path/planner.hpp"
+#include "generate_path/planners/factory_planner.hpp"
 
 namespace generate_path
 {
@@ -37,7 +37,7 @@ namespace generate_path
     std::mutex _current_joint_states_mtx;
     sensor_msgs::msg::JointState::SharedPtr _current_joint_states;
     helpers::commons::RobotInfo _robot_info;
-    inverse_kinematics::InverseKinematics::SharedPtr _ik_engine;
+    kinematics::Kinematics::SharedPtr _kinematics_engine;
     physics_client_handler::PhysicsClientHandler::SharedPtr _physics_client_handler;
   };
 

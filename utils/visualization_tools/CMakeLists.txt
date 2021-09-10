@@ -26,6 +26,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(tf2_eigen REQUIRED)
 find_package(urdf REQUIRED)
 find_package(urdfdom_headers REQUIRED)
 find_package(interactive_markers REQUIRED)
@@ -136,6 +137,7 @@ ament_target_dependencies(${LIBRARY_NAME}
   custom_interfaces
   helpers_vision
   helpers_commons
+  tf2_eigen
 )
 target_compile_definitions(${LIBRARY_NAME} PRIVATE "DEBUGGING_TOOLS_BUILDING_LIBRARY")
 rclcpp_components_register_node(${LIBRARY_NAME}

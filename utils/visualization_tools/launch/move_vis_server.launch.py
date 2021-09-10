@@ -9,5 +9,6 @@ def generate_launch_description():
             executable='go_to_pose_command_node',
             output='both',
             parameters=[{'log_level': 'info'}],
+            # prefix=['xterm -e gdb -ex run --args'],
         ),
     ])

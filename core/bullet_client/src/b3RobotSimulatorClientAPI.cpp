@@ -104,6 +104,24 @@ namespace bullet_client
 		return result;
 	}
 
+	void b3RobotSimulatorClientAPI::performCollisionDetection()
+	{
+		if (!isConnected())
+		{
+			b3Warning("Not connected");
+			return;
+		}
+
+		b3PhysicsClientHandle sm = m_data->m_physicsClientHandle;
+		b3SharedMemoryStatusHandle statusHandle;
+		int statusType;
+
+		if (b3CanSubmitCommand(sm))
+		{
+			statusHandle = b3SubmitClientCommandAndWaitStatus(sm, b3InitPerformCollisionDetectionCommand(sm));
+		}
+	}
+
 	btQuaternion b3RobotSimulatorClientAPI::getDifferenceQuaternion(const btQuaternion &quaternionStart, const btQuaternion &quaternionEnd)
 	{
 		double quatStart[] = {quaternionStart.getX(), quaternionStart.getY(), quaternionStart.getZ(), quaternionStart.getW()};

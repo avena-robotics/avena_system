@@ -150,7 +150,7 @@ namespace bullet_server
         }
 
         urdf_load_args.m_forceOverrideFixedBase = true;
-        // urdf_load_args.m_flags = URDF_USE_SELF_COLLISION_EXCLUDE_PARENT;
+        // urdf_load_args.m_flags = URDF_USE_SELF_COLLISION;
         int robot_id = sim->loadURDF(arm_urdf_path, urdf_load_args);
         RCLCPP_DEBUG_STREAM(get_logger(), "Loaded robot unique ID: " << robot_id);
 

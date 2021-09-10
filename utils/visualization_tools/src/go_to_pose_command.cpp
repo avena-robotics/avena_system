@@ -3,7 +3,8 @@
 namespace visualization_tools
 {
     GoToPoseCommand::GoToPoseCommand(const rclcpp::NodeOptions &options)
-        : Node("go_to_pose_command", options)
+        : Node("go_to_pose_command", options),
+          _marker_count(0)
     //  _lock_marker_interaction(false)
     {
         helpers::commons::setLoggerLevelFromParameter(this);
@@ -22,19 +23,18 @@ namespace visualization_tools
             std::exit(1);
         }
 
-        // _movement_action_clients[GENERATE_PATH_NAME] = rclcpp_action::create_client<GeneratePathPose>(this, GENERATE_PATH_NAME);
-        // _generate_path_pick_client = rclcpp_action::create_client<GeneratePathPick>(this, GENERATE_PATH_PICK_NAME);
         _movement_action_clients[GENERATE_TRAJECTORY_NAME] = rclcpp_action::create_client<GenerateTrajectory>(this, GENERATE_TRAJECTORY_NAME);
-        // _movement_action_clients[EXECUTE_MOVE_NAME] = rclcpp_action::create_client<GenerateTrajectory>(this, EXECUTE_MOVE_NAME);
-
         _movement_sequence_insert_client = create_client<MovementSequenceInsert>("movement_sequence_insert");
         _octomap_insert_client = create_client<OctomapInsert>("scene_insert");
+        _marker_pub = create_publisher<visualization_msgs::msg::Marker>("/constraints", 1);
     }
 
     void GoToPoseCommand::_markerFeedback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback)
     {
         if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::POSE_UPDATE)
+        {
             _request_go_to_pose = feedback->pose;
+        }
     }
 
     void GoToPoseCommand::_movementFeedback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback)
@@ -47,46 +47,31 @@ namespace visualization_tools
 
         if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::MENU_SELECT)
         {
-            // if (_menu_entries[feedback->menu_entry_id] == GENERATE_PATH_NAME)
-            // {
-            //     _sendGeneratePathGoal(_request_go_to_pose);
-            // }
-            // else if (_menu_entries[feedback->menu_entry_id] == GENERATE_PATH_PICK_NAME)
-            // {
-            //     _sendGeneratePathPickGoal(_request_go_to_pose);
-            // }
-            if (_menu_entries[feedback->menu_entry_id] == GENERATE_TRAJECTORY_NAME)
-            {
-                std::thread([this]()
+            std::thread([=]()
+                        {
+                            try
                             {
-                                try
-                                {
-                                    _writeMovementSequence();
-                                    _writeSceneOctomap();
-                                }
-                                catch (const std::exception &e)
-                                {
-                                    RCLCPP_ERROR(get_logger(), "Error occured while inserting movement sequence to server. Error: %s", e.what());
-                                    return;
-                                }
-                                try
-                                {
-                                    _sendGenerateTrajectoryGoal();
-                                }
-                                catch (const std::exception &e)
-                                {
-                                    RCLCPP_ERROR(get_logger(), "Error occured while sending generate trajectory request. Error: %s", e.what());
-                                    return;
-                                }
-                            })
-                    .detach();
-            }
-            // else if (_menu_entries[feedback->menu_entry_id] == EXECUTE_MOVE_NAME)
-            // {
-            //     _sendExecuteMoveGoal();
-            // }
-            else
-                RCLCPP_WARN(get_logger(), "Invalid menu entry");
+                                _deleteConstraintsMarkers();
+
+                                _writeMovementSequence(_menu_entries[feedback->menu_entry_id]);
+                                _writeSceneOctomap();
+                            }
+                            catch (const std::exception &e)
+                            {
+                                RCLCPP_ERROR(get_logger(), "Error occured while inserting movement sequence to server. Error: %s", e.what());
+                                return;
+                            }
+                            try
+                            {
+                                _sendGenerateTrajectoryGoal();
+                            }
+                            catch (const std::exception &e)
+                            {
+                                RCLCPP_ERROR(get_logger(), "Error occured while sending generate trajectory request. Error: %s", e.what());
+                                return;
+                            }
+                        })
+                .detach();
         }
     }
 
@@ -111,7 +96,100 @@ namespace visualization_tools
         action_client->async_send_goal(goal_msg, send_goal_options);
     }
 
-    void GoToPoseCommand::_writeMovementSequence()
+    void GoToPoseCommand::_deleteConstraintsMarkers()
+    {
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "world";
+        marker.header.stamp = now();
+        marker.ns = "/";
+        marker.action = visualization_msgs::msg::Marker::DELETEALL;
+        _marker_pub->publish(marker);
+        _marker_count = 0;
+    }
+
+    void GoToPoseCommand::_drawConstraintArea(const geometry_msgs::msg::Pose &requested_end_effector_pose)
+    {
+        if (auto current_ee_pose = _getEndEffectorPose())
+        {
+            std::vector<double> dims = {std::abs(requested_end_effector_pose.position.x - current_ee_pose->position.x),
+                                        std::abs(requested_end_effector_pose.position.y - current_ee_pose->position.y),
+                                        std::abs(requested_end_effector_pose.position.z - current_ee_pose->position.z)};
+
+            geometry_msgs::msg::Pose pose;
+            pose.position.x = (requested_end_effector_pose.position.x + current_ee_pose->position.x) / 2.0;
+            pose.position.y = (requested_end_effector_pose.position.y + current_ee_pose->position.y) / 2.0;
+            pose.position.z = (requested_end_effector_pose.position.z + current_ee_pose->position.z) / 2.0;
+            pose.orientation.x = 0;
+            pose.orientation.y = 0;
+            pose.orientation.z = 0;
+            pose.orientation.w = 1;
+
+            visualization_msgs::msg::Marker marker;
+            marker.header.frame_id = "world";
+            marker.header.stamp = now();
+            marker.ns = "/";
+            marker.id = _marker_count++;
+
+            marker.type = visualization_msgs::msg::Marker::CUBE;
+            marker.action = visualization_msgs::msg::Marker::ADD;
+            marker.lifetime = rclcpp::Duration::from_seconds(0);
+
+            marker.color.a = 0.5;
+            marker.pose = pose;
+            marker.scale.x = dims.at(0);
+            marker.scale.y = dims.at(1);
+            marker.scale.z = dims.at(2);
+
+            _marker_pub->publish(marker);
+        }
+        else
+            RCLCPP_WARN(get_logger(), "Cannot read end effector current pose");
+    }
+
+    void GoToPoseCommand::_drawConstraintLine(const geometry_msgs::msg::Pose &requested_end_effector_pose)
+    {
+        if (auto current_end_effector_pose_opt = _getEndEffectorPose())
+        {
+            Eigen::Affine3d requested_ee_pose;
+            tf2::fromMsg(requested_end_effector_pose, requested_ee_pose);
+
+            Eigen::Affine3d current_ee_pose;
+            tf2::fromMsg(*current_end_effector_pose_opt, current_ee_pose);
+
+            double dist = (requested_ee_pose.translation() - current_ee_pose.translation()).norm();
+            std::vector<double> dims = {0.001, 0.001, dist};
+
+            geometry_msgs::msg::Pose constraint_area_pose;
+            Eigen::Vector3d middle_point = (requested_ee_pose.translation() + current_ee_pose.translation()) / 2.0;
+            constraint_area_pose.position = tf2::toMsg(middle_point);
+            
+            Eigen::Vector3d direction_axis = (requested_ee_pose.translation() - current_ee_pose.translation()).normalized();
+            Eigen::Quaterniond rotation = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitZ(), direction_axis);
+            constraint_area_pose.orientation = tf2::toMsg(rotation);
+
+            visualization_msgs::msg::Marker marker;
+            marker.header.frame_id = "world";
+            marker.header.stamp = now();
+            marker.ns = "/";
+            marker.id = _marker_count++;
+
+            marker.type = visualization_msgs::msg::Marker::CUBE;
+            marker.action = visualization_msgs::msg::Marker::ADD;
+            marker.lifetime = rclcpp::Duration::from_seconds(0);
+
+            marker.color.a = 0.5;
+            marker.pose = constraint_area_pose;
+            marker.scale.x = dims.at(0);
+            marker.scale.y = dims.at(1);
+            marker.scale.z = dims.at(2);
+
+            _marker_pub->publish(marker);
+        }
+        else
+            RCLCPP_WARN(get_logger(), "Cannot read end effector current pose");
+    }
+
+    void GoToPoseCommand::_writeMovementSequence(const std::string &path_type)
     {
         auto movement_sequence_req = std::make_shared<MovementSequenceInsert::Request>();
         if (!_movement_sequence_insert_client->wait_for_service(std::chrono::seconds(3)))
@@ -119,7 +197,22 @@ namespace visualization_tools
 
         EndEffectorPose ee_pose;
         ee_pose.pose = _request_go_to_pose;
-        ee_pose.path_type = EndEffectorPose::LINEAR;
+
+        if (path_type == LINEAR_PATH)
+        {
+            _deleteConstraintsMarkers();            
+            _drawConstraintLine(_request_go_to_pose);
+            ee_pose.path_type = EndEffectorPose::LINEAR;
+        }
+        else if (path_type == PATH)
+        {
+            ee_pose.path_type = EndEffectorPose::PATH;
+        }
+        else
+        {
+            throw std::runtime_error("Invalid path type \"" + path_type + "\"");
+        }
+
         movement_sequence_req->data.push_back(ee_pose);
 
         RCLCPP_INFO(get_logger(), "Trying to send movement sequence to server");
@@ -301,16 +394,30 @@ namespace visualization_tools
         // handle = menu_handler.insert("Generate path place", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
         // _menu_entries[handle] = GENERATE_PATH_PLACE_NAME;
 
-        // Generate trajectory action
-        handle = menu_handler.insert("Generate trajectory", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
-        _menu_entries[handle] = GENERATE_TRAJECTORY_NAME;
+        // Generate trajectory action (path)
+        handle = menu_handler.insert("Generate trajectory (PATH)", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
+        _menu_entries[handle] = PATH;
+
+        // Generate trajectory action (linear path)
+        handle = menu_handler.insert("Generate trajectory (LINEAR)", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
+        _menu_entries[handle] = LINEAR_PATH;
 
         // // Execute arm movement action
         // handle = menu_handler.insert("Execute move", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
         // _menu_entries[handle] = EXECUTE_MOVE_NAME;
 
+        // Dummy entry to separate motion planning from utils options
+        handle = menu_handler.insert("---", [this](const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr & /*feedback*/) {});
+
         // Reset marker pose to current end effector pose
-        handle = menu_handler.insert("Reset marker", std::bind(&GoToPoseCommand::_resetMarkerPoseFeedback, this, std::placeholders::_1));
+        handle = menu_handler.insert("Reset marker position", std::bind(&GoToPoseCommand::_resetMarkerPoseFeedback, this, std::placeholders::_1));
+
+        // Remove all constraints markers
+        handle = menu_handler.insert("Delete constraints markers",
+                                     [this](const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr & /*feedback*/)
+                                     {
+                                         _deleteConstraintsMarkers();
+                                     });
     }
 
     visualization_msgs::msg::Marker GoToPoseCommand::_makeBox(const visualization_msgs::msg::InteractiveMarker &msg)
