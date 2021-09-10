@@ -25,6 +25,12 @@ namespace bullet_client
 
     btQuaternion getDifferenceQuaternion(const btQuaternion &quaternionStart, const btQuaternion &quaternionEnd);
 
+    /**
+     * @brief It looks like it does not work
+     * 
+     */
+    void performCollisionDetection();
+
     virtual bool connect(int mode, const std::string &hostName = "localhost", int portOrKey = -1);
 
     virtual void renderScene();

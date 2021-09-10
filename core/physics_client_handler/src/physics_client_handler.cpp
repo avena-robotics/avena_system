@@ -21,9 +21,40 @@ namespace physics_client_handler
             _bullet_client->disconnect();
     }
 
+    std::optional<Eigen::MatrixXd> PhysicsClientHandler::getJacobian(const ArmConfiguration &joint_states)
+    {
+        std::vector<double> local_position(joint_states.size(), 0);
+        std::vector<double> joint_velocities(joint_states.size(), 0);
+        std::vector<double> joint_accelerations(joint_states.size(), 0);
+
+        std::vector<double> linear_jacobian(joint_states.size() * 3);
+        std::vector<double> angular_jacobian(joint_states.size() * 3);
+
+        bool success = _bullet_client->getBodyJacobian(_robot_idx, _end_effector_idx, local_position.data(),
+                                                       joint_states.data(), joint_velocities.data(), joint_accelerations.data(),
+                                                       linear_jacobian.data(), angular_jacobian.data());
+        if (!success)
+            return std::nullopt;
+
+        Eigen::MatrixXd jacobian = Eigen::MatrixXd::Zero(6, joint_states.size());
+        for (size_t i = 0; i < joint_states.size(); i++)
+        {
+            jacobian(0, i) = linear_jacobian[0 * joint_states.size() + i];
+            jacobian(1, i) = linear_jacobian[1 * joint_states.size() + i];
+            jacobian(2, i) = linear_jacobian[2 * joint_states.size() + i];
+
+            jacobian(3, i) = angular_jacobian[0 * joint_states.size() + i];
+            jacobian(4, i) = angular_jacobian[1 * joint_states.size() + i];
+            jacobian(5, i) = angular_jacobian[2 * joint_states.size() + i];
+        }
+
+        return jacobian;
+    }
+
     ArmConfiguration PhysicsClientHandler::computeIk(const Eigen::Affine3d &end_effector_pose,
                                                      const std::vector<Limits> &joint_limits,
-                                                     const Obstacles &collision_objects)
+                                                     const Obstacles &collision_objects,
+                                                     const std::chrono::duration<double> &timeout)
     {
         auto initial_state = getJointStates();
 
@@ -49,7 +80,7 @@ namespace physics_client_handler
         bool found_solution = false;
 
         auto start_ik = std::chrono::steady_clock::now();
-        while (std::chrono::steady_clock::now() - start_ik < std::chrono::milliseconds(500))
+        while (std::chrono::steady_clock::now() - start_ik < timeout)
         {
             setJointStates(initial_state);
 
@@ -127,6 +158,113 @@ namespace physics_client_handler
         return found_solution ? goal_configuration : ArmConfiguration();
     }
 
+    std::vector<ArmConfiguration> PhysicsClientHandler::computeAllIk(const Eigen::Affine3d &end_effector_pose,
+                                                                     const std::vector<Limits> &joint_limits,
+                                                                     const Obstacles &collision_objects,
+                                                                     const std::chrono::duration<double> &timeout)
+    {
+        auto initial_state = getJointStates();
+
+        const size_t max_iter = 10;
+
+        Eigen::Vector3d ee_position(end_effector_pose.translation());
+        Eigen::Quaterniond ee_orientation(end_effector_pose.rotation());
+
+        b3RobotSimulatorInverseKinematicArgs args;
+        args.m_bodyUniqueId = _robot_idx;
+        args.m_endEffectorLinkIndex = _end_effector_idx;
+        args.m_numDegreeOfFreedom = _num_degrees_of_freedom;
+        args.m_endEffectorTargetPosition[0] = ee_position.x();
+        args.m_endEffectorTargetPosition[1] = ee_position.y();
+        args.m_endEffectorTargetPosition[2] = ee_position.z();
+        args.m_endEffectorTargetOrientation[0] = ee_orientation.x();
+        args.m_endEffectorTargetOrientation[1] = ee_orientation.y();
+        args.m_endEffectorTargetOrientation[2] = ee_orientation.z();
+        args.m_endEffectorTargetOrientation[3] = ee_orientation.w();
+        args.m_flags |= B3_HAS_IK_TARGET_ORIENTATION;
+
+        std::vector<ArmConfiguration> goal_configurations;
+
+        auto start_ik = std::chrono::steady_clock::now();
+        while (std::chrono::steady_clock::now() - start_ik < timeout)
+        {
+            ArmConfiguration single_goal_configuration(_num_degrees_of_freedom);
+            
+            setJointStates(initial_state);
+
+            bool close_enough = false;
+            size_t iter = 0;
+
+            while (!close_enough && iter++ < max_iter && std::chrono::steady_clock::now() - start_ik < timeout)
+            {
+                b3RobotSimulatorInverseKinematicsResults result;
+                if (_bullet_client->calculateIK(args, result))
+                {
+                    for (size_t i = 0; i < _num_degrees_of_freedom; ++i)
+                        single_goal_configuration[i] = result.m_calculatedJointPositions[i];
+                    // RCLCPP_INFO_STREAM(_logger, "[IK]: size: " << single_goal_configuration.size());
+
+                    setJointStates(single_goal_configuration);
+                    b3LinkState ee_state;
+                    _bullet_client->getLinkState(_robot_idx, _end_effector_idx, 0, 0, &ee_state);
+                    Eigen::Translation3d ee_calculated_position(ee_state.m_worldLinkFramePosition[0], ee_state.m_worldLinkFramePosition[1], ee_state.m_worldLinkFramePosition[2]);
+                    Eigen::Quaterniond ee_calculated_orientation(ee_state.m_worldLinkFrameOrientation[3], ee_state.m_worldLinkFrameOrientation[0], ee_state.m_worldLinkFrameOrientation[1], ee_state.m_worldLinkFrameOrientation[2]);
+                    Eigen::Affine3d calculated_end_effector_pose = ee_calculated_position * ee_calculated_orientation;
+
+                    auto aff_diff = helpers::commons::getDiffBetweenAffines(end_effector_pose, calculated_end_effector_pose);
+                    close_enough = (aff_diff[0] < POSITION_THRESHOLD) &&
+                                   std::abs(aff_diff[1]) < ORIENTATION_THRESHOLD &&
+                                   std::abs(aff_diff[2]) < ORIENTATION_THRESHOLD &&
+                                   std::abs(aff_diff[3]) < ORIENTATION_THRESHOLD;
+                }
+                else
+                    RCLCPP_DEBUG(_logger, "[IK]: Bullet cannot solve IK problem");
+            }
+
+            if (close_enough)
+            {
+                bool in_limits = true;
+                for (size_t i = 0; i < _num_degrees_of_freedom; ++i)
+                {
+                    if (single_goal_configuration[i] < joint_limits[i].lower || single_goal_configuration[i] > joint_limits[i].upper)
+                    {
+                        RCLCPP_DEBUG_STREAM(_logger, "[IK]: Joint " << i + 1 << " out of limits. Value: " << single_goal_configuration[i]
+                                                                    << " [rad]. Limits: [" << joint_limits[i].lower << ", "
+                                                                    << joint_limits[i].upper << " [rad] [rad]");
+                        in_limits = false;
+                        break;
+                    }
+                }
+
+                if (in_limits && !inCollision(collision_objects))
+                {
+                    goal_configurations.emplace_back(single_goal_configuration);
+                }
+            }
+            else
+                RCLCPP_DEBUG(_logger, "[IK]: Found solution is not close enough");
+
+            std::stringstream ss;
+            ss << "Initial joint states for numerical IK solver: ";
+            for (size_t i = 0; i < _num_degrees_of_freedom; ++i)
+            {
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_real_distribution<> distr(joint_limits[i].lower, joint_limits[i].upper);
+                initial_state[i] = distr(gen);
+                ss << initial_state[i];
+                if (i < _num_degrees_of_freedom - 1)
+                    ss << ", ";
+            }
+            RCLCPP_DEBUG(_logger, "[IK]: " + ss.str());
+        }
+        auto stop_ik = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop_ik - start_ik);
+        RCLCPP_DEBUG_STREAM(_logger, "[IK]: Bullet inverse kinematics took: " << duration.count() << " [ms]");
+
+        return goal_configurations;
+    }
+
     bool PhysicsClientHandler::inCollision(const Obstacles &obstacles)
     {
         int contacts_amount = 0;
@@ -140,6 +278,7 @@ namespace physics_client_handler
             _bullet_client->getClosestPoints(obtacles_collision_args, SAFETY_DISTANCE, &contact_info);
             contacts_amount += contact_info.m_numContactPoints;
         }
+        // RCLCPP_DEBUG_STREAM(_logger, "Number of collision points between robot and scene: " << contacts_amount);
 
         // Check self collision
         // TODO: Handle links without any collision shape e.g. "prefix_gripper_connection"
@@ -155,8 +294,42 @@ namespace physics_client_handler
                 self_collision_args.m_linkIndexB = j;
                 _bullet_client->getClosestPoints(self_collision_args, SAFETY_DISTANCE, &contact_info);
                 contacts_amount += contact_info.m_numContactPoints;
+                // if (contact_info.m_numContactPoints > 0)
+                // {
+                //     RCLCPP_DEBUG_STREAM(_logger, "Self collision points: "
+                //                                      << contact_info.m_numContactPoints
+                //                                      << ", link A: " << i << ", link B: " << j);
+                //     b3JointInfo link_a;
+                //     _bullet_client->getJointInfo(_robot_idx, i, &link_a);
+
+                //     b3JointInfo link_b;
+                //     _bullet_client->getJointInfo(_robot_idx, j, &link_b);
+                //     RCLCPP_DEBUG_STREAM(_logger, "Link A: " << link_a.m_linkName << ", link B: " << link_b.m_linkName);
+                // }
+
+                // self_collision_args.m_linkIndexB = j;
+                // // _bullet_client->getContactPoints(self_collision_args, &contact_info);
+                // _bullet_client->getClosestPoints(self_collision_args, SAFETY_DISTANCE, &contact_info);
+                // contacts_amount += contact_info.m_numContactPoints;
+                // if (contact_info.m_numContactPoints > 0)
+                // {
+                //     RCLCPP_DEBUG_STREAM(_logger, "Self collision points: "
+                //                                      << contact_info.m_numContactPoints
+                //                                      << ", link A: " << i << ", link B: " << j);
+                //     for (size_t i = 0; i < contact_info.m_numContactPoints; i++)
+                //     {
+                //         RCLCPP_DEBUG_STREAM(_logger, "Contact: " << i << ", distance: " << contact_info.m_contactPointData[i].m_contactDistance);
+                //     }
+                //     b3JointInfo link_a;
+                //     _bullet_client->getJointInfo(_robot_idx, i, &link_a);
+
+                //     b3JointInfo link_b;
+                //     _bullet_client->getJointInfo(_robot_idx, j, &link_b);
+                //     RCLCPP_DEBUG_STREAM(_logger, "Link A: " << link_a.m_linkName << ", link B: " << link_b.m_linkName);
+                // }
             }
         }
+        // RCLCPP_DEBUG_STREAM(_logger, "Number of collision points: " << contacts_amount);
         return contacts_amount > CONTACT_NUMBER_ALLOWED;
     }
 
@@ -168,7 +341,7 @@ namespace physics_client_handler
 
     const Obstacles &PhysicsClientHandler::getCollisionObjectsHandles()
     {
-        _bullet_client->syncBodies();
+        // _bullet_client->syncBodies();
         _obstacles.clear();
         int num_bodies = _bullet_client->getNumBodies();
         for (int body_id = 0; body_id < num_bodies; ++body_id)
@@ -209,7 +382,6 @@ namespace physics_client_handler
 
     void PhysicsClientHandler::_readSceneInfoFromPhysicsServer(const helpers::commons::RobotInfo &robot_info)
     {
-        _bullet_client->syncBodies();
         int num_bodies = _bullet_client->getNumBodies();
         if (num_bodies == 0)
             throw PhysicsClientHandlerError("There are no objects in the physics server");
@@ -264,7 +436,7 @@ namespace physics_client_handler
 
     std::optional<Eigen::Affine3d> PhysicsClientHandler::getEndEffectorPose()
     {
-        _bullet_client->syncBodies();
+        // _bullet_client->syncBodies();
         b3LinkState link_state;
         if (!_bullet_client->getLinkState(_robot_idx, _end_effector_idx, 0, 0, &link_state))
             return std::nullopt;
@@ -274,37 +446,37 @@ namespace physics_client_handler
         return ee_position * ee_orientation;
     }
 
-    void PhysicsClientHandler::drawCoordinateAxes(const Eigen::Affine3d &pose)
-    {
-        Eigen::Vector3d position(pose.translation());
-        Eigen::Quaterniond orientation(pose.rotation());
-        Eigen::Vector3d x_shift = orientation.toRotationMatrix().col(0) * 0.2;
-        Eigen::Vector3d pos_x = position + x_shift;
+    // void PhysicsClientHandler::drawCoordinateAxes(const Eigen::Affine3d &pose, double scale)
+    // {
+    //     Eigen::Vector3d position(pose.translation());
+    //     Eigen::Quaterniond orientation(pose.rotation());
+    // Eigen::Vector3d x_shift = orientation.toRotationMatrix().col(0) * scale;
+    //     Eigen::Vector3d pos_x = position + x_shift;
 
-        Eigen::Vector3d y_shift = orientation.toRotationMatrix().col(1) * 0.2;
-        Eigen::Vector3d pos_y = position + y_shift;
+    //     Eigen::Vector3d y_shift = orientation.toRotationMatrix().col(1) * scale;
+    //     Eigen::Vector3d pos_y = position + y_shift;
 
-        Eigen::Vector3d z_shift = orientation.toRotationMatrix().col(2) * 0.2;
-        Eigen::Vector3d pos_z = position + z_shift;
+    //     Eigen::Vector3d z_shift = orientation.toRotationMatrix().col(2) * scale;
+    //     Eigen::Vector3d pos_z = position + z_shift;
 
-        b3RobotSimulatorAddUserDebugLineArgs LINE_ARGS;
-        LINE_ARGS.m_colorRGB[0] = 1;
-        LINE_ARGS.m_colorRGB[1] = 0;
-        LINE_ARGS.m_colorRGB[2] = 0;
-        btVector3 from(position.x(), position.y(), position.z());
-        btVector3 to_x(pos_x.x(), pos_x.y(), pos_x.z());
-        _bullet_client->addUserDebugLine(from, to_x, LINE_ARGS);
-        LINE_ARGS.m_colorRGB[0] = 0;
-        LINE_ARGS.m_colorRGB[1] = 1;
-        LINE_ARGS.m_colorRGB[2] = 0;
-        btVector3 to_y(pos_y.x(), pos_y.y(), pos_y.z());
-        _bullet_client->addUserDebugLine(from, to_y, LINE_ARGS);
-        LINE_ARGS.m_colorRGB[0] = 0;
-        LINE_ARGS.m_colorRGB[1] = 0;
-        LINE_ARGS.m_colorRGB[2] = 1;
-        btVector3 to_z(pos_z.x(), pos_z.y(), pos_z.z());
-        _bullet_client->addUserDebugLine(from, to_z, LINE_ARGS);
-    }
+    //     b3RobotSimulatorAddUserDebugLineArgs LINE_ARGS;
+    //     LINE_ARGS.m_colorRGB[0] = 1;
+    //     LINE_ARGS.m_colorRGB[1] = 0;
+    //     LINE_ARGS.m_colorRGB[2] = 0;
+    //     btVector3 from(position.x(), position.y(), position.z());
+    //     btVector3 to_x(pos_x.x(), pos_x.y(), pos_x.z());
+    //     _bullet_client->addUserDebugLine(from, to_x, LINE_ARGS);
+    //     LINE_ARGS.m_colorRGB[0] = 0;
+    //     LINE_ARGS.m_colorRGB[1] = 1;
+    //     LINE_ARGS.m_colorRGB[2] = 0;
+    //     btVector3 to_y(pos_y.x(), pos_y.y(), pos_y.z());
+    //     _bullet_client->addUserDebugLine(from, to_y, LINE_ARGS);
+    //     LINE_ARGS.m_colorRGB[0] = 0;
+    //     LINE_ARGS.m_colorRGB[1] = 0;
+    //     LINE_ARGS.m_colorRGB[2] = 1;
+    //     btVector3 to_z(pos_z.x(), pos_z.y(), pos_z.z());
+    //     _bullet_client->addUserDebugLine(from, to_z, LINE_ARGS);
+    // }
 
     bool PhysicsClientHandler::isSceneValid()
     {
@@ -334,7 +506,7 @@ namespace physics_client_handler
         _bullet_client->syncBodies();
     }
 
-    void PhysicsClientHandler::initializeConnection()
+    void PhysicsClientHandler::refreshConnection()
     {
         syncWithPhysicsServer();
         cleanDebugItems();

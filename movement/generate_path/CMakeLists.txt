@@ -23,13 +23,15 @@ find_package(rclcpp REQUIRED)
 find_package(custom_interfaces REQUIRED)
 find_package(helpers_commons REQUIRED)
 find_package(helpers_vision REQUIRED)
-find_package(inverse_kinematics REQUIRED)
+find_package(kinematics REQUIRED)
 find_package(physics_client_handler REQUIRED)
 find_package(ompl REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED 
   src/generate_path.cpp
-  src/planner.cpp
+  src/planners/base_planner.cpp
+  src/planners/simple_planner.cpp
+  src/planners/linear_planner.cpp
 )
 target_include_directories(${PROJECT_NAME} 
   PUBLIC
@@ -46,7 +48,7 @@ ament_target_dependencies(${PROJECT_NAME}
   custom_interfaces
   helpers_commons
   helpers_vision
-  inverse_kinematics
+  kinematics
   physics_client_handler
 )
 # rclcpp_components_register_nodes(${PROJECT_NAME} "generate_path::GeneratePath")
@@ -87,7 +89,7 @@ ament_export_dependencies(
   custom_interfaces
   helpers_commons
   helpers_vision
-  inverse_kinematics
+  kinematics
   physics_client_handler
 )
 

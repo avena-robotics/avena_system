@@ -50,7 +50,8 @@ namespace generate_trajectory
         for (auto &path_segment : generated_path->path_segments)
         {
             trajectory_msgs::msg::JointTrajectory trajectory;
-            _generateTrajectoryFromPathSegment(path_segment, trajectory);
+            if (_generateTrajectoryFromPathSegment(path_segment, trajectory))
+                throw std::runtime_error("Error occured while generating trajectory");
 
             // Offset time_from_start
             std::for_each(trajectory.points.begin(), trajectory.points.end(),

@@ -15,7 +15,7 @@
 // ___Avena___
 #include <helpers_commons/helpers_commons.hpp>
 #include <helpers_vision/helpers_vision.hpp>
-#include <inverse_kinematics/inverse_kinematics.hpp>
+#include <kinematics/kinematics.hpp>
 #include <physics_client_handler/physics_client_handler.hpp>
 #include <custom_interfaces/msg/generated_path.hpp>
 #include <custom_interfaces/msg/end_effector_pose.hpp>
@@ -51,11 +51,32 @@ namespace generate_path
   struct PathPlanningInput
   {
     ArmConfiguration start_state;
-    ArmConfiguration goal_state;
+    std::vector<ArmConfiguration> goal_states;
+    Eigen::Affine3d start_end_effector_pose;
     Eigen::Affine3d goal_end_effector_pose;
     std::vector<Limits> limits;
-    size_t state_space_size;
+    size_t num_dof;
     physics_client_handler::PhysicsClientHandler::SharedPtr physics_client_handler;
+    physics_client_handler::Obstacles obstacles;
+    kinematics::Kinematics::SharedPtr kinematics_engine;
+    std::chrono::duration<double> timeout;
+  };
+
+  class GeneratePathError : public std::exception
+  {
+  public:
+    explicit GeneratePathError(const std::string &error)
+    {
+      _error = "[Generate path]: " + error;
+    }
+
+    const char *what() const noexcept override
+    {
+      return _error.c_str();
+    }
+
+  private:
+    std::string _error;
   };
 
 } // namespace generate_path
