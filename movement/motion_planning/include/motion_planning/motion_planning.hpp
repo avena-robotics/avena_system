@@ -41,6 +41,7 @@ namespace motion_planning
 
     // Debug publishers
     rclcpp::Publisher<generate_path::GeneratedPath>::SharedPtr _generated_path_pub_debug;
+    rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr _generated_trajectory_pub_debug;
   };
 
 } // namespace motion_planning

@@ -25,7 +25,7 @@ namespace generate_path
 
     void GeneratePath::_initialize()
     {
-        _joint_state_sub = _node->create_subscription<sensor_msgs::msg::JointState>("arm_joint_states", 10,
+        _joint_state_sub = _node->create_subscription<sensor_msgs::msg::JointState>("joint_states", 10,
                                                                                     [this](const sensor_msgs::msg::JointState::SharedPtr joint_states_msg)
                                                                                     {
                                                                                         std::lock_guard<std::mutex> lg(_current_joint_states_mtx);
@@ -35,7 +35,7 @@ namespace generate_path
 
         if (_getParametersFromServer() != ReturnCode::SUCCESS)
             throw GeneratePathError("Cannot read parameters from server");
-        
+
         _physics_client_handler = std::make_shared<physics_client_handler::PhysicsClientHandler>(_robot_info, _node->get_logger());
         _kinematics_engine = std::make_shared<kinematics::Kinematics>(_physics_client_handler, _robot_info, _node->get_logger());
     }
@@ -73,15 +73,15 @@ namespace generate_path
         path_planning_input.limits = _robot_info.soft_limits;
         path_planning_input.start_state = current_joint_values;
         path_planning_input.obstacles = _physics_client_handler->getCollisionObjectsHandles();
-        path_planning_input.timeout = std::chrono::seconds(30);
-        
+        path_planning_input.timeout = std::chrono::seconds(10);
+
         // Check initial state validity
         RCLCPP_DEBUG(_node->get_logger(), "[Generate path] Validating initial state.");
         _validateArmConfiguration(path_planning_input.start_state);
 
         GeneratedPath::SharedPtr generated_path = std::make_shared<GeneratedPath>();
         generated_path->path_segments.resize(generate_path_input->movement_sequence.size());
-        
+
         // Iterate over all request end effector poses, generate path for each of them
         for (size_t seq_element_id = 0; seq_element_id < generate_path_input->movement_sequence.size(); seq_element_id++)
         {
@@ -127,8 +127,8 @@ namespace generate_path
     void GeneratePath::_validateArmConfiguration(const ArmConfiguration &joint_state)
     {
         _physics_client_handler->setJointStates(joint_state);
-        if (_checkJointLimits(joint_state, _robot_info.limits) != ReturnCode::SUCCESS)
-            throw GeneratePathError("Invalid state. Joint states are outside of limits");
+        if (_checkJointLimits(joint_state, _robot_info.soft_limits) != ReturnCode::SUCCESS)
+            throw GeneratePathError("Invalid state. Joint states are outside of soft limits");
 
         if (_physics_client_handler->inCollision())
             throw GeneratePathError("Invalid state. Robot is in collision with scene or itself");
@@ -224,7 +224,7 @@ namespace generate_path
         return current_joint_states;
     }
 
-    void GeneratePath::_updateOctomap(const pcl::PointCloud<pcl::PointXYZ>::Ptr &/*octomap*/)
+    void GeneratePath::_updateOctomap(const pcl::PointCloud<pcl::PointXYZ>::Ptr & /*octomap*/)
     {
         // TODO: Implement
     }

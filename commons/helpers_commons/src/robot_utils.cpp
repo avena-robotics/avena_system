@@ -64,21 +64,29 @@ namespace helpers
 
             // Get links
             for (auto &[link_name, link_info] : model->links_)
-            {
+            {   
                 if (link_info->visual || link_info->visual_array.size() != 0)
+                {
+                    if (link_name.find("gripper") == std::string::npos && link_name.find("link") != std::string::npos)
+                        robot_info.link_names.push_back(link_name);
+                    else
+                        robot_info.gripper_info.link_names.push_back(link_name);
+                }
+                else
                 {
                     if (!link_info->getParent())
                     {
                         RCLCPP_DEBUG(rclcpp::get_logger("helpers"), "Found base link name: %s", link_name);
                         robot_info.base_link_name = link_name;
                     }
-                    if (link_name.find("gripper") == std::string::npos && link_name.find("link") != std::string::npos)
-                        robot_info.link_names.push_back(link_name);
-                    else
-                        robot_info.gripper_info.link_names.push_back(link_name);
                 }
             }
             robot_info.nr_links = robot_info.link_names.size();
+            if (robot_info.base_link_name.empty())
+            {
+                RCLCPP_ERROR(rclcpp::get_logger("helpers"), "URDF is ill formed. There is no base link in it. Fix URDF");
+                return std::nullopt;
+            }
 
             // Get joints (fixed and moving)
             for (auto &[joint_name, joint_info] : model->joints_)

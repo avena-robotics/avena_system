@@ -37,6 +37,7 @@ endif()
 install(DIRECTORY
   launch
   urdf
+  worlds
   DESTINATION share/${PROJECT_NAME}/
 )
 

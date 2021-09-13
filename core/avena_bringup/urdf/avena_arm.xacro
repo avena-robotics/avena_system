@@ -5,6 +5,8 @@
   </material>
 
   <xacro:macro name="avena_arm" params="arm_id:='avena' description_pkg:='avena_bringup'">
+    <!-- Links -->
+    <link name="base_link" />
     <link name="${arm_id}_link_0">
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0" />
@@ -103,7 +105,7 @@
         <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
       </inertial>
       <collision>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 0.064" rpy="${pi/2} 0 ${pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_4.stl" scale="0.001 0.001 0.001" />
         </geometry>
@@ -124,7 +126,7 @@
         <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
       </inertial>
       <collision>
-        <origin xyz="0 0 0" rpy="0 0 0" />
+        <origin xyz="0 0 0.064" rpy="${pi/2} 0 ${pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_5.stl" scale="0.001 0.001 0.001" />
         </geometry>
@@ -155,6 +157,13 @@
     <link name="${arm_id}_gripper_connection"/>
 
     <!-- Joints -->
+    <joint name="base_joint" type="fixed">
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <parent link="base_link"/>
+      <child link="${arm_id}_link_0"/>
+      <axis xyz="0 0 0"/>
+    </joint>
+
     <joint name="${arm_id}_joint_1" type="revolute">
       <origin xyz="0 0 0.063" rpy="0 0 0" />
       <parent link="${arm_id}_link_0" />

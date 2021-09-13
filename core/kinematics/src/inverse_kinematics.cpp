@@ -88,9 +88,11 @@ namespace kinematics
         }
 
         auto start_time = std::chrono::steady_clock::now();
+        auto end_time = start_time + timeout;
         auto time_expired = [=]() -> bool
         {
-            return std::chrono::steady_clock::now() - start_time >= timeout;
+            // Only half of the timeout is allowed for IK Fast calculations
+            return std::chrono::steady_clock::now() - start_time >= timeout / 2;
         };
 
         ///////////////////////////////////////////////////////////////////////
@@ -102,28 +104,19 @@ namespace kinematics
 
         // Get rotation of end effector
         IkReal eerot[9];
-        auto quat = Eigen::Quaterniond(end_effector_pose_robot_frame.rotation());
-        auto rot_matrix = quat.normalized().toRotationMatrix();
-        eerot[0] = rot_matrix(0);
-        eerot[1] = rot_matrix(3);
-        eerot[2] = rot_matrix(6);
-        eerot[3] = rot_matrix(1);
-        eerot[4] = rot_matrix(4);
-        eerot[5] = rot_matrix(7);
-        eerot[6] = rot_matrix(2);
-        eerot[7] = rot_matrix(5);
-        eerot[8] = rot_matrix(8);
+        Eigen::Quaterniond quat(end_effector_pose_robot_frame.rotation());
+        Eigen::Matrix3d rot_matrix = quat.normalized().toRotationMatrix();
+        rot_matrix.transposeInPlace();
+        for (long int i = 0; i < rot_matrix.size(); i++)
+            eerot[i] = rot_matrix(i);
 
         // Get translation of end effector
         IkReal eetrans[3];
-        auto trans_vec = Eigen::Vector3d(end_effector_pose_robot_frame.translation());
-        eetrans[0] = trans_vec(0);
-        eetrans[1] = trans_vec(1);
-        eetrans[2] = trans_vec(2);
+        Eigen::Vector3d trans_vec = Eigen::Vector3d(end_effector_pose_robot_frame.translation());
+        for (long int i = 0; i < trans_vec.size(); i++)
+            eetrans[i] = trans_vec(i);
 
         std::vector<ArmConfiguration> goal_configurations;
-
-        // ArmConfiguration goal_configuration;
         if (_robot_info.robot_name == "avena")
         {
             // Avena
@@ -225,11 +218,12 @@ namespace kinematics
         {
             throw IkError("Unsupported robot to calculate IK");
         }
+        RCLCPP_DEBUG_STREAM(_logger, "Amount of valid configurations calculated with IK Fast: " << goal_configurations.size());
 
         ///////////////////////////////////////////////////////////////////////
         // Bullet IK
         _physics_server_handler->setJointStates(current_state);
-        auto remaining_timeout = start_time + timeout - std::chrono::steady_clock::now();
+        auto remaining_timeout = end_time - std::chrono::steady_clock::now();
         if (remaining_timeout > std::chrono::seconds(0))
         {
             RCLCPP_DEBUG_STREAM(_logger, "Remaining timeout for Bullet IK calculation: " << std::chrono::duration_cast<std::chrono::milliseconds>(remaining_timeout).count() << " [ms]");
@@ -254,24 +248,17 @@ namespace kinematics
 
         // Get rotation of end effector
         IkReal eerot[9];
-        auto quat = Eigen::Quaterniond(end_effector_pose_robot_frame.rotation());
-        auto rot_matrix = quat.normalized().toRotationMatrix();
-        eerot[0] = rot_matrix(0);
-        eerot[1] = rot_matrix(3);
-        eerot[2] = rot_matrix(6);
-        eerot[3] = rot_matrix(1);
-        eerot[4] = rot_matrix(4);
-        eerot[5] = rot_matrix(7);
-        eerot[6] = rot_matrix(2);
-        eerot[7] = rot_matrix(5);
-        eerot[8] = rot_matrix(8);
-
+        Eigen::Quaterniond quat(end_effector_pose_robot_frame.rotation());
+        Eigen::Matrix3d rot_matrix = quat.normalized().toRotationMatrix();
+        rot_matrix.transposeInPlace();
+        for (long int i = 0; i < rot_matrix.size(); i++)
+            eerot[i] = rot_matrix(i);
+        
         // Get translation of end effector
         IkReal eetrans[3];
-        auto trans_vec = Eigen::Vector3d(end_effector_pose_robot_frame.translation());
-        eetrans[0] = trans_vec(0); // - _reference_frame.transform.translation.x;
-        eetrans[1] = trans_vec(1); // - _reference_frame.transform.translation.y;
-        eetrans[2] = trans_vec(2); // - _reference_frame.transform.translation.z;
+        Eigen::Vector3d trans_vec = Eigen::Vector3d(end_effector_pose_robot_frame.translation());
+        for (long int i = 0; i < trans_vec.size(); i++)
+            eetrans[i] = trans_vec(i);
 
         ArmConfiguration goal_configuration;
         if (_robot_info.robot_name == "avena")
@@ -480,18 +467,5 @@ namespace kinematics
     {
         _reference_frame = reference_frame;
     }
-
-    // void InverseKinematics::_updateJointLimits(const float &joint_range_coeff)
-    // {
-    //     // const double range_tighten_coeff = 0.9; // values from 0.0 - 1.0 how much scale down range for joint limits
-    //     for (size_t i = 0; i < _robot_info.limits.size(); ++i)
-    //     {
-    //         auto range_middle = (_robot_info.limits[i].lower + _robot_info.limits[i].upper) / 2.0;
-    //         auto range_middle_to_limit_dist = _robot_info.limits[i].upper - range_middle;
-    //         auto offset = (range_middle_to_limit_dist * (1.0 - joint_range_coeff)) / 2.0;
-    //         _robot_info.soft_limits[i].lower += _robot_info.soft_limits[i].lower + offset;
-    //         _robot_info.soft_limits[i].upper -= _robot_info.soft_limits[i].upper - offset;
-    //     }
-    // }
 
 } // namespace kinematics

@@ -26,7 +26,7 @@ def launch_setup(context, *args, **kwargs):
             package='tf2_ros',
             executable='static_transform_publisher',
             output='both',
-            arguments=[world_to_link_0_pos['x'], world_to_link_0_pos['y'], world_to_link_0_pos['z'], '0', '0', '0', '1', 'world', f'{working_side}_{robot}_link_0']
+            arguments=[world_to_link_0_pos['x'], world_to_link_0_pos['y'], world_to_link_0_pos['z'], '0', '0', '0', '1', 'world', 'base_link']
         ),
         # IncludeLaunchDescription(
         #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
