@@ -296,36 +296,12 @@ namespace physics_client_handler
                 contacts_amount += contact_info.m_numContactPoints;
                 // if (contact_info.m_numContactPoints > 0)
                 // {
-                //     RCLCPP_DEBUG_STREAM(_logger, "Self collision points: "
-                //                                      << contact_info.m_numContactPoints
-                //                                      << ", link A: " << i << ", link B: " << j);
                 //     b3JointInfo link_a;
                 //     _bullet_client->getJointInfo(_robot_idx, i, &link_a);
-
                 //     b3JointInfo link_b;
                 //     _bullet_client->getJointInfo(_robot_idx, j, &link_b);
-                //     RCLCPP_DEBUG_STREAM(_logger, "Link A: " << link_a.m_linkName << ", link B: " << link_b.m_linkName);
-                // }
-
-                // self_collision_args.m_linkIndexB = j;
-                // // _bullet_client->getContactPoints(self_collision_args, &contact_info);
-                // _bullet_client->getClosestPoints(self_collision_args, SAFETY_DISTANCE, &contact_info);
-                // contacts_amount += contact_info.m_numContactPoints;
-                // if (contact_info.m_numContactPoints > 0)
-                // {
-                //     RCLCPP_DEBUG_STREAM(_logger, "Self collision points: "
-                //                                      << contact_info.m_numContactPoints
-                //                                      << ", link A: " << i << ", link B: " << j);
-                //     for (size_t i = 0; i < contact_info.m_numContactPoints; i++)
-                //     {
-                //         RCLCPP_DEBUG_STREAM(_logger, "Contact: " << i << ", distance: " << contact_info.m_contactPointData[i].m_contactDistance);
-                //     }
-                //     b3JointInfo link_a;
-                //     _bullet_client->getJointInfo(_robot_idx, i, &link_a);
-
-                //     b3JointInfo link_b;
-                //     _bullet_client->getJointInfo(_robot_idx, j, &link_b);
-                //     RCLCPP_DEBUG_STREAM(_logger, "Link A: " << link_a.m_linkName << ", link B: " << link_b.m_linkName);
+                //     RCLCPP_DEBUG_STREAM(_logger, "Collision points: " << contact_info.m_numContactPoints
+                //                                      << ", A: " << link_a.m_linkName << ", B: " << link_b.m_linkName);
                 // }
             }
         }

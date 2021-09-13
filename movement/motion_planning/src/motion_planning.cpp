@@ -68,6 +68,7 @@ namespace motion_planning
 
         // Debugging publishers
         _generated_path_pub_debug = create_publisher<generate_path::GeneratedPath>("/debug/generated_path", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local());
+        _generated_trajectory_pub_debug = create_publisher<trajectory_msgs::msg::JointTrajectory>("/debug/trajectory", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local());
     }
 
     void MotionPlanning::_shutdown()
@@ -79,6 +80,7 @@ namespace motion_planning
         _generate_path_handler.reset();
         _generate_trajectory_handler.reset();
         _generated_path_pub_debug.reset();
+        _generated_trajectory_pub_debug.reset();
     }
 
     // ___Pose action___
@@ -165,6 +167,12 @@ namespace motion_planning
             return;
         }
         RCLCPP_DEBUG(get_logger(), "Generated trajectory has length of %ld", generated_trajectory->points.size());
+        
+        if (_generated_trajectory_pub_debug->get_subscription_count() > 0)
+        {
+            RCLCPP_DEBUG(get_logger(), "Publishing generated trajectory for debugging");
+            _generated_trajectory_pub_debug->publish(*generated_trajectory);
+        }
 
         // ----------------------------------------------------
         // Output processing - write to store

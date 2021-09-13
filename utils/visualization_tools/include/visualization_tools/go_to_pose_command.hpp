@@ -10,6 +10,8 @@
 #include <tf2_eigen/tf2_eigen.h>
 #include <interactive_markers/interactive_marker_server.hpp>
 #include <interactive_markers/menu_handler.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 // ___Avena___
 #include <custom_interfaces/srv/data_store_movement_sequence_insert.hpp>
@@ -20,6 +22,14 @@
 
 namespace visualization_tools
 {
+  enum class MenuEntries_e
+  {
+    PATH,
+    LINEAR_PATH,
+    CLEAR_SEQUENCE,
+    START_PLANNING,
+  };
+
   class GoToPoseCommand : public rclcpp::Node
   {
   public:
@@ -27,9 +37,6 @@ namespace visualization_tools
     using OctomapInsert = custom_interfaces::srv::DataStoreSceneInsert;
 
     using EndEffectorPose = custom_interfaces::msg::EndEffectorPose;
-
-    // using GeneratePathPose = custom_interfaces::action::GeneratePathPose;
-    // using GoalHandleGeneratePathPose = rclcpp_action::ClientGoalHandle<GeneratePathPose>;
 
     using GenerateTrajectory = custom_interfaces::action::SimpleAction;
     using GoalHandleGenerateTrajectory = rclcpp_action::ClientGoalHandle<GenerateTrajectory>;
@@ -50,12 +57,13 @@ namespace visualization_tools
     void _setupMenuEntries(interactive_markers::MenuHandler &menu_handler);
     geometry_msgs::msg::Quaternion _eigenToRos(const Eigen::Quaternionf &orien);
     std::optional<geometry_msgs::msg::Pose> _getEndEffectorPose();
-    void _drawConstraintArea(const geometry_msgs::msg::Pose &requested_end_effector_pose);
-    void _drawConstraintLine(const geometry_msgs::msg::Pose &requested_end_effector_pose);
-    void _deleteConstraintsMarkers();
+    // void _drawConstraintArea(const geometry_msgs::msg::Pose &start_end_effector_pose, const geometry_msgs::msg::Pose &requested_end_effector_pose);
+    visualization_msgs::msg::Marker _getConstraintLine(const geometry_msgs::msg::Pose &start_end_effector_pose, const geometry_msgs::msg::Pose &requested_end_effector_pose);
+    void _deleteMotionPlanningInfoMarkers();
 
-    void _writeMovementSequence(const std::string &path_type) noexcept(false);
-    void _writeSceneOctomap() noexcept(false);
+    void _writeMovementSequenceToServer() noexcept(false);
+    void _saveSequenceSegmentToBuffer(const MenuEntries_e &path_type) noexcept(false);
+    void _writeSceneOctomapToServer() noexcept(false);
 
     // Generate path
     void _sendGeneratePathGoal(const geometry_msgs::msg::Pose &requested_end_effector_pose);
@@ -69,25 +77,27 @@ namespace visualization_tools
 
     std::shared_ptr<interactive_markers::InteractiveMarkerServer> _interactive_markers_server;
     interactive_markers::MenuHandler _menu_handler;
-    std::map<interactive_markers::MenuHandler::EntryHandle, std::string> _menu_entries;
+    std::map<interactive_markers::MenuHandler::EntryHandle, MenuEntries_e> _menu_entries;
 
     helpers::commons::RobotInfo _robot_info;
     geometry_msgs::msg::Pose _request_go_to_pose;
     std::map<std::string, rclcpp_action::ClientBase::SharedPtr> _movement_action_clients;
     rclcpp::Client<MovementSequenceInsert>::SharedPtr _movement_sequence_insert_client;
     rclcpp::Client<OctomapInsert>::SharedPtr _octomap_insert_client;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr _marker_pub;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr _motion_planning_info_markers_pub;
+    rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr _sequence_poses_pub;
     size_t _marker_count;
+    std::vector<EndEffectorPose> _sequence_to_execute;
 
     // bool _lock_marker_interaction;
 
     // ___Constants___
     const std::string GENERATE_TRAJECTORY_NAME = "generate_trajectory";
-    const std::string PATH = "path";
-    const std::string LINEAR_PATH = "linear_path";
+    // const std::string PATH = "path";
+    // const std::string LINEAR_PATH = "linear_path";
 
-    // const std::string EXECUTE_MOVE_NAME = "execute_move";
-    const std::string RESET_MARKER_POSE = "reset_marker_pose";
+    // // const std::string EXECUTE_MOVE_NAME = "execute_move";
+    // const std::string RESET_MARKER_POSE = "reset_marker_pose";
     const std::chrono::seconds WAITING_FOR_ACTION_TIMEOUT = std::chrono::seconds(2);
   };
 } // namespace visualization_tools

@@ -71,13 +71,13 @@ namespace generate_path
         // ///////////////////////////////////////////////////////////////////
 
         // Setup planning termination condition
-        ompl::base::PlannerTerminationCondition ptc_exact_solution = ompl::base::exactSolnPlannerTerminationCondition(simple_setup->getProblemDefinition());
-        ompl::base::PlannerTerminationCondition ptc_timeout = ompl::base::timedPlannerTerminationCondition(path_planning_input.timeout.count());
-        ompl::base::PlannerTerminationCondition ptc = ompl::base::plannerOrTerminationCondition(ptc_exact_solution, ptc_timeout);
+        auto ptc_exact_solution = ompl::base::exactSolnPlannerTerminationCondition(simple_setup->getProblemDefinition());
+        auto ptc_timeout = ompl::base::timedPlannerTerminationCondition(path_planning_input.timeout.count());
+        auto ptc = ompl::base::plannerOrTerminationCondition(ptc_exact_solution, ptc_timeout);
 
         RCLCPP_INFO_STREAM(_logger, "[Linear planner]: Solving for " << path_planning_input.timeout.count() << " seconds");
-        ompl::base::PlannerStatus status = simple_setup->solve(ptc_exact_solution);
-        if (status)
+        ompl::base::PlannerStatus status = simple_setup->solve(ptc);
+        if (status == ompl::base::PlannerStatus::StatusType::EXACT_SOLUTION)
         {
             simple_setup->simplifySolution();
 
