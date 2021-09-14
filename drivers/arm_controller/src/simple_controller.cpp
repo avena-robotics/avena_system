@@ -463,10 +463,6 @@ void SimpleController::init()
     _i_clamp_h.resize(_joints_number);
     _i_clamp_l.resize(_joints_number);
     _c_friction_val.resize(_joints_number);
-    
-    _log_msg.position.resize(_joints_number);
-    _log_msg.velocity.resize(_joints_number);
-    _log_msg.effort.resize(_joints_number);
 
     _set_joint_state_msg.name.resize(_joints_number);
     _set_joint_state_msg.position.resize(_joints_number);
@@ -862,8 +858,10 @@ void SimpleController::init()
         _controller_state_pub->publish(state_msg);
         _arm_command.timestamp=std::chrono::steady_clock::now();
         _arm_interface->setArmCommand(_arm_command);
-        _exec->spin_some(std::chrono::nanoseconds(100000));
 
+        // std::chrono::steady_clock::time_point asdf=std::chrono::steady_clock::now();
+        _exec->spin_some(std::chrono::nanoseconds(10000));
+        // RCLCPP_INFO(_node->get_logger(), "cb: %i", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - asdf).count());
         // Wait for the result.
 
         loop_it++;
@@ -883,7 +881,7 @@ void SimpleController::init()
         // RCLCPP_INFO(_node->get_logger(), "time_remaining: %i", _remaining_time);
         if (_remaining_time < 0)
         {
-            RCLCPP_ERROR(_node->get_logger(), "loop taking too long to execute");
+            RCLCPP_ERROR(_node->get_logger(), "Loop taking too long to execute. Loop took: %i us",std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
         }
         std::this_thread::sleep_for(std::chrono::microseconds(_remaining_time));
 
