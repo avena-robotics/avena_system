@@ -116,8 +116,8 @@ private:
     std::chrono::microseconds _time_accumulator, _slowdown_duration;
     double _time_factor, _prev_time_factor;
 
+    //TRAJECTORY
     trajectory_msgs::msg::JointTrajectory _trajectory;
-
     trajectory_msgs::msg::JointTrajectory _saved_trajectory;
 
     //COMMUNICATION
@@ -137,15 +137,8 @@ private:
     //SERVICES
     rclcpp::Service<custom_interfaces::srv::ControlCommand>::SharedPtr _command_service;
 
-    //CLIENTS
-    // rclcpp::Client<custom_interfaces::srv::SetArmTorques>::SharedPtr _set_client;
-    // rclcpp::Client<custom_interfaces::srv::GetArmState>::SharedPtr _get_client;
+    sensor_msgs::msg::JointState _set_joint_state_msg, _arm_joint_state_msg;
 
-    sensor_msgs::msg::JointState _set_joint_state_msg,_arm_joint_state_msg;
-    // std::shared_future<std::shared_ptr<custom_interfaces::srv::SetArmTorques_Response>> _set_result;
-    // std::shared_future<std::shared_ptr<custom_interfaces::srv::GetArmState_Response>> _get_result;
-
-    //methods
 
     //loads friction chart
     void loadFrictionChart(std::string path);
@@ -155,8 +148,7 @@ private:
     void loadTrajTxt(std::string path);
     //reads friction value from loaded friction chart, corresponding to current join velocity and temperature
     double compensateFriction(double vel, double temp, int jnt_idx);
-    // void setTrajectoryCb(const std::shared_ptr<custom_interfaces::srv::SetTrajectory::Request> request,
-    //                    std::shared_ptr<custom_interfaces::srv::SetTrajectory::Response> response);
+
     void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
                     std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
     void setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg);

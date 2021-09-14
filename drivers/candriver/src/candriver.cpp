@@ -21,11 +21,6 @@ CanInterface::CanInterface(std::string can_id)
 
     try
     {
-        // timeval tv;
-        // tv.tv_sec = 0;
-        // tv.tv_usec = 20;
-        //not reliable
-        // setsockopt(_can_s, SOL_SOCKET, SO_RCVTIMEO_NEW, &tv, sizeof(tv));
         int prio = 0;
         setsockopt(_can_s, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(prio));
         strcpy(_ifr.ifr_name, can_id.c_str());
@@ -52,7 +47,7 @@ CanInterface::~CanInterface()
 {
 }
 
-ResponseMsg CanInterface::getResponse(int expected_size)
+ResponseMsg CanInterface::getResponse(size_t expected_size)
 {
     if (_response_msg.rx_msgs.size() >= expected_size)
     {
@@ -71,26 +66,19 @@ ResponseMsg CanInterface::getResponse(int expected_size)
                 _t_last_msg = std::chrono::steady_clock::now();
                 single_rx_msg.push_back(static_cast<int16_t>(_rx_frame.can_id));
                 single_rx_msg.push_back(static_cast<int16_t>(_rx_frame.flags));
+
                 for (int i = 0; i < _rx_frame.len; i++)
                 {
                     single_rx_msg.push_back(static_cast<int16_t>(_rx_frame.data[i]));
                 }
-                // fprint_long_canframe(stdout, &_rx_frame, "\n", 0, CANFD_MAX_DLEN);
-                // for (int i = 0; i < single_rx_msg.size(); i++)
-                // {
-                //     std::cout << single_rx_msg[i] << "/";
-                // }
 
                 _response_msg.rx_msgs.push_back(single_rx_msg);
                 single_rx_msg.clear();
 
-                // std::cout << std::endl;
-                // std::cout << std::chrono::duration_cast<std::chrono::microseconds>(_t_last_msg - _t_start).count() << std::endl;
                 std::this_thread::sleep_for(std::chrono::microseconds(50));
             }
         }
         _response_msg.response_timestamp = std::chrono::steady_clock::now();
-        // std::cout<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-_t_start).count()<<std::endl;
         return _response_msg;
     }
 }
@@ -99,15 +87,12 @@ bool CanInterface::sendMessage(std::string msg, std::chrono::microseconds read_d
 {
     std::chrono::time_point<std::chrono::steady_clock> _t_start = std::chrono::steady_clock::now();
     std::chrono::time_point<std::chrono::steady_clock> _t_last_msg = std::chrono::steady_clock::now();
-    // std::cout << "Sending message " << msg << std::endl;
-    char can_cstr[msg.size() + 1];
+    char* can_cstr=new char[msg.size() + 1];
     std::vector<int16_t> single_rx_msg;
 
     _response_msg.rx_msgs.clear();
     strcpy(can_cstr, msg.c_str());
-    // std::cout << "Message copied succesfully." << std::endl;
     parse_canframe(can_cstr, &_tx_frame);
-    // std::cout << "Message parsed succesfully." << std::endl;
 
     sendFrame();
 
@@ -123,22 +108,15 @@ bool CanInterface::sendMessage(std::string msg, std::chrono::microseconds read_d
             {
                 single_rx_msg.push_back(static_cast<int16_t>(_rx_frame.data[i]));
             }
-            // fprint_long_canframe(stdout, &_rx_frame, "\n", 0, CANFD_MAX_DLEN);
-            // for (int i = 0; i < single_rx_msg.size(); i++)
-            // {
-            //     std::cout << single_rx_msg[i] << "/";
-            // }
 
             _response_msg.rx_msgs.push_back(single_rx_msg);
             single_rx_msg.clear();
 
-            // std::cout << std::endl;
-            // std::cout << std::chrono::duration_cast<std::chrono::microseconds>(_t_last_msg - _t_start).count() << std::endl;
             std::this_thread::sleep_for(std::chrono::microseconds(50));
         }
     }
     _response_msg.response_timestamp = std::chrono::steady_clock::now();
-    // std::cout<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-_t_start).count()<<std::endl;
+    delete can_cstr;
     return 1;
 }
 
@@ -147,9 +125,7 @@ bool CanInterface::readFrame(bool verbose)
     int nbytes = -1;
     try
     {
-        // std::chrono::time_point<std::chrono::steady_clock> _t_start = std::chrono::steady_clock::now();
         nbytes = read(_can_s, &_rx_frame, sizeof(struct canfd_frame));
-        // std::cout<<std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-_t_start).count()<<std::endl;
     }
     catch (const std::exception &e)
     {
