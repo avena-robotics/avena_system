@@ -4,6 +4,7 @@
 #include "custom_interfaces/srv/control_command.hpp"
 #include "custom_interfaces/srv/set_trajectory.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/executor.hpp"
 #include "std_msgs/msg/string.hpp"
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64.hpp>
@@ -24,6 +25,8 @@
 #include <iostream>
 #include <iomanip>
 #include <filesystem>
+
+#include "hw_interface.hpp"
 
 #include "pinocchio/parsers/urdf.hpp"
 
@@ -59,8 +62,9 @@ public:
     };
 
 private:
-
     helpers::Watchdog::SharedPtr _watchdog;
+
+    std::shared_ptr<ArmInterface> _arm_interface;
 
     //TODO:
     const double _trajectory_rate = 500;
@@ -69,6 +73,7 @@ private:
     int _joints_number;
     double _error_margin;
     std::string _config_path;
+    std::string _urdf;
 
     //PID
     std::vector<double> _Kp;
@@ -88,9 +93,13 @@ private:
     int _trajectory_index;
     int _controller_state;
 
+    ArmStatus _arm_status;
+    ArmCommand _arm_command;
+
     //MEASUREMENT
     const int _avg_samples = 50;
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
+    //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;
     std::vector<double> _frick_acu;
 
@@ -107,16 +116,17 @@ private:
     std::chrono::microseconds _time_accumulator, _slowdown_duration;
     double _time_factor, _prev_time_factor;
 
-
     trajectory_msgs::msg::JointTrajectory _trajectory;
 
     trajectory_msgs::msg::JointTrajectory _saved_trajectory;
 
-
     //COMMUNICATION
+
+    std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> _exec;
 
     //PUBLISHERS
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _set_joint_states_pub;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_states_pub;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr _controller_state_pub;
 
     //SUBSCRIBERS
@@ -128,12 +138,12 @@ private:
     rclcpp::Service<custom_interfaces::srv::ControlCommand>::SharedPtr _command_service;
 
     //CLIENTS
-    rclcpp::Client<custom_interfaces::srv::SetArmTorques>::SharedPtr _set_client;
-    rclcpp::Client<custom_interfaces::srv::GetArmState>::SharedPtr _get_client;
+    // rclcpp::Client<custom_interfaces::srv::SetArmTorques>::SharedPtr _set_client;
+    // rclcpp::Client<custom_interfaces::srv::GetArmState>::SharedPtr _get_client;
 
-    sensor_msgs::msg::JointState _log_msg;
-    std::shared_future<std::shared_ptr<custom_interfaces::srv::SetArmTorques_Response>> _set_result;
-    std::shared_future<std::shared_ptr<custom_interfaces::srv::GetArmState_Response>> _get_result;
+    sensor_msgs::msg::JointState _set_joint_state_msg,_arm_joint_state_msg;
+    // std::shared_future<std::shared_ptr<custom_interfaces::srv::SetArmTorques_Response>> _set_result;
+    // std::shared_future<std::shared_ptr<custom_interfaces::srv::GetArmState_Response>> _get_result;
 
     //methods
 

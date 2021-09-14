@@ -663,7 +663,7 @@ void SimpleController::init()
             chart[i]->close();
         }
     }
-    _set_result = _set_client->async_send_request(set_request);
+    _arm_interface->setArmCommand(_arm_command);
     // Wait for the result.
     if (rclcpp::spin_until_future_complete(_node, _set_result) ==
         rclcpp::executor::FutureReturnCode::SUCCESS)

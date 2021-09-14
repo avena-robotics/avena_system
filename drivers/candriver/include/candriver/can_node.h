@@ -236,7 +236,7 @@ public:
 
             for (size_t jnt_idx = 0; jnt_idx < devices.size(); jnt_idx++)
             {
-                std::cout << "int val: " << res_msg.at(jnt_idx).position << " X " << (2 * M_PI / GEAR_CONST / double(_can.gears_ratio.at(jnt_idx))) << std::endl;
+                // std::cout << "int val: " << res_msg.at(jnt_idx).position << " X " << (2 * M_PI / GEAR_CONST / double(_can.gears_ratio.at(jnt_idx))) << std::endl;
                 response->arm_current_positions.at(jnt_idx) = double(res_msg.at(jnt_idx).position) * (2 * M_PI / GEAR_CONST / double(_can.gears_ratio.at(jnt_idx)));
                 response->arm_current_torques.at(jnt_idx) = res_msg.at(jnt_idx).torque * TORQUE_CONSTANT * _can.gears_ratio.at(jnt_idx) * MOTOR_MAX_CURRENT / INT16_MAX;
                 response->arm_current_temperature.at(jnt_idx) = res_msg.at(jnt_idx).temperature;
