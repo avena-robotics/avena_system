@@ -49,9 +49,9 @@ public:
 
     bool restart(int joint_number);
 
-    // joints_d gears_ratio{GEAR_RATIO_1};
+    joints_d gears_ratio{GEAR_RATIO_1};
     // joints_d gears_ratio{GEAR_RATIO_1,GEAR_RATIO_2,GEAR_RATIO_3};
-    joints_d gears_ratio{GEAR_RATIO_1, GEAR_RATIO_2, GEAR_RATIO_3, GEAR_RATIO_4, GEAR_RATIO_5,GEAR_RATIO_6};
+    // joints_d gears_ratio{GEAR_RATIO_1, GEAR_RATIO_2, GEAR_RATIO_3, GEAR_RATIO_4, GEAR_RATIO_5,GEAR_RATIO_6};
 
     int sock;
     struct sockaddr_can addr;

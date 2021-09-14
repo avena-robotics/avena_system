@@ -270,10 +270,11 @@ bool CanOperations::createBroadcastMessage(CAN_request_msg_t message)
 
 CAN_single_response_msg_t CanOperations::readJointMessage(int joint)
 {
-    auto t_current = std::chrono::steady_clock::now();
+    
     int nbytes = -1;
-
+    auto t_current = std::chrono::steady_clock::now();
     nbytes = read(sock, &frames[joint], sizeof(struct canfd_frame));
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t_current).count() << std::endl;
 
     if (nbytes == -1)
         throw std::logic_error("Read error. No frame obtained.");

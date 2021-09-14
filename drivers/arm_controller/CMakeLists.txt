@@ -21,6 +21,7 @@ find_package(rclcpp REQUIRED)
 find_package(custom_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(helpers_commons REQUIRED)
+find_package(candriver REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
@@ -32,8 +33,6 @@ find_package(pinocchio REQUIRED)
 add_executable(simple_controller
     src/simple_controller.cpp
     src/PID.cpp)
-
-
 
 target_include_directories(simple_controller  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -49,35 +48,37 @@ ament_target_dependencies(simple_controller
   sensor_msgs
   custom_interfaces
   helpers_commons
+  candriver
   pinocchio
 )
 
-add_executable(friction_calibration
-    src/friction_calibration.cpp
-    src/PID.cpp)
+# add_executable(friction_calibration
+#     src/friction_calibration.cpp
+#     src/PID.cpp)
 
-target_include_directories(friction_calibration  PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+# target_include_directories(friction_calibration  PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(friction_calibration  Eigen3::Eigen)
+# target_link_libraries(friction_calibration  Eigen3::Eigen)
 
 
-ament_target_dependencies(friction_calibration 
-  pluginlib
-  rclcpp
-  std_msgs 
-  helpers_commons
-  custom_interfaces
-  sensor_msgs
-  pinocchio
-)
+# ament_target_dependencies(friction_calibration 
+#   pluginlib
+#   rclcpp
+#   std_msgs 
+#   helpers_commons
+#   candriver
+#   custom_interfaces
+#   sensor_msgs
+#   pinocchio
+# )
 
 
 
 
 install(TARGETS simple_controller
-  friction_calibration
+  # friction_calibration
   DESTINATION lib/${PROJECT_NAME})
 
 

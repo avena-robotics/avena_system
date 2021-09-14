@@ -38,7 +38,7 @@
       </visual>
       <inertial>
         <origin xyz="0.019 0. 0.0445 " rpy="0. 0. ${pi/2}"/>
-        <mass value="1.798"/>
+        <mass value="1.9"/>
         <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
       </inertial>
       <collision>
@@ -59,7 +59,7 @@
       </visual>
       <inertial>
         <origin xyz="-0.226 0 0.0334" rpy="0. 0. ${pi/2}"/>
-        <mass value="4.406"/>
+        <mass value="4.6"/>
         <inertia ixx="1.941e-01"  ixy="0."  ixz="0." iyy="5.522e-03" iyz="0." izz="1.941e-01" />
       </inertial>
       <collision>
@@ -80,7 +80,7 @@
       </visual>
       <inertial>
         <origin xyz="0.3046 0. 0.0588" rpy="0 0 ${pi/2}"/>
-        <mass value="3.267"/>
+        <mass value="3.4"/>
         <inertia ixx="1.149e-01"  ixy="0"  ixz="0" iyy="4.518e-03" iyz="0" izz="1.148e-01" />
       </inertial>
       <collision>
@@ -101,7 +101,7 @@
       </visual>
       <inertial>
         <origin xyz="0.019 0. 0.059 " rpy="0. 0. ${pi/2}"/>
-        <mass value="1.798"/>
+        <mass value="1.9"/>
         <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
       </inertial>
       <collision>
@@ -122,7 +122,7 @@
       </visual>
       <inertial>
         <origin xyz="0.019 0 0.059" rpy="0. 0. ${pi/2}"/>
-        <mass value="1.798"/>
+        <mass value="1.9"/>
         <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
       </inertial>
       <collision>
@@ -177,7 +177,7 @@
       <parent link="${arm_id}_link_1" />
       <child link="${arm_id}_link_2" />
       <axis xyz="0 0 1" />
-      <limit lower="-1.57" upper="1.57" effort="120" velocity="0" />
+      <limit lower="-1.57" upper="1.57" effort="160" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_3" type="revolute">
