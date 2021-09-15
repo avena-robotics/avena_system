@@ -44,7 +44,7 @@ class SimpleController : public helpers::WatchdogInterface
 {
 public:
     std::shared_ptr<rclcpp::Node> _node;
-    SimpleController();
+    // SimpleController();
     SimpleController(int argc, char **argv);
     ~SimpleController();
 
@@ -61,7 +61,7 @@ public:
         rclcpp::shutdown();
     };
 
-private:
+protected:
     helpers::Watchdog::SharedPtr _watchdog;
 
     std::shared_ptr<ArmInterface> _arm_interface;
