@@ -70,7 +70,7 @@ private:
     const double _trajectory_rate = 500;
 
     //PARAMETERS
-    int _joints_number;
+    size_t _joints_number;
     double _error_margin;
     std::string _config_path;
     std::string _urdf;
@@ -90,14 +90,14 @@ private:
     //CONTROL
     double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _error, _c_friction_comp, _set_vel;
     int _torque_sign, _vel_sign, _time, _remaining_time, _acc_sign;
-    int _trajectory_index;
+    size_t _trajectory_index;
     int _controller_state;
 
     ArmStatus _arm_status;
     ArmCommand _arm_command;
 
     //MEASUREMENT
-    const int _avg_samples = 50;
+    const size_t _avg_samples = 50;
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;
@@ -138,7 +138,6 @@ private:
     rclcpp::Service<custom_interfaces::srv::ControlCommand>::SharedPtr _command_service;
 
     sensor_msgs::msg::JointState _set_joint_state_msg, _arm_joint_state_msg;
-
 
     //loads friction chart
     void loadFrictionChart(std::string path);

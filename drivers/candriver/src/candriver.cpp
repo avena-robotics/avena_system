@@ -87,7 +87,7 @@ bool CanInterface::sendMessage(std::string msg, std::chrono::microseconds read_d
 {
     std::chrono::time_point<std::chrono::steady_clock> _t_start = std::chrono::steady_clock::now();
     std::chrono::time_point<std::chrono::steady_clock> _t_last_msg = std::chrono::steady_clock::now();
-    char* can_cstr=new char[msg.size() + 1];
+    char *can_cstr = new char[msg.size() + 1];
     std::vector<int16_t> single_rx_msg;
 
     _response_msg.rx_msgs.clear();

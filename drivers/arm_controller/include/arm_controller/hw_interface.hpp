@@ -134,6 +134,7 @@ public:
         int arm_id;
 
         for (size_t i = 0; i < _last_msg.rx_msgs.size(); i++)
+
         {
             arm_id = _last_msg.rx_msgs[i][0] / 16 - 10;
             _arm_status.joints[arm_id].position = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][2] << 8) ^ (_last_msg.rx_msgs[i][3])) * _position_multiplier;

@@ -32,10 +32,9 @@ SimpleController::~SimpleController()
 
 void SimpleController::loadFrictionChart(std::string path)
 {
-    for (int jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         std::string temp_s;
-        friction_comp temp_fc;
         RCLCPP_INFO_STREAM(_node->get_logger(), "Loading friction chart: " << path + std::to_string(jnt_idx) + std::string(".txt"));
         std::ifstream fs(path + std::to_string(jnt_idx) + std::string(".txt"));
         std::vector<double> vel, temp;
@@ -62,12 +61,12 @@ void SimpleController::loadFrictionChart(std::string path)
                 }
             }
             _friction_chart[jnt_idx].resize(vel.size());
-            for (int v = 0; v < vel.size(); v++)
+            for (size_t v = 0; v < vel.size(); v++)
             {
                 std::getline(fs, temp_s);
                 size_t pos = 0;
                 _friction_chart[jnt_idx][v].resize(temp.size());
-                for (int t = 0; t < temp.size(); t++)
+                for (size_t t = 0; t < temp.size(); t++)
                 {
                     if (!fs.eof())
                     {
@@ -156,7 +155,7 @@ void SimpleController::loadTrajTxt(std::string path)
     {
         while (!fs.eof())
         {
-            for (int i = 0; i < _joints_number; i++)
+            for (size_t i = 0; i < _joints_number; i++)
             {
                 std::getline(fs, temp_s);
                 temp_point.positions.push_back(std::stod(temp_s));
@@ -176,7 +175,7 @@ void SimpleController::loadTrajTxt(std::string path)
     {
         while (!fs.eof())
         {
-            for (int i = 0; i < _joints_number; i++)
+            for (size_t i = 0; i < _joints_number; i++)
             {
                 std::getline(fs, temp_s);
                 _saved_trajectory.points[it].velocities.push_back(std::stod(temp_s));
@@ -192,7 +191,7 @@ void SimpleController::loadTrajTxt(std::string path)
     {
         while (!fs.eof())
         {
-            for (int i = 0; i < _joints_number; i++)
+            for (size_t i = 0; i < _joints_number; i++)
             {
                 std::getline(fs, temp_s);
                 _saved_trajectory.points[it].accelerations.push_back(std::stod(temp_s));
@@ -408,7 +407,7 @@ void SimpleController::init()
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("error_margin", _error_margin);
-    for (int i = 0; i < _joints_number; i++)
+    for (size_t i = 0; i < _joints_number; i++)
     {
         //set defaults in case config file is not provided
         _node->declare_parameter<double>("Kp_gain_" + std::to_string(i), 38);
@@ -440,7 +439,7 @@ void SimpleController::init()
     RCLCPP_INFO(_node->get_logger(), "Loaded friction chart");
 
     //MEASUREMENT INIT
-    for (int i = 0; i < _joints_number; i++)
+    for (size_t i = 0; i < _joints_number; i++)
     {
         _frick_acu[i] = 0;
         _avg_acc_b[i].resize(_avg_samples);
@@ -448,7 +447,7 @@ void SimpleController::init()
         _avg_vel_b[i].resize(_avg_samples);
         _avg_temp_b[i].resize(_avg_samples);
         _avg_tau_b[i].resize(_avg_samples);
-        for (int j = 0; j < _avg_samples; j++)
+        for (size_t j = 0; j < _avg_samples; j++)
         {
             _avg_acc_b[i][j] = 0;
             _avg_pos_b[i][j] = 0;
@@ -464,7 +463,7 @@ void SimpleController::init()
     _trajectory.points[0].positions.resize(_joints_number);
     _trajectory.points[0].velocities.resize(_joints_number);
     _trajectory.points[0].accelerations.resize(_joints_number);
-    for (int i = 0; i < _joints_number; i++)
+    for (size_t i = 0; i < _joints_number; i++)
     {
         _trajectory.points[0].positions[i] = _arm_status.joints[i].position;
         _trajectory.points[0].velocities[i] = 0.;
@@ -567,7 +566,7 @@ void SimpleController::init()
         //TORQUE CALCULATION
         //ID
         std::vector<double> q_temp;
-        for (int jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+        for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
             q_temp.push_back(_arm_status.joints[jnt_idx].position);
         }
@@ -585,7 +584,7 @@ void SimpleController::init()
             //calculate torques (PID+FF)
             _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
             _error = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
-            int error_sign = ((_error > 0) - (_error < 0));
+            // int error_sign = ((_error > 0) - (_error < 0));
 
             // if (std::abs(_error) > _error_margin && std::abs(_set_vel) < 0.015)
             //     _set_vel = 0.015 * error_sign;
