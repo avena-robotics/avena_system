@@ -1,7 +1,5 @@
 #include "arm_controller/simple_controller.hpp"
 
-
-
 //TODO: init essential functionalities, get ready to start
 SimpleController::SimpleController(int argc, char **argv)
 {
@@ -327,6 +325,36 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
     }
 }
 
+void SimpleController::jointInit()
+{
+    _arm_status = _arm_interface->getArmState();
+
+    //prepare command
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
+        _arm_command.joints[jnt_idx].c_status = 0;
+        _arm_command.joints[jnt_idx].c_torque = 0;
+    }
+
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
+        //reset
+
+        while (_arm_status.joints[jnt_idx].state == 0)
+        {
+            _arm_status = _arm_interface->getArmState();
+            std::cout << "Initializing joint " << jnt_idx << std::endl;
+
+            //send init command to a single joint
+            _arm_command.joints[jnt_idx].c_status =1;
+            _arm_command.timestamp = std::chrono::steady_clock::now();
+            _arm_interface->setArmCommand(_arm_command);
+            std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
+        }
+    }
+    std::cout << "Done initializing joints." << std::endl;
+}
+
 //initialize movement functionalities, start controller
 void SimpleController::init()
 {
@@ -342,9 +370,9 @@ void SimpleController::init()
     _joints_number = _arm_status.joints.size();
     for (size_t i = 0; i < _joints_number; i++)
     {
-        if (_arm_status.joints[i].status != 0)
+        if (_arm_status.joints[i].state == 255)
         {
-            RCLCPP_INFO_STREAM(_node->get_logger(), "Joint error " << _arm_status.joints[i].fault << " on joint " << i);
+            RCLCPP_INFO_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
         }
     }
 
@@ -442,6 +470,7 @@ void SimpleController::init()
     for (size_t i = 0; i < _joints_number; i++)
     {
         _frick_acu[i] = 0;
+        _prev_pos[i] = 0;
         _avg_acc_b[i].resize(_avg_samples);
         _avg_pos_b[i].resize(_avg_samples);
         _avg_vel_b[i].resize(_avg_samples);
@@ -484,6 +513,8 @@ void SimpleController::init()
     _t_stop = std::chrono::steady_clock::now();
     _slowdown_duration = std::chrono::microseconds(1000000);
 
+    jointInit();
+
     //CONTROL LOOP
     std::this_thread::sleep_for(std::chrono::microseconds(10));
     RCLCPP_INFO(_node->get_logger(), "Done initializing, entering control loop");
@@ -518,8 +549,9 @@ void SimpleController::init()
             _avg_temp[jnt_idx] /= _avg_samples;
             _avg_tau[jnt_idx] /= _avg_samples;
 
-            _avg_vel[jnt_idx] = ((_avg_pos[jnt_idx] - _prev_pos[jnt_idx]) * _trajectory_rate);
-            _prev_pos[jnt_idx] = _avg_pos[jnt_idx];
+            // _avg_vel[jnt_idx] = ((_avg_pos[jnt_idx] - _prev_pos[jnt_idx]) * _trajectory_rate);
+            // _prev_pos[jnt_idx] = _avg_pos[jnt_idx];
+            _avg_vel[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
         }
 
         //STATES
@@ -542,9 +574,9 @@ void SimpleController::init()
         {
             for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
             {
-                if (_arm_status.joints[jnt_idx].status == 11)
+                if (_arm_status.joints[jnt_idx].state == 255)
                 {
-                    RCLCPP_INFO(_node->get_logger(), "Joint %i error: %f", jnt_idx, _arm_status.joints[jnt_idx].fault);
+                    RCLCPP_INFO(_node->get_logger(), "Joint %i current error: %f, previous error: %f", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
                 }
             }
         }
@@ -625,12 +657,12 @@ void SimpleController::init()
             if (_controller_state != 1)
             {
                 _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
-                _arm_command.joints[jnt_idx].c_status = 1;
+                _arm_command.joints[jnt_idx].c_status = 3;
             }
             else
             {
                 _arm_command.joints[jnt_idx].c_torque = 0;
-                _arm_command.joints[jnt_idx].c_status = 0;
+                _arm_command.joints[jnt_idx].c_status = 2;
             }
 
             //monitor data
@@ -641,7 +673,7 @@ void SimpleController::init()
 
             _arm_joint_state_msg.name[jnt_idx] = model.names[jnt_idx + 1]; //first object is 'universe', hence the +1
             _arm_joint_state_msg.position[jnt_idx] = _arm_status.joints[jnt_idx].position;
-            _arm_joint_state_msg.velocity[jnt_idx] = _avg_vel[jnt_idx];
+            _arm_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
             _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
             _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
         }
@@ -672,7 +704,7 @@ void SimpleController::init()
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         _arm_command.joints[jnt_idx].c_torque = 0;
-        _arm_command.joints[jnt_idx].c_status = 0;
+        _arm_command.joints[jnt_idx].c_status = 2;
     }
     _arm_command.timestamp = std::chrono::steady_clock::now();
     _arm_interface->setArmCommand(_arm_command);

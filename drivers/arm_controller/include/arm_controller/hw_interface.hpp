@@ -5,8 +5,8 @@
 
 struct JointStatus
 {
-    double position, torque, temperature;
-    int status, fault;
+    double position, velocity, torque, temperature;
+    int state, current_error, prev_error;
 };
 
 struct JointCommand
@@ -59,6 +59,43 @@ public:
     {
     }
 
+    ArmStatus getArmState()
+    {
+        _get_timestamp = std::chrono::steady_clock::now();
+        _get_delay = std::chrono::duration_cast<std::chrono::microseconds>(_get_timestamp - _status_timestamp);
+
+        return _arm_status;
+    }
+
+    bool setArmCommand(ArmCommand arm_command)
+    {
+        _arm_command = arm_command;
+        _command_timestamp = arm_command.timestamp;
+        return 1;
+    }
+
+private:
+    CanInterface _can_interface;
+    std::string _can_addr;
+    ArmStatus _arm_status;
+    ArmCommand _arm_command;
+    ResponseMsg _last_msg;
+    int _joints_number;
+
+    std::mutex _arm_command_mutex, _arm_status_mutex;
+
+    std::chrono::steady_clock::time_point _status_timestamp, _command_timestamp, _get_timestamp;
+    std::chrono::microseconds _max_delay, _get_delay;
+
+    //PHYSICAL PARAMS
+    double _gear_ratio = 120.;
+    double _gear_const = 84;
+    double _torque_const = 0.1118;
+    double _motor_max_current = 31.853;
+
+    double _torque_multiplier = _torque_const * _gear_ratio * _motor_max_current / INT16_MAX;
+    double _position_multiplier = 2 * M_PI / _gear_const / _gear_ratio;
+
     void startCommsLoop(int fq)
     {
         std::chrono::microseconds ref_read_time((int)(1000000. / fq));
@@ -105,20 +142,21 @@ public:
         for (size_t i = 0; i < arm_command.joints.size(); i++)
         {
             can_msg_str << std::hex << std::setfill('0') << std::setw(4) << (int16_t)(arm_command.joints[i].c_torque / _torque_multiplier);
+            can_msg_str << std::hex << std::setfill('0') << std::setw(2) << (int16_t)(arm_command.joints[i].c_status);
         }
-        for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
-        {
-            can_msg_str << "0000";
-        }
-        can_msg_str << "00";
-        for (size_t i = 0; i < arm_command.joints.size(); i++)
-        {
-            can_msg_str << std::hex << (int)(arm_command.joints[i].c_status);
-        }
-        for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
-        {
-            can_msg_str << "0";
-        }
+        // for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
+        // {
+        //     can_msg_str << "0000";
+        // }
+        // can_msg_str << "00";
+        // for (size_t i = 0; i < arm_command.joints.size(); i++)
+        // {
+        //     can_msg_str << std::hex << (int)(arm_command.joints[i].c_status);
+        // }
+        // for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
+        // {
+        //     can_msg_str << "0";
+        // }
 
         _can_interface.sendMessage(can_msg_str.str(), read_time);
 
@@ -138,51 +176,16 @@ public:
         {
             arm_id = _last_msg.rx_msgs[i][0] / 16 - 10;
             _arm_status.joints[arm_id].position = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][2] << 8) ^ (_last_msg.rx_msgs[i][3])) * _position_multiplier;
-            _arm_status.joints[arm_id].torque = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5])) * _torque_multiplier;
-            _arm_status.joints[arm_id].temperature = _last_msg.rx_msgs[i][6];
-            _arm_status.joints[arm_id].fault = _last_msg.rx_msgs[i][7];
-            _arm_status.joints[arm_id].status = _last_msg.rx_msgs[i][8];
+            _arm_status.joints[arm_id].velocity = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5])) *  INT16_MAX;
+            _arm_status.joints[arm_id].torque = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][6] << 8) ^ (_last_msg.rx_msgs[i][7])) * _torque_multiplier;
+            _arm_status.joints[arm_id].temperature = _last_msg.rx_msgs[i][8];
+            _arm_status.joints[arm_id].state = _last_msg.rx_msgs[i][9];
+            _arm_status.joints[arm_id].current_error = _last_msg.rx_msgs[i][10];
+            _arm_status.joints[arm_id].prev_error = _last_msg.rx_msgs[i][11];
         }
 
         _arm_status.timestamp = _status_timestamp;
 
         return 1;
     }
-
-    ArmStatus getArmState()
-    {
-        _get_timestamp = std::chrono::steady_clock::now();
-        _get_delay = std::chrono::duration_cast<std::chrono::microseconds>(_get_timestamp - _status_timestamp);
-
-        return _arm_status;
-    }
-
-    bool setArmCommand(ArmCommand arm_command)
-    {
-        _arm_command = arm_command;
-        _command_timestamp = arm_command.timestamp;
-        return 1;
-    }
-
-private:
-    CanInterface _can_interface;
-    std::string _can_addr;
-    ArmStatus _arm_status;
-    ArmCommand _arm_command;
-    ResponseMsg _last_msg;
-    int _joints_number;
-
-    std::mutex _arm_command_mutex, _arm_status_mutex;
-
-    std::chrono::steady_clock::time_point _status_timestamp, _command_timestamp, _get_timestamp;
-    std::chrono::microseconds _max_delay, _get_delay;
-
-    //PHYSICAL PARAMS
-    double _gear_ratio = 120.;
-    double _gear_const = 84;
-    double _torque_const = 0.1118;
-    double _motor_max_current = 31.853;
-
-    double _torque_multiplier = _torque_const * _gear_ratio * _motor_max_current / INT16_MAX;
-    double _position_multiplier = 2 * M_PI / _gear_const / _gear_ratio;
 };

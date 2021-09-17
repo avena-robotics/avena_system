@@ -148,6 +148,8 @@ protected:
     //reads friction value from loaded friction chart, corresponding to current join velocity and temperature
     double compensateFriction(double vel, double temp, int jnt_idx);
 
+    void jointInit();
+
     void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
                     std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
     void setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg);
