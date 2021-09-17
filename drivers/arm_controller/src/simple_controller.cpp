@@ -464,9 +464,9 @@ void SimpleController::init()
     _i_clamp_l.resize(_joints_number);
     _c_friction_val.resize(_joints_number);
     
-    _log_msg.position.resize(_joints_number);
-    _log_msg.velocity.resize(_joints_number);
-    _log_msg.effort.resize(_joints_number);
+    // _log_msg.position.resize(_joints_number);
+    // _log_msg.velocity.resize(_joints_number);
+    // _log_msg.effort.resize(_joints_number);
 
     _set_joint_state_msg.name.resize(_joints_number);
     _set_joint_state_msg.position.resize(_joints_number);
