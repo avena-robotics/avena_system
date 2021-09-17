@@ -30,6 +30,7 @@ namespace generate_path
 
   using GeneratedPath = custom_interfaces::msg::GeneratedPath;
   using EndEffectorPose = custom_interfaces::msg::EndEffectorPose;
+  using MovementSequence = std::vector<EndEffectorPose>;
 
   constexpr int INVALID_HANDLE = -1;
 
@@ -37,15 +38,6 @@ namespace generate_path
   {
     SUCCESS = 0,
     FAILURE
-  };
-
-  struct InputData
-  {
-    std::vector<EndEffectorPose> movement_sequence;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr octomap;
-
-    using UniquePtr = std::unique_ptr<InputData>;
-    using SharedPtr = std::shared_ptr<InputData>;
   };
 
   struct PathPlanningInput

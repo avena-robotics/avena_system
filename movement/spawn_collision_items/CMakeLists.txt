@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(physics_client_handler)
+project(spawn_collision_items)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -18,27 +18,29 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_ros REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(custom_interfaces REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(helpers_commons REQUIRED)
 find_package(helpers_vision REQUIRED)
-find_package(bullet_client REQUIRED)
-find_package(Eigen3 REQUIRED)
+find_package(physics_client_handler REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
-  src/physics_client_handler.cpp
+  src/spawn_collision_items.cpp
 )
-target_include_directories(${PROJECT_NAME} PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${EIGEN3_INCLUDE_DIR}>
-  $<INSTALL_INTERFACE:include>
+target_include_directories(${PROJECT_NAME} 
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
+target_compile_definitions(${PROJECT_NAME} PRIVATE "SPAWN_COLLISION_ITEMS_BUILDING_LIBRARY")
 ament_target_dependencies(${PROJECT_NAME}
+  rclcpp
+  custom_interfaces
   helpers_commons
   helpers_vision
-  bullet_client
-  Eigen3
+  physics_client_handler
 )
-target_compile_definitions(${PROJECT_NAME} PRIVATE "PHYSICS_CLIENT_HANDLER_BUILDING_LIBRARY")
-
 install(
   DIRECTORY include/
   DESTINATION include
@@ -50,6 +52,27 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+
+############################################
+# Test program to prepare simulation objects
+add_executable(load_scene 
+  tests/load_scene.cpp
+)
+ament_target_dependencies(load_scene
+  rclcpp
+  custom_interfaces
+  ament_index_cpp
+  helpers_vision
+)
+install(
+  TARGETS load_scene
+  DESTINATION lib/${PROJECT_NAME}
+)
+install(
+  DIRECTORY data
+  DESTINATION share/${PROJECT_NAME}
+)
+############################################
 
 # if(BUILD_TESTING)
 #   find_package(ament_lint_auto REQUIRED)
@@ -70,12 +93,11 @@ ament_export_libraries(
 )
 ament_export_targets(
   export_${PROJECT_NAME}
-  HAS_LIBRARY_TARGET
 )
 ament_export_dependencies(
-  bullet_client
-  Eigen3
-  helpers_commons 
+  rclcpp
+  custom_interfaces
+  helpers_commons
   helpers_vision
 )
 

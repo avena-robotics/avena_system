@@ -24,6 +24,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(custom_interfaces REQUIRED)
 find_package(generate_path REQUIRED)
 find_package(generate_trajectory REQUIRED)
+find_package(spawn_collision_items REQUIRED)
 find_package(helpers_commons REQUIRED)
 find_package(helpers_vision REQUIRED)
 
@@ -44,6 +45,7 @@ ament_target_dependencies(${PROJECT_NAME}
   helpers_commons
   generate_path
   generate_trajectory
+  spawn_collision_items
 )
 rclcpp_components_register_nodes(${PROJECT_NAME} "motion_planning::MotionPlanning")
 

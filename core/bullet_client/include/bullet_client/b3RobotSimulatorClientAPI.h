@@ -4,6 +4,7 @@
 #include <SharedMemory/b3RobotSimulatorClientAPI_NoGUI.h>
 #include <memory>
 #include <iostream>
+#include <vector>
 
 namespace bullet_client
 {
@@ -24,6 +25,23 @@ namespace bullet_client
     bool calculateIK(const struct b3RobotSimulatorInverseKinematicArgs& args, struct b3RobotSimulatorInverseKinematicsResults& results);
 
     btQuaternion getDifferenceQuaternion(const btQuaternion &quaternionStart, const btQuaternion &quaternionEnd);
+
+    int createCollisionShapeBox(const btVector3 &position, const btQuaternion &orientation, const btVector3 &dims);
+    
+    int createVisualShapeBox(const btVector3 &position, const btQuaternion &orientation, const btVector3 &dims, const btVector4 &rgba = btVector4(1, 1, 1, 1));
+
+    /**
+     * @brief Create a Collision Shape Mesh object
+     * 
+     * @param vertices flat sequence of point cloud coordinates: pt_0_x, pt_0_y, pt_0_z, pt_1_x, pt_1_y, pt_1_z, pt_2_x, pt_2_y, pt_2_z, ...
+     * (check physics_client_handler::createOctomap for example how to convert pcl::PointCloud to vertices)
+     * @param indices of points in point cloud belonging to specific triangular polygon
+     * @return int unique ID of spawned collision mesh
+     */
+    int createCollisionShapeMesh(const std::vector<double> &vertices, const std::vector<int> &indices);
+    
+    
+    int createVisualShapeMesh(const std::vector<double> &vertices, const std::vector<int> &indices, const btVector4 &rgba = btVector4(1, 1, 1, 1));
 
     /**
      * @brief It looks like it does not work

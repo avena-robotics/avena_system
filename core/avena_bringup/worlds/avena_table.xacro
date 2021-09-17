@@ -6,21 +6,28 @@
   </material>
 
   <!-- Collision box -->
-  <xacro:macro name="collision_box" params="name size transparent:='false' xyz:='0 0 0' rpy:='0 0 0' base_link:='base_link'">
+  <xacro:macro name="collision_box" params="name size visual:='true' transparent:='false' xyz:='0 0 0' rpy:='0 0 0' rgba:='0.8 0.8 0.8 1' table_base_link:='table_base_link'">
     <joint name="${name}" type="fixed">
       <origin xyz="${xyz}" rpy="${rpy}" />
-      <parent link="${base_link}" />
+      <parent link="${table_base_link}" />
       <child link="${name}" />
     </joint>
     <link name="${name}">
-      <visual>
-        <geometry>
-          <box size="${size}"/>
-        </geometry>
-        <xacro:if value="${transparent}">
-          <material name="transparent" />
-        </xacro:if>
-      </visual>
+      <xacro:if value="${visual}">        
+        <visual>
+          <geometry>
+            <box size="${size}"/>
+          </geometry>
+          <xacro:if value="${transparent}">
+            <material name="transparent" />
+          </xacro:if>
+          <xacro:unless value="${transparent}">
+            <material name="custom_color">
+              <color rgba="${rgba}" />
+            </material>
+          </xacro:unless>
+        </visual>
+      </xacro:if>
       <collision>
         <geometry>
           <box size="${size}"/>
@@ -42,13 +49,14 @@
     <xacro:property name="camera_size" value="0.1" />
     <xacro:property name="camera_height" value="1.05" />
 
-    <link name="base_link"/>
+    <link name="table_base_link"/>
 
     <!-- Table top -->
     <xacro:collision_box 
       name="table_top" 
       xyz="${x_origin} ${y_origin} ${-thickness / 2}" 
-      size="${x_dim} ${y_dim} ${thickness}" 
+      size="${x_dim} ${y_dim} ${thickness}"
+      rgba="1 0.6 0.5 1"
     />
 
     <!-- ********************************************* -->
@@ -58,6 +66,7 @@
       xyz="${1 + thickness / 2} ${y_origin} ${walls_height / 2}" 
       size="${thickness} ${y_dim} ${walls_height}" 
       transparent="true"
+      visual="false"
     />
     <xacro:collision_box 
       name="back_wall" 

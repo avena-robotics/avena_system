@@ -16,7 +16,7 @@ def generate_launch_description():
                 package='motion_planning',
                 plugin='motion_planning::MotionPlanning',
                 name='motion_planning',
-                parameters=[{'log_level': 'info'}],
+                parameters=[{'log_level': 'debug'}],
             ),
         ],
         output='screen',
