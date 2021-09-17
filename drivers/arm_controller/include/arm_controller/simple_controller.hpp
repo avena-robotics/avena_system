@@ -67,7 +67,7 @@ protected:
     std::shared_ptr<ArmInterface> _arm_interface;
 
     //TODO:
-    const double _trajectory_rate = 500;
+    const double _trajectory_rate = 1000;
 
     //PARAMETERS
     size_t _joints_number;
@@ -97,7 +97,7 @@ protected:
     ArmCommand _arm_command;
 
     //MEASUREMENT
-    const size_t _avg_samples = 50;
+    const size_t _avg_samples = 100;
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;

@@ -487,12 +487,12 @@ void SimpleController::init()
     //         _avg_tau_b[i][j] = 0;
     //     }
     // }
-    
+    auto calib_time=std::chrono::steady_clock::now();
     for (int asdf = 0; asdf < 6; asdf++)
     {
 
         std::vector<double> set_vel;
-        double vel_increment = -0.05, max_vel = -0.8;
+        double vel_increment = 0.05, max_vel = 0.8;
         const int n = 100;
         std::vector<double> v_avg, prev_pos;
         std::vector<std::array<double, n>> p_avg, temp_avg, tau_avg;
@@ -534,9 +534,11 @@ void SimpleController::init()
             valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
             tq_acc[jnt_idx] = 0;
             tq_inc[jnt_idx] = 0;
+            v_avg[jnt_idx]=0;
             goal_v_avg_acc[jnt_idx] = 0;
-            set_vel[jnt_idx] = 0.8;
+            set_vel[jnt_idx] = -0.8;
             prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
+            p_avg_s[jnt_idx]=0;
             while (std::filesystem::exists(std::filesystem::path(_config_path + filename + std::string("_") + std::to_string(file_i) + std::string(".txt"))))
                 file_i++;
             std::cout << _config_path + filename + std::string("_") + std::to_string(file_i) + std::string(".txt") << std::endl;
@@ -547,7 +549,7 @@ void SimpleController::init()
 
             for (int i = 0; i < n; i++)
             {
-                p_avg[jnt_idx][i] = _arm_status.joints[i].position;
+                p_avg[jnt_idx][i] = _arm_status.joints[jnt_idx].position;
                 temp_avg[jnt_idx][i] = 0;
                 tau_avg[jnt_idx][i] = 0;
             }
@@ -618,7 +620,8 @@ void SimpleController::init()
                 //calculate torques (PID+FF)
 
                 _error = set_vel[jnt_idx] - v_avg[jnt_idx];
-                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
+                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
+                // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
                 //TODO: params
                 if (std::abs(_error) < (0.03 + std::abs(set_vel[jnt_idx]) * 0.015))
                 {
@@ -648,7 +651,7 @@ void SimpleController::init()
                             tq_acc[jnt_idx] = 0;
                             goal_v_avg_acc[jnt_idx] = 0;
                             tq_inc[jnt_idx] = 0;
-                            if (set_vel[jnt_idx] <= max_vel)
+                            if (set_vel[jnt_idx] >= max_vel)
                                 cal_done[jnt_idx] = true;
                             set_vel[jnt_idx] += vel_increment;
                         }
@@ -674,6 +677,7 @@ void SimpleController::init()
                 RCLCPP_INFO_STREAM(_node->get_logger(), "pos: " << _arm_status.joints[jnt_idx].position);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "set_vel: " << set_vel[jnt_idx]);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "v_avg: " << v_avg[jnt_idx]);
+                RCLCPP_INFO_STREAM(_node->get_logger(), "error: " << _error);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "temp: " << temp_avg_s[jnt_idx]);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "tq: " << _arm_command.joints[jnt_idx].c_torque);
 
@@ -694,6 +698,10 @@ void SimpleController::init()
                 _arm_joint_state_msg.velocity[jnt_idx] = v_avg[jnt_idx];
                 _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
                 _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
+                if (std::isnan(_set_torque_val))
+                    return;
+                if (std::isnan(_arm_command.joints[jnt_idx].c_torque))
+                    return;
             }
             //debug
             RCLCPP_INFO(_node->get_logger(), "calc time: %i", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t_current).count());
@@ -739,7 +747,7 @@ void SimpleController::init()
         }
     }
     _arm_interface->setArmCommand(_arm_command);
-
+    std::cout<<"Calibration took: "<<std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now()-calib_time).count()<<" minutes"<<std::endl;
     RCLCPP_INFO(_node->get_logger(), "Done calibrating, shutting down");
 
     rclcpp::shutdown();

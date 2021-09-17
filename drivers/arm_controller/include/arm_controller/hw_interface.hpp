@@ -66,22 +66,22 @@ public:
 
         while (1)
         {
-            if (_get_delay > std::chrono::microseconds(100))
-            {
-                if (_get_delay > std::chrono::microseconds(1100))
-                {
-                    read_time = _get_delay - std::chrono::microseconds(100);
-                }
-                else
-                {
-                    std::this_thread::sleep_for(_get_delay - std::chrono::microseconds(100));
-                }
-            }
+            // if (_get_delay > std::chrono::microseconds(100))
+            // {
+            //     if (_get_delay > std::chrono::microseconds(1100))
+            //     {
+            //         read_time = _get_delay - std::chrono::microseconds(100);
+            //     }
+            //     else
+            //     {
+            //         std::this_thread::sleep_for(_get_delay - std::chrono::microseconds(100));
+            //     }
+            // }
 
-            if (read_time < std::chrono::milliseconds(1))
-            {
-                read_time = std::chrono::milliseconds(1);
-            }
+            // if (read_time < ref_read_time/2)
+            // {
+            //     read_time = ref_read_time;
+            // }
 
             if (std::chrono::steady_clock::now() - _command_timestamp > _max_delay)
             {

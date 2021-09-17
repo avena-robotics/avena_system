@@ -23,7 +23,7 @@ SimpleController::SimpleController(int argc, char **argv)
         std::bind(&SimpleController::securityTriggerStatusCb, this, std::placeholders::_1));
 
     _arm_interface = std::make_shared<ArmInterface>("0AA", (int)_trajectory_rate);
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 SimpleController::~SimpleController()
