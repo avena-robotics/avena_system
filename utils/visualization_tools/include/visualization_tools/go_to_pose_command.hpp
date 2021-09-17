@@ -63,7 +63,7 @@ namespace visualization_tools
 
     void _writeMovementSequenceToServer() noexcept(false);
     void _saveSequenceSegmentToBuffer(const MenuEntries_e &path_type) noexcept(false);
-    void _writeSceneOctomapToServer() noexcept(false);
+    // void _writeSceneOctomapToServer() noexcept(false);
 
     // Generate path
     void _sendGeneratePathGoal(const geometry_msgs::msg::Pose &requested_end_effector_pose);

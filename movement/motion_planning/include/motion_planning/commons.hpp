@@ -14,6 +14,7 @@
 #include <helpers_commons/helpers_commons.hpp>
 #include <generate_path/generate_path.hpp>
 #include <generate_trajectory/generate_trajectory.hpp>
+#include <spawn_collision_items/spawn_collision_items.hpp>
 
 // ___Avena - data store services___
 #include <custom_interfaces/srv/data_store_trajectory_insert.hpp>

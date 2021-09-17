@@ -1,15 +1,8 @@
 #ifndef PHYSICS_CLIENT_HANDLER__PHYSICS_CLIENT_HANDLER_HPP_
 #define PHYSICS_CLIENT_HANDLER__PHYSICS_CLIENT_HANDLER_HPP_
 
-// ___CPPP___
-#include <tuple>
-
-// ___Avena___
-#include <helpers_commons/helpers_commons.hpp>
-
 // ___Package___
 #include "physics_client_handler/commons.hpp"
-#include "physics_client_handler/visibility_control.h"
 
 namespace physics_client_handler
 {
@@ -38,6 +31,8 @@ namespace physics_client_handler
                                                const Obstacles &collision_objects,
                                                const std::chrono::duration<double> &timeout = std::chrono::milliseconds(500));
     void refreshConnection();
+    int createOctomap(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, float grid_size);
+    void removeCollisions();
 
     /**
      * @brief Get the Jacobian object
@@ -97,6 +92,7 @@ namespace physics_client_handler
   private:
     // ___Methods___
     void _readSceneInfoFromPhysicsServer(const helpers::commons::RobotInfo &robot_info);
+    int _createMeshFromPointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr &point_cloud, const float &grid_size, std::vector<pcl::Vertices> &out_triangles);
 
     // ___Attributes___
     bullet_client::b3RobotSimulatorClientAPI::SharedPtr _bullet_client;

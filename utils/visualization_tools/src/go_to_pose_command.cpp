@@ -65,7 +65,7 @@ namespace visualization_tools
                                 {
                                     _deleteMotionPlanningInfoMarkers();
                                     _writeMovementSequenceToServer();
-                                    _writeSceneOctomapToServer();
+                                    // _writeSceneOctomapToServer();
                                 }
                                 catch (const std::exception &e)
                                 {
@@ -228,24 +228,24 @@ namespace visualization_tools
         _sequence_to_execute.clear();
     }
 
-    void GoToPoseCommand::_writeSceneOctomapToServer()
-    {
-        auto octomap_req = std::make_shared<OctomapInsert::Request>();
-        if (!_octomap_insert_client->wait_for_service(std::chrono::seconds(3)))
-            throw std::runtime_error("Cannot connect to server to insert movement sequence");
+    // void GoToPoseCommand::_writeSceneOctomapToServer()
+    // {
+    //     auto octomap_req = std::make_shared<OctomapInsert::Request>();
+    //     if (!_octomap_insert_client->wait_for_service(std::chrono::seconds(3)))
+    //         throw std::runtime_error("Cannot connect to server to insert movement sequence");
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr octomap = helpers::vision::makeSharedPcl<pcl::PointXYZ>();
-        helpers::converters::pclToRosPtcld<pcl::PointXYZ>(octomap, octomap_req->data.octomap.scene_octomap);
+    //     pcl::PointCloud<pcl::PointXYZ>::Ptr octomap = helpers::vision::makeSharedPcl<pcl::PointXYZ>();
+    //     helpers::converters::pclToRosPtcld<pcl::PointXYZ>(octomap, octomap_req->data.octomap.scene_octomap);
 
-        RCLCPP_INFO(get_logger(), "Trying to send octomap to server");
-        auto octomap_res = _octomap_insert_client->async_send_request(octomap_req);
+    //     RCLCPP_INFO(get_logger(), "Trying to send octomap to server");
+    //     auto octomap_res = _octomap_insert_client->async_send_request(octomap_req);
 
-        if (octomap_res.wait_for(std::chrono::seconds(10)) != std::future_status::ready)
-            throw std::runtime_error("Server not responding when trying to insert octomap");
+    //     if (octomap_res.wait_for(std::chrono::seconds(10)) != std::future_status::ready)
+    //         throw std::runtime_error("Server not responding when trying to insert octomap");
 
-        if (!octomap_res.get()->result.data)
-            throw std::runtime_error("Server not able to save octomap data");
-    }
+    //     if (!octomap_res.get()->result.data)
+    //         throw std::runtime_error("Server not able to save octomap data");
+    // }
 
     void GoToPoseCommand::_resultCallback(const rclcpp_action::ResultCode &result_code, const std::string &message)
     {

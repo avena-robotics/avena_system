@@ -189,7 +189,7 @@ namespace physics_client_handler
         while (std::chrono::steady_clock::now() - start_ik < timeout)
         {
             ArmConfiguration single_goal_configuration(_num_degrees_of_freedom);
-            
+
             setJointStates(initial_state);
 
             bool close_enough = false;
@@ -422,6 +422,67 @@ namespace physics_client_handler
         return ee_position * ee_orientation;
     }
 
+    int PhysicsClientHandler::createOctomap(const pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud, const float grid_size)
+    {
+        if (point_cloud->size() == 0)
+            return -2;
+
+        std::vector<pcl::Vertices> triangles;
+        _createMeshFromPointCloud(point_cloud, grid_size, triangles);
+
+        int collision_mesh_body_uid = -1;
+        {
+            helpers::Timer timer("Spawning multibody mesh to physics server", _logger);
+
+            // Extract vertices and indices from pcl::PolygonMesh to match with Bullet format
+            std::vector<double> vertices; // flat sequence: pt_0_x, pt_0_y, pt_0_z, pt_1_x, pt_1_y, pt_1_z, pt_2_x, pt_2_y, pt_2_z, ...
+            for (size_t pt_id = 0; pt_id < point_cloud->size(); pt_id++)
+            {
+                vertices.push_back(point_cloud->points[pt_id].x);
+                vertices.push_back(point_cloud->points[pt_id].y);
+                vertices.push_back(point_cloud->points[pt_id].z);
+            }
+
+            std::vector<int> indices;
+            for (auto &polygon : triangles)
+            {
+                for (auto &vertex_id : polygon.vertices)
+                {
+                    indices.push_back(vertex_id);
+                }
+            }
+
+            int collision_mesh_uid = _bullet_client->createCollisionShapeMesh(vertices, indices);
+
+            b3RobotSimulatorCreateMultiBodyArgs args;
+            args.m_baseMass = 0;
+            args.m_basePosition = btVector3(0, 0, 0);
+            args.m_baseOrientation = btQuaternion(0, 0, 0, 1);
+            args.m_baseCollisionShapeIndex = collision_mesh_uid;
+            collision_mesh_body_uid = _bullet_client->createMultiBody(args);
+        }
+
+        return collision_mesh_body_uid;
+    }
+
+    void PhysicsClientHandler::removeCollisions()
+    {
+        int num_bodies = _bullet_client->getNumBodies();
+        if (num_bodies == 0)
+            throw PhysicsClientHandlerError("There are no objects in the physics server");
+
+        for (int body_id = 0; body_id < num_bodies; ++body_id)
+        {
+            int body_unique_id = _bullet_client->getBodyUniqueId(body_id);
+            b3BodyInfo body_info;
+            _bullet_client->getBodyInfo(body_unique_id, &body_info);
+            if (!(std::strcmp(body_info.m_bodyName, _robot_info.robot_name.c_str()) == 0 || std::strcmp(body_info.m_bodyName, "table") == 0))
+            {
+                _bullet_client->removeBody(body_unique_id);
+            }
+        }
+    }
+
     // void PhysicsClientHandler::drawCoordinateAxes(const Eigen::Affine3d &pose, double scale)
     // {
     //     Eigen::Vector3d position(pose.translation());
@@ -470,6 +531,82 @@ namespace physics_client_handler
             }
         }
         return num_moving_joints == _robot_info.nr_joints;
+    }
+
+    int PhysicsClientHandler::_createMeshFromPointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr &point_cloud, const float &grid_size, std::vector<pcl::Vertices> &out_triangles)
+    {
+        if (point_cloud->size() == 0)
+            return 1;
+
+        // RCLCPP_WARN_STREAM(_logger, "Amount of points before voxelization: " << point_cloud->size());
+        {
+            helpers::Timer timer("Input point cloud voxelization", _logger);
+            pcl::VoxelGrid<pcl::PointXYZ> voxel_filter;
+            voxel_filter.setInputCloud(point_cloud);
+            voxel_filter.setLeafSize(grid_size, grid_size, grid_size);
+            voxel_filter.filter(*point_cloud);
+        }
+        // RCLCPP_WARN_STREAM(_logger, "Amount of points after voxelization: " << point_cloud->size());
+
+        {
+            helpers::Timer timer("Create mesh with PCL", _logger);
+            // Normal estimation*
+            pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> n;
+            pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+            pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+            tree->setInputCloud(point_cloud);
+            n.setInputCloud(point_cloud);
+            n.setSearchMethod(tree);
+            n.setKSearch(20);
+            n.setNumberOfThreads(std::thread::hardware_concurrency());
+            n.compute(*normals);
+            //* normals should not contain the point normals + surface curvatures
+
+            // Concatenate the XYZ and normal fields*
+            pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+            pcl::concatenateFields(*point_cloud, *normals, *cloud_with_normals);
+            //* cloud_with_normals = cloud + normals
+
+            // Create search tree*
+            pcl::search::KdTree<pcl::PointNormal>::Ptr tree2(new pcl::search::KdTree<pcl::PointNormal>);
+            tree2->setInputCloud(cloud_with_normals);
+
+            // Initialize objects
+            pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
+
+            // Set the maximum distance between connected points (maximum edge length)
+            gp3.setSearchRadius(grid_size * 2);
+
+            // Set typical values for the parameters
+            gp3.setMu(2.5);
+            gp3.setMaximumNearestNeighbors(100);
+            gp3.setMaximumSurfaceAngle(M_PI / 4); // 45 degrees
+            gp3.setMinimumAngle(M_PI / 18);       // 10 degrees
+            gp3.setMaximumAngle(2 * M_PI / 3);    // 120 degrees
+            gp3.setNormalConsistency(false);
+
+            // Get result
+            gp3.setInputCloud(cloud_with_normals);
+            gp3.setSearchMethod(tree2);
+            gp3.reconstruct(out_triangles);
+        }
+
+        // {
+        //     auto v0 = helpers::visualization::visualize({point_cloud}, {}, nullptr, "cloud");
+        //     // Visualize
+        //     pcl::PolygonMesh mesh;
+        //     mesh.polygons = triangles;
+        //     pcl::toPCLPointCloud2(*point_cloud, mesh.cloud);
+        //     pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer("Viewer"));
+        //     viewer->setBackgroundColor(0, 0, 0);
+        //     viewer->addPolygonMesh(mesh, "meshes", 0);
+        //     viewer->addCoordinateSystem(1.0);
+        //     viewer->initCameraParameters();
+        //     viewer->spin();
+        // }
+        // auto viewer = helpers::visualization::visualize({pcl_octomap});
+
+        return 0;
     }
 
     void PhysicsClientHandler::cleanDebugItems()

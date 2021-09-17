@@ -34,6 +34,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(helpers_commons REQUIRED)
 find_package(helpers_vision REQUIRED)
 find_package(custom_interfaces REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
 ##############################################################################
 # Joint to tf library
@@ -191,6 +192,7 @@ ament_target_dependencies(${LIBRARY_NAME}
   helpers_vision
   custom_interfaces
   visualization_msgs
+  ament_index_cpp
 )
 target_compile_definitions(${LIBRARY_NAME} PRIVATE "DEBUGGING_TOOLS_BUILDING_LIBRARY")
 rclcpp_components_register_node(${LIBRARY_NAME}
@@ -215,6 +217,7 @@ ament_export_dependencies(
   helpers_vision
   custom_interfaces
   visualization_msgs
+  ament_index_cpp
 )
 ament_export_include_directories(
   include

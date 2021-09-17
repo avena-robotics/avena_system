@@ -144,6 +144,146 @@ namespace bullet_client
 		return quat_diff;
 	}
 
+	int b3RobotSimulatorClientAPI::createCollisionShapeBox(const btVector3 &position, const btQuaternion &orientation, const btVector3 &dims)
+	{
+		b3PhysicsClientHandle sm = m_data->m_physicsClientHandle;
+		b3SharedMemoryCommandHandle commandHandle = b3CreateCollisionShapeCommandInit(sm);
+
+		const double halfExtents[] = {dims.x() / 2, dims.y() / 2, dims.z() / 2};
+		int shapeIndex = b3CreateCollisionShapeAddBox(commandHandle, halfExtents);
+		if (shapeIndex >= 0)
+		{
+			const double childPosition[3] = {position.x(), position.y(), position.z()};
+			const double childOrientation[4] = {orientation.x(), orientation.y(), orientation.z(), orientation.w()};
+			b3CreateCollisionShapeSetChildTransform(commandHandle, shapeIndex, childPosition, childOrientation);
+		}
+
+		b3SharedMemoryStatusHandle statusHandle = b3SubmitClientCommandAndWaitStatus(sm, commandHandle);
+		int statusType = b3GetStatusType(statusHandle);
+		if (statusType == CMD_CREATE_COLLISION_SHAPE_COMPLETED)
+		{
+			int uid = b3GetStatusCollisionShapeUniqueId(statusHandle);
+			return uid;
+		}
+		return -1;
+	}
+
+	int b3RobotSimulatorClientAPI::createVisualShapeBox(const btVector3 &position, const btQuaternion &orientation, const btVector3 &dims, const btVector4 &rgba)
+	{
+		b3PhysicsClientHandle sm = m_data->m_physicsClientHandle;
+		b3SharedMemoryCommandHandle commandHandle = b3CreateCollisionShapeCommandInit(sm);
+
+		const double halfExtents[] = {dims.x() / 2, dims.y() / 2, dims.z() / 2};
+		int shapeIndex = b3CreateVisualShapeAddBox(commandHandle, halfExtents);
+		if (shapeIndex >= 0)
+		{
+			// Color
+			const double rgbaColor[4] = {rgba.x(), rgba.y(), rgba.z(), rgba.w()};
+			b3CreateVisualShapeSetRGBAColor(commandHandle, shapeIndex, rgbaColor);
+			const double specularColor[3] = {1, 1, 1};
+			b3CreateVisualShapeSetSpecularColor(commandHandle, shapeIndex, specularColor);
+
+			// Pose
+			const double childPosition[3] = {position.x(), position.y(), position.z()};
+			const double childOrientation[4] = {orientation.x(), orientation.y(), orientation.z(), orientation.w()};
+			b3CreateVisualShapeSetChildTransform(commandHandle, shapeIndex, childPosition, childOrientation);
+		}
+
+		b3SharedMemoryStatusHandle statusHandle = b3SubmitClientCommandAndWaitStatus(sm, commandHandle);
+		int statusType = b3GetStatusType(statusHandle);
+		if (statusType == CMD_CREATE_COLLISION_SHAPE_COMPLETED)
+		{
+			int uid = b3GetStatusVisualShapeUniqueId(statusHandle);
+			return uid;
+		}
+		return -1;
+	}
+
+	int b3RobotSimulatorClientAPI::createCollisionShapeMesh(const std::vector<double> &vertices, const std::vector<int> &indices)
+	{
+		b3PhysicsClientHandle sm = m_data->m_physicsClientHandle;
+		b3SharedMemoryCommandHandle commandHandle = b3CreateCollisionShapeCommandInit(sm);
+
+		double meshScale[3] = {1, 1, 1};
+		int shapeIndex = -1;
+
+		int numVertices = vertices.size() / 3;
+		int numIndices = indices.size();
+
+		if (numIndices)
+		{
+			shapeIndex = b3CreateCollisionShapeAddConcaveMesh(sm, commandHandle, meshScale, vertices.data(), numVertices, indices.data(), numIndices);
+		}
+		else
+		{
+			shapeIndex = b3CreateCollisionShapeAddConvexMesh(sm, commandHandle, meshScale, vertices.data(), numVertices);
+		}
+
+		// TODO: Check whether some flag should be set for meshes
+		// int flags = 0;
+		// if (shapeIndex >= 0)
+		// {
+		// 	b3CreateCollisionSetFlag(commandHandle, shapeIndex, flags);
+		// }
+
+		b3SharedMemoryStatusHandle statusHandle = b3SubmitClientCommandAndWaitStatus(sm, commandHandle);
+		int statusType = b3GetStatusType(statusHandle);
+		if (statusType == CMD_CREATE_COLLISION_SHAPE_COMPLETED)
+		{
+			int uid = b3GetStatusCollisionShapeUniqueId(statusHandle);
+			return uid;
+		}
+
+		return -1;
+	}
+
+	int b3RobotSimulatorClientAPI::createVisualShapeMesh(const std::vector<double> &vertices, const std::vector<int> &indices, const btVector4 &rgba)
+	{
+		b3PhysicsClientHandle sm = m_data->m_physicsClientHandle;
+		b3SharedMemoryCommandHandle commandHandle = b3CreateCollisionShapeCommandInit(sm);
+
+		double meshScale[3] = {1, 1, 1};
+		int shapeIndex = -1;
+
+		int numVertices = vertices.size() / 3;
+		int numIndices = indices.size();
+		int numNormals = 0;
+		int numUVs = 0;
+
+		const double *normals = nullptr;
+		const double *uvs = nullptr;
+
+		if (numIndices)
+		{
+			shapeIndex = b3CreateVisualShapeAddMesh2(sm, commandHandle, meshScale, vertices.data(), numVertices, indices.data(), numIndices, normals, numNormals, uvs, numUVs);
+		}
+
+		// TODO: Check whether some flags should be set
+		int flags = 0;
+		if (shapeIndex >= 0 && flags)
+		{
+			b3CreateVisualSetFlag(commandHandle, shapeIndex, flags);
+		}
+
+		if (shapeIndex >= 0)
+		{
+			double rgbaColor[4] = {rgba.x(), rgba.y(), rgba.z(), rgba.w()};
+			double specularColor[3] = {1, 1, 1};
+			b3CreateVisualShapeSetRGBAColor(commandHandle, shapeIndex, rgbaColor);
+			b3CreateVisualShapeSetSpecularColor(commandHandle, shapeIndex, specularColor);
+		}
+
+		b3SharedMemoryStatusHandle statusHandle = b3SubmitClientCommandAndWaitStatus(sm, commandHandle);
+		int statusType = b3GetStatusType(statusHandle);
+		if (statusType == CMD_CREATE_VISUAL_SHAPE_COMPLETED)
+		{
+			int uid = b3GetStatusCollisionShapeUniqueId(statusHandle);
+			return uid;
+		}
+
+		return -1;
+	}
+
 	void b3RobotSimulatorClientAPI::renderScene()
 	{
 		if (!isConnected())
