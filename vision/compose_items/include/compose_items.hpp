@@ -131,7 +131,8 @@ void _matchElementsWithItem(element& parent);
     std::map<element *, std::vector<element *>> _matched_elements;
 
     
-
+    size_t item_id = 0;
+    size_t element_id = 0;
 
     // std::map<std::string, size_t> debug_map;
 
