@@ -567,44 +567,67 @@ namespace compose_items
 
     void ComposeItems::_save_data(custom_interfaces::msg::Items &items)
     {   
-        //TODO orange single camera bug
 
         helpers::Timer timer(__func__, get_logger());
-        for (auto item : _matched_items)
-        {
 
-            custom_interfaces::msg::Item item_msg;
-            item_msg.label = item.first->label;
-            if (_elements.find(item.first->label) == _elements.end() || !_elements[item_msg.label])
-            {
-                for (auto el_label : _components[item.first->label])
-                {
+
+        auto save_element = [=](std::string &el_label, std::vector<element *> &elements, custom_interfaces::msg::Item &item_msg, element* item){
 
                     bool el_found = false;
                     custom_interfaces::msg::ItemElement element_msg;
+                    element_msg.id = ++element_id;
                     element_msg.label = el_label;
                     element_msg.ptclds.resize(_cameras_amount);
                     element_msg.masks.resize(_cameras_amount);
                     for (size_t cam_idx = 1; cam_idx <= _cameras_amount; cam_idx++)
                     {
                         size_t idx = cam_idx - 1;
-                        auto match = std::find_if(_matched_elements[item.first].begin(), _matched_elements[item.first].end(), [this, el_label, cam_idx](element *element)
+                        auto match = std::find_if(elements.begin(), elements.end(), [this, el_label, cam_idx](element *element)
                                                   { return element->label == el_label && element->cam_idx == cam_idx; });
+                        
 
-                        if (match == _matched_elements[item.first].end())
+                    element *found = nullptr;
+                    if(!item){
+                        if (match == elements.end())
                             continue;
+                        found = *match;
+                    }else{
+                        if (match == elements.end())
+                        {
+                            if (item->label == el_label && item->cam_idx == cam_idx)
+                                found = item;
+                            else
+                                continue;
+                        }
+                        else
+                            found = *match;
+                    }
 
-                        create_ptcld::createPtcld(_workspace_area, **match, *(depths[cam_idx]), *(rgbs[cam_idx]), cam_idx, _cameras_data, _remove_shadows);
 
-                        helpers::converters::pclToRosPtcld<pcl::PointXYZRGB>((*match)->_clouds[cam_idx], element_msg.ptclds[idx]);
-                        element_msg.masks[idx] = (*match)->rle_mask;
+                        create_ptcld::createPtcld(_workspace_area, *found, *(depths[cam_idx]), *(rgbs[cam_idx]), cam_idx, _cameras_data, _remove_shadows);
 
-                        _matched_elements[item.first].erase(match);
+                        helpers::converters::pclToRosPtcld<pcl::PointXYZRGB>(found->_clouds[cam_idx], element_msg.ptclds[idx]);
+                        element_msg.masks[idx] = found->rle_mask;
+
+                        elements.erase(match);
                         el_found = true;
                     }
                     if (el_found)
                         item_msg.item_elements.push_back(element_msg);
-                }
+        };
+
+
+
+        for (auto item : _matched_items)
+        {
+
+            custom_interfaces::msg::Item item_msg;
+            item_msg.label = item.first->label;
+            item_msg.id = ++item_id;
+            if (_elements.find(item.first->label) == _elements.end() || !_elements[item_msg.label])
+            {
+                for (auto el_label : _components[item.first->label])
+                    save_element(el_label, _matched_elements[item.first], item_msg, nullptr);
             }
             else
             {
@@ -614,42 +637,7 @@ namespace compose_items
                     el_labels.insert(el->label);
 
                 for (auto el_label : el_labels)
-                {
-                    bool el_found = false;
-                    custom_interfaces::msg::ItemElement element_msg;
-                    element_msg.label = el_label;
-                    element_msg.ptclds.resize(_cameras_amount);
-                    element_msg.masks.resize(_cameras_amount);
-                    for (size_t cam_idx = 1; cam_idx <= _cameras_amount; cam_idx++)
-                    {
-
-                        size_t idx = cam_idx - 1;
-                        auto el_it = std::find_if(item.second.begin(), item.second.end(), [this, el_label, cam_idx](element *element)
-                                                  { return element->label == el_label && element->cam_idx == cam_idx; });
-
-                        element *found = nullptr;
-
-                        if (el_it == item.second.end())
-                        {
-                            if (item.first->label == el_label && item.first->cam_idx == cam_idx)
-                                found = item.first;
-                            else
-                                continue;
-                        }
-                        else
-                            found = *el_it;
-
-                        create_ptcld::createPtcld(_workspace_area, *found, *(depths[cam_idx]), *(rgbs[cam_idx]), cam_idx, _cameras_data, _remove_shadows);
-                        helpers::converters::pclToRosPtcld<pcl::PointXYZRGB>(found->_clouds[cam_idx], element_msg.ptclds[idx]);
-
-                        element_msg.masks[idx] = found->rle_mask;
-                        if (el_it != item.second.end())
-                            item.second.erase(el_it);
-                        el_found = true;
-                    }
-                    if (el_found)
-                        item_msg.item_elements.push_back(element_msg);
-                }
+                    save_element(el_label, item.second, item_msg, item.first);
             }
             items.items.push_back(item_msg);
         }
