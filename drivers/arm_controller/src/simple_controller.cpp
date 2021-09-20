@@ -334,6 +334,12 @@ void SimpleController::jointInit()
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
     _arm_status = _arm_interface->getArmState();
 
+    while(_arm_status.joints.size()<=0){
+        RCLCPP_ERROR(_node->get_logger(),"Received invalid arm state. Waiting ...");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        _arm_status = _arm_interface->getArmState();
+    }
+
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
     _joints_number = _arm_status.joints.size();
     for (size_t i = 0; i < _joints_number; i++)
@@ -604,8 +610,8 @@ void SimpleController::controlLoop()
     _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(q_temp.data(), q_temp.size());
     _qd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].velocities.data(), _trajectory.points[_trajectory_index].velocities.size());
     _qdd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].accelerations.data(), _trajectory.points[_trajectory_index].accelerations.size());
-    pinocchio::rnea(_model, _data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
-    _tau = _data.tau;
+    pinocchio::rnea(_model, *_data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
+    _tau = _data->tau;
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {

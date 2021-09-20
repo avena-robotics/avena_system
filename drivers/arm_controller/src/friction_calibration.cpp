@@ -354,7 +354,6 @@ void SimpleController::jointInit()
     std::cout << "Done initializing joints." << std::endl;
 }
 
-
 //initialize movement functionalities, start controller
 void SimpleController::init()
 {
@@ -372,7 +371,7 @@ void SimpleController::init()
     {
         if (_arm_status.joints[i].state == 255)
         {
-            RCLCPP_INFO_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: "<<_arm_status.joints[i].prev_error<<" on joint " << i);
+            RCLCPP_INFO_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
         }
     }
 
@@ -519,12 +518,17 @@ void SimpleController::init()
     //         _avg_tau_b[i][j] = 0;
     //     }
     // }
-    auto calib_time=std::chrono::steady_clock::now();
+    auto calib_time = std::chrono::steady_clock::now();
+    int direction = 1;
     for (int asdf = 0; asdf < 6; asdf++)
     {
+        if (asdf % 2)
+        {
+            direction = -1;
+        }
 
         std::vector<double> set_vel;
-        double vel_increment = 0.05, max_vel = 0.8;
+        double vel_increment = 0.05 * direction, max_vel = 0.8 * direction;
         const int n = 100;
         std::vector<double> v_avg, prev_pos;
         std::vector<std::array<double, n>> p_avg, temp_avg, tau_avg;
@@ -532,9 +536,11 @@ void SimpleController::init()
         std::vector<std::shared_ptr<std::ofstream>> chart;
         friction_comp friction_point;
         std::vector<double> tq_acc;
+        std::vector<std::vector<double>> static_tq_acc;
         std::vector<int> tq_inc;
         std::vector<bool> vel_achi;
         std::vector<bool> cal_done;
+        std::vector<bool> static_friction_flag;
         std::vector<std::chrono::steady_clock::time_point> valid_vel_time;
 
         goal_v_avg_acc.resize(_joints_number);
@@ -553,11 +559,13 @@ void SimpleController::init()
         temp_avg_s.resize(_joints_number);
         tau_avg_s.resize(_joints_number);
         chart.resize(_joints_number);
+        static_tq_acc.resize(_joints_number);
+        static_friction_flag.resize(_joints_number);
         _measured_friction_comp.resize(_joints_number);
 
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
-
+            static_friction_flag[jnt_idx] = false;
             _measured_friction_comp[jnt_idx].clear();
             int file_i = 0;
             std::string filename = std::string("/f_chart_joint_") + std::to_string(jnt_idx);
@@ -566,19 +574,18 @@ void SimpleController::init()
             valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
             tq_acc[jnt_idx] = 0;
             tq_inc[jnt_idx] = 0;
-            v_avg[jnt_idx]=0;
+            v_avg[jnt_idx] = 0;
             goal_v_avg_acc[jnt_idx] = 0;
-            set_vel[jnt_idx] = -0.8;
+            set_vel[jnt_idx] = 0.8 * direction * -1;
             prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
-            p_avg_s[jnt_idx]=0;
-            temp_avg_s[jnt_idx]=0;
+            p_avg_s[jnt_idx] = 0;
+            temp_avg_s[jnt_idx] = 0;
             while (std::filesystem::exists(std::filesystem::path(_config_path + filename + std::string("_") + std::to_string(file_i) + std::string(".txt"))))
                 file_i++;
             std::cout << _config_path + filename + std::string("_") + std::to_string(file_i) + std::string(".txt") << std::endl;
             //RCLCPP_INFO_STREAM(_node->get_logger(), "Chart file: " << (std::string("/root/temp/t_charts/chart_") + std::string("joint") + std::to_string(jnt_idx) + std::string("_") + std::to_string(dir) + std::string(".txt")));
             chart[jnt_idx] = std::make_shared<std::ofstream>(_config_path + filename + std::string("_") + std::to_string(file_i) + std::string(".txt"));
             // chart[jnt_idx] = std::make_shared<std::ofstream>(std::string("/home/avena/ros2_ws/src/avena_ros2_control/arm_controller/config/f_chart_.txt"));
-
 
             for (int i = 0; i < n; i++)
             {
@@ -641,6 +648,8 @@ void SimpleController::init()
             //calculate torques
             for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
             {
+                RCLCPP_INFO_STREAM(_node->get_logger(), "set_vel: " << set_vel[jnt_idx]);
+                RCLCPP_INFO_STREAM(_node->get_logger(), "max_vel: " << max_vel);
                 if (cal_done[jnt_idx])
                 {
                     _arm_command.joints[jnt_idx].c_torque = 0;
@@ -653,10 +662,25 @@ void SimpleController::init()
                 //calculate torques (PID+FF)
 
                 _error = set_vel[jnt_idx] - v_avg[jnt_idx];
-                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
-                // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
+                // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
+                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
+
+                //check for static friction
+                if (static_friction_flag[jnt_idx] && std::abs(v_avg[jnt_idx]) > 0.01)
+                {
+                    static_tq_acc[jnt_idx].push_back(_set_torque_val);
+                }
+                if (std::abs(v_avg[jnt_idx]) <= 0.01)
+                {
+                    static_friction_flag[jnt_idx] = true;
+                }
+                else
+                {
+                    static_friction_flag[jnt_idx] = false;
+                }
+
                 //TODO: params
-                if (std::abs(_error) < (0.03 + std::abs(set_vel[jnt_idx]) * 0.015))
+                if (std::abs(_error) < (0.03 + std::abs(set_vel[jnt_idx]) * 0.012))
                 {
                     if (!vel_achi[jnt_idx])
                         valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
@@ -684,9 +708,21 @@ void SimpleController::init()
                             tq_acc[jnt_idx] = 0;
                             goal_v_avg_acc[jnt_idx] = 0;
                             tq_inc[jnt_idx] = 0;
-                            if (set_vel[jnt_idx] >= max_vel)
+                            //next loop
+                            if (set_vel[jnt_idx]*direction > max_vel * direction){
                                 cal_done[jnt_idx] = true;
+                                
+                                double static_tq=0.;
+                                for(size_t i=0;i<static_tq_acc[jnt_idx].size();i++)
+                                    static_tq+=static_tq_acc[jnt_idx][i];
+                                static_tq/=static_tq_acc[jnt_idx].size();
+                                temp_fc.tq = static_tq;
+                                temp_fc.vel = 0.01*direction;
+                                temp_fc.temp = temp_avg_s[jnt_idx];
+                                _measured_friction_comp[jnt_idx].push_back(temp_fc);
+                            }
                             set_vel[jnt_idx] += vel_increment;
+                            valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
                         }
                     }
                     vel_achi[jnt_idx] = true;
@@ -708,7 +744,7 @@ void SimpleController::init()
                 _arm_command.joints[jnt_idx].c_status = 3;
                 RCLCPP_INFO_STREAM(_node->get_logger(), "jnt: " << jnt_idx);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "pos: " << _arm_status.joints[jnt_idx].position);
-                RCLCPP_INFO_STREAM(_node->get_logger(), "set_vel: " << set_vel[jnt_idx]);
+
                 RCLCPP_INFO_STREAM(_node->get_logger(), "v_avg: " << v_avg[jnt_idx]);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "error: " << _error);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "temp: " << temp_avg_s[jnt_idx]);
@@ -728,7 +764,6 @@ void SimpleController::init()
                 _set_joint_state_msg.effort[jnt_idx] = _set_torque_val;
                 _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
-                
                 _arm_joint_state_msg.position[jnt_idx] = _arm_status.joints[jnt_idx].position;
                 _arm_joint_state_msg.velocity[jnt_idx] = v_avg[jnt_idx];
                 _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
@@ -782,7 +817,7 @@ void SimpleController::init()
         }
     }
     _arm_interface->setArmCommand(_arm_command);
-    std::cout<<"Calibration took: "<<std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now()-calib_time).count()<<" minutes"<<std::endl;
+    std::cout << "Calibration took: " << std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - calib_time).count() << " minutes" << std::endl;
     RCLCPP_INFO(_node->get_logger(), "Done calibrating, shutting down");
 
     rclcpp::shutdown();
