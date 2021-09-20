@@ -85,6 +85,8 @@ namespace estimate_shape
     std::vector<CameraParameters> _camera_params;
     std::vector<std::string> _args;
     json _default_parameters;
+    size_t _cameras_amount = 0;
+    std::string _camera_prefix;
   };
 } // namespace estimate_shape
 

@@ -17,23 +17,25 @@ class DetectronInference:
     reducingin initilization time.
     """
 
-    def __init__(self, inputs_dir_path):
+    def __init__(self, inputs_dir_path, labels_map):
         self.base_path = os.getcwd()
         self.inputs_dir_path = inputs_dir_path
 
         # load config file path
         config_list = glob.glob(os.path.join(inputs_dir_path + "/*.yaml"))
 
-        class_names = [yaml_file for yaml_file in config_list if 'class_names' in yaml_file]
-        with open(class_names[0], 'r')as f:
-            parsed_class_names = yaml.load(f, Loader=yaml.FullLoader)
-            num_classes = len(parsed_class_names['MODEL']['NAMES'])
-            self.num_classes = num_classes
-            self.labels_list = parsed_class_names['MODEL']['NAMES']
+        self.labels_map = labels_map
 
-        config_list = [yaml_file for yaml_file in config_list if 'class_names' not in yaml_file]
+        # class_names = [yaml_file for yaml_file in config_list if 'class_names' in yaml_file]
+        # with open(class_names[0], 'r')as f:
+        #     parsed_class_names = yaml.load(f, Loader=yaml.FullLoader)
+        #     num_classes = len(parsed_class_names['MODEL']['NAMES'])
+        #     self.num_classes = num_classes
+        #     self.labels_list = parsed_class_names['MODEL']['NAMES']
+
+        # config_list = [yaml_file for yaml_file in config_list if 'class_names' not in yaml_file]
         assert len(
-            config_list) == 1, 'ERROR: Exactly one .yaml file has to be present in detectron2_configs directory, not counting class_names.yaml'
+            config_list) == 1, 'ERROR: Exactly one .yaml file has to be present in detectron2_configs directory.'
         self.config_file_path = config_list[0]
 
         # load weights path
@@ -46,16 +48,16 @@ class DetectronInference:
         # set config and weights
         self.config_file = get_cfg()
         point_rend.add_pointrend_config(self.config_file)
-        self.config_file.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
-        self.config_file.MODEL.POINT_HEAD.NUM_CLASSES = num_classes
+        self.config_file.MODEL.ROI_HEADS.NUM_CLASSES = len(self.labels_map)
+        self.config_file.MODEL.POINT_HEAD.NUM_CLASSES = len(self.labels_map)
 
         self.config_file.merge_from_file(self.config_file_path)
         self.config_file.MODEL.WEIGHTS = self.weights_path
         self.config_file.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7
         self.predictor = DefaultPredictor(self.config_file)
-        assert len(self.labels_list) == int(self.config_file.get('MODEL').get('ROI_HEADS').get('NUM_CLASSES')), \
-            "This model requires " + str(self.config_file.get('MODEL').get('ROI_HEADS').get('NUM_CLASSES')) + \
-            " class labels but " + str(len(self.labels_list)) + " were provided"
+        # assert len(self.labels_list) == int(self.config_file.get('MODEL').get('ROI_HEADS').get('NUM_CLASSES')), \
+        #     "This model requires " + str(self.config_file.get('MODEL').get('ROI_HEADS').get('NUM_CLASSES')) + \
+        #     " class labels but " + str(len(self.labels_list)) + " were provided"
 
     def detect_image(self, image):
         """
@@ -72,6 +74,7 @@ class DetectronInference:
         print("Detectron object inference: " + str(inf_end - inf_start))
 
         res_start = time.time()
+        # file = open("labels_list" + str(inf_start), "w")
         outputs = predictions['instances'].get_fields()
         masks = outputs['pred_masks'].cpu().numpy().astype(np.uint8)
         encoded = list()
@@ -87,10 +90,18 @@ class DetectronInference:
             # n = 'img'
             # cv2.imwrite('imgpy')
             encoded.append(x)
-        MetadataCatalog.get(self.config_file.DATASETS.TRAIN[0]).thing_classes = self.labels_list
-
+        # file.write(str(outputs))
+        labels_list = []
+        for i in range(0,  len(self.labels_map), 1):
+            if i in  self.labels_map.keys():
+                labels_list.append(self.labels_map[i])
+            else:
+                labels_list.append("label_index_missing_at_idx_" + str(i))
+        # for key in labe
+        # file.write(str(labels_list))
+        MetadataCatalog.get(self.config_file.DATASETS.TRAIN[0]).thing_classes = labels_list
         outputs = {
-            "classes": [self.labels_list[class_digit] for class_digit in
+            "classes": [self.labels_map[class_digit] for class_digit in
                         outputs['pred_classes'].cpu().numpy().tolist()],
             # "bboxes": outputs['pred_boxes'].tensor.cpu().numpy().tolist(),
             "masks": encoded
@@ -102,13 +113,14 @@ class DetectronInference:
 
         res_end = time.time()
         print("Detectron object gpu result retrieval: ", str(res_end - res_start))
+        # file.close()
         return filtered_masks
 
-    def get_label_list(self):
-        with open(os.path.join(self.inputs_dir_path, "class_names.yaml"), 'r') as stream:
-            try:
-                labels_list = yaml.safe_load(stream)['MODEL']['NAMES']
-                return labels_list
-            except yaml.YAMLError as exc:
-                print(exc)
+    # def get_label_list(self):
+    #     with open(os.path.join(self.inputs_dir_path, "class_names.yaml"), 'r') as stream:
+    #         try:
+    #             labels_list = yaml.safe_load(stream)['MODEL']['NAMES']
+    #             return labels_list
+    #         except yaml.YAMLError as exc:
+    #             print(exc)
 

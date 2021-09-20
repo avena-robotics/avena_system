@@ -17,9 +17,11 @@
 // ___AVENA___
 #include "rgbd_sync/visibility_control.h"
 #include "custom_interfaces/action/simple_action.hpp"
-#include "custom_interfaces/msg/rgb_images.hpp"
-#include "custom_interfaces/msg/depth_images.hpp"
+
+#include "custom_interfaces/msg/images.hpp"
+// #include "custom_interfaces/msg/depth_images.hpp"
 #include "custom_interfaces/msg/ptclds.hpp"
+
 #include "custom_interfaces/msg/rgbd_sync.hpp"
 #include "helpers_commons/helpers_commons.hpp"
 #include "helpers_vision/helpers_vision.hpp"
@@ -48,7 +50,7 @@ namespace rgbd_sync
   private:
     helpers::Watchdog::SharedPtr _watchdog;
 
-    Request::SharedPtr _prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images, const Ptclds::SharedPtr &ptclds );
+    Request::SharedPtr _prepareOutputMessages(const Images::SharedPtr &rgb_images, const Images::SharedPtr &depth_images, const Ptclds::SharedPtr &ptclds );
 
     //ROS
     rclcpp_action::Server<Action>::SharedPtr _action_server;
@@ -61,12 +63,12 @@ namespace rgbd_sync
 
 
     rclcpp::Client<custom_interfaces::srv::DataStoreRgbdSyncInsert>::SharedPtr _client;
-    rclcpp::Subscription<custom_interfaces::msg::RgbImages>::SharedPtr _rgb_images_sub;
-    rclcpp::Subscription<custom_interfaces::msg::DepthImages>::SharedPtr _depth_images_sub;
+    rclcpp::Subscription<custom_interfaces::msg::Images>::SharedPtr _rgb_images_sub;
+    rclcpp::Subscription<custom_interfaces::msg::Images>::SharedPtr _depth_images_sub;
     rclcpp::Subscription<custom_interfaces::msg::Ptclds >::SharedPtr _ptclds_sub;
 
-    RgbImages::SharedPtr _rgb_images_data;
-    DepthImages::SharedPtr _depth_images_data;
+    Images::SharedPtr _rgb_images_data;
+    Images::SharedPtr _depth_images_data;
     Ptclds::SharedPtr _ptclds_data;
 
 

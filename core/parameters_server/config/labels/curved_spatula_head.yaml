@@ -1,0 +1,7 @@
+fit_method: octomap
+fit_method_parameters: null
+item: false
+is_container: false
+element: true
+components: null
+detection_id: 25

@@ -12,7 +12,7 @@ namespace data_store
         _get_list_server = node_ptr->create_service<GETLIST>(data_element_name + "_get_list", std::bind(&DataElement::_getList, this, std::placeholders::_1, std::placeholders::_2));
         _delete_server = node_ptr->create_service<DELETE>(data_element_name + "_delete", std::bind(&DataElement::_delete, this, std::placeholders::_1, std::placeholders::_2));
 
-        rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+        rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).reliable();
         _change_flag_publisher = node_ptr->create_publisher<String>(data_element_name + "_change_flag", qos_settings);
         _change_flag_message = String();
         _change_flag_message.data = data_element_name;

@@ -242,7 +242,6 @@ void StartSystem::startComposeItems()
     writeToConsole("Starting compose_items node", _ui_ptr->startSystemLogConsole);
     bool starting_result = startNode("compose_items", {"launch", "compose_items", "compose_items_server.launch.py"});
     if(starting_result){
-        // _ui_ptr->startComposeItemsButton->setEnabled(false);
         writeToConsole("Successfully started compose_items node", _ui_ptr->startSystemLogConsole);
     }
     else

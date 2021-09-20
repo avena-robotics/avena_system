@@ -1,0 +1,17 @@
+<library path="robot_diagnostics">
+  <class name="robot_diagnostics/RobotDiagnostics" type="robot_diagnostics::RobotDiagnostics" base_class_type="rqt_gui_cpp::Plugin">
+    <description>
+      Robot Diagnostics
+    </description>
+    <qtgui>
+      <group>
+        <label>Visualization</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to visualization.</statustip>
+      </group>
+      <label>Robot Diagnostics</label>
+      <icon type="theme">image-x-generic</icon>
+      <statustip>A GUI for robot diagnostics</statustip>
+    </qtgui>
+  </class>
+</library>

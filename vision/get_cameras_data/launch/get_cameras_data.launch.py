@@ -3,7 +3,12 @@ from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
 
+
 def generate_launch_description():
+    log_levels_params = {
+        'get_cameras_data': {'log_level': 'info'},
+    }
+
     container = ComposableNodeContainer(
         name='get_cameras_data_container',
         namespace='',
@@ -13,7 +18,9 @@ def generate_launch_description():
             ComposableNode(
                 package='get_cameras_data',
                 plugin='get_cameras_data::GetCamerasData',
-                name='get_cameras_data')
+                name='get_cameras_data',
+                parameters=[log_levels_params['get_cameras_data']]
+            ),
         ],
         output='screen',
     )

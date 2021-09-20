@@ -1,5 +1,14 @@
 #include "estimate_shape_fit_plate/fit_plate.hpp"
 
+
+/*first we fit sphere to pointcloud of the plate 
+then we compute OOB for getting acccurate plate position aint the world frame
+later we use center of the OOB and center of the sphere as the orientation vector, from OBB values we can get item position since we know that its dimensions are fixed and have 
+be inside OBB of the pointcloud.
+
+After this we have item position and orientation 
+
+*/
 namespace estimate_shape
 {
     FitPlate::FitPlate(const std::vector<CameraParameters> &camera_params, const std::vector<std::string> &args, const json &default_parameters)

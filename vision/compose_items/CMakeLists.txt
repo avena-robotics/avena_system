@@ -28,7 +28,6 @@ include_directories(
   include
 )
 
-
 # # - change_detect_server
 # add_executable(compose_items_server 
 #   src/compose_items_server.cpp
@@ -78,9 +77,9 @@ include_directories(
 # )
 
 
-add_library(compose_items_server SHARED src/compose_items_server.cpp src/pcl_methods/create_ptcld.cpp)
-target_compile_definitions(compose_items_server PRIVATE "COMPOSITION_BUILDING_DLL")
-ament_target_dependencies(compose_items_server
+add_library(compose_items SHARED src/compose_items.cpp src/pcl_methods/create_ptcld.cpp)
+target_compile_definitions(compose_items PRIVATE "COMPOSITION_BUILDING_DLL")
+ament_target_dependencies(compose_items
   custom_interfaces
   rclcpp
   rclcpp_action
@@ -89,13 +88,13 @@ ament_target_dependencies(compose_items_server
   helpers_vision
   helpers_commons
   )
-rclcpp_components_register_nodes(compose_items_server "compose_items::ComposeItems")# EXECUTABLE compose_items)
+rclcpp_components_register_nodes(compose_items "compose_items::ComposeItems")# EXECUTABLE compose_items)
 # set(node_plugins "${node_plugins}::ComposeItems;$<TARGET_FILE:compose_items>\n")
 
 
 
 install(TARGETS
-compose_items_server
+compose_items
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

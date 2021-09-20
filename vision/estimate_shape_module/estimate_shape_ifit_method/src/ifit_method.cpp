@@ -7,8 +7,11 @@ namespace estimate_shape
           _args(args),
           _default_parameters(default_parameters)
     {
-        _camera_poses[CamerasFrames::camera_1] = _camera_params[0].translation * _camera_params[0].orientation;
-        _camera_poses[CamerasFrames::camera_2] = _camera_params[1].translation * _camera_params[1].orientation;
+        _cameras_amount = _camera_params.size();
+        _camera_prefix = "camera_";
+        for(size_t cam_idx = 0; cam_idx <_cameras_amount; cam_idx++)
+            _camera_poses[_camera_prefix + std::to_string(cam_idx+1)] = _camera_params[cam_idx].translation * _camera_params[cam_idx].orientation;
+
     }
 
     IFitMethod::~IFitMethod()
