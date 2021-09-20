@@ -39,11 +39,11 @@ namespace estimate_shape
     Eigen::Affine3f affine;
   };
 
-  struct CamerasFrames
-  {
-    inline static const std::string camera_1 = "camera_1";
-    inline static const std::string camera_2 = "camera_2";
-  };
+  // struct CamerasFrames
+  // {
+  //   inline static const std::string camera_1 = "camera_1";
+  //   inline static const std::string camera_2 = "camera_2";
+  // };
 
   struct Label
   {
@@ -59,26 +59,23 @@ namespace estimate_shape
   struct ItemElement
   {
     ItemElement()
-        : element_mask_1(new cv::Mat),
-          element_mask_2(new cv::Mat),
-          element_depth_1(new cv::Mat),
-          element_depth_2(new cv::Mat),
-          // element_pcl_1(new pcl::PointCloud<pcl::PointXYZ>),
+        // : element_mask(new cv::Mat),
+          // element_mask_2(new cv::Mat),
+          // element_depth(new cv::Mat),
+          // element_depth_2(new cv::Mat),
+          // element_pcl_rgb(new pcl::PointCloud<pcl::PointXYZRGB>),
           // element_pcl_2(new pcl::PointCloud<pcl::PointXYZ>),
-          element_pcl_1(new pcl::PointCloud<pcl::PointXYZRGB>),
-          element_pcl_2(new pcl::PointCloud<pcl::PointXYZRGB>),
-          pcl_merged(new pcl::PointCloud<pcl::PointXYZ>)
+          // element_pcl_1(new pcl::PointCloud<pcl::PointXYZRGB>),
+          // element_pcl_2(new pcl::PointCloud<pcl::PointXYZRGB>),
+          : pcl_merged(new pcl::PointCloud<pcl::PointXYZ>)
     {
     }
     int32_t id = -1;
     int32_t item_id = -1;
     std::string element_label{};
-    std::shared_ptr<cv::Mat> element_mask_1;
-    std::shared_ptr<cv::Mat> element_mask_2;
-    std::shared_ptr<cv::Mat> element_depth_1;
-    std::shared_ptr<cv::Mat> element_depth_2;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr element_pcl_1;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr element_pcl_2;
+    // std::shared_ptr<cv::Mat> element_mask;
+    // std::shared_ptr<cv::Mat> element_depth;
+    std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> pclds_rgb;
     pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_merged;
     std::vector<json> parts_description;
   };

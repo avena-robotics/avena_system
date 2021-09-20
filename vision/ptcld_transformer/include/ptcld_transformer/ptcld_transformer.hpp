@@ -16,39 +16,31 @@
 
 // ___Avena___
 #include "ptcld_transformer/visibility_control.h"
-#include "custom_interfaces/msg/ptclds.hpp"
-// #include "custom_interfaces/msg/ptcld_transformer.hpp"
-#include "custom_interfaces/msg/rgb_images.hpp"
-#include "custom_interfaces/msg/depth_images.hpp"
-#include "custom_interfaces/msg/ptclds.hpp"
+
 
 #include "helpers_commons/helpers_commons.hpp"
 #include "helpers_vision/helpers_vision.hpp"
 #include <pcl/filters/crop_box.h>
-
 #include "custom_interfaces/srv/data_store_rgbd_sync_select.hpp"
 
 using namespace std::chrono_literals;
 
-// Eigen::Affine3f cam1_aff = Eigen::Translation3f(0.9000001549720764, 0.8249998092651367,0.5749999284744263) * Eigen::Quaternionf(0.02520658448338509, 0.5599915385246277, 0.7742850184440613, 0.2936950623989105);
-// Eigen::Affine3f cam2_aff = Eigen::Translation3f(0.10000000149011612,-0.824999988079071, 0.5749999284744263) * Eigen::Quaternionf(-0.27756187319755554, 0.7592250108718872, -0.5875178575515747, -0.03687329962849617);
 
 namespace ptcld_transformer
 {
   using json = nlohmann::json;
-  struct CamerasData
-  {
-    CamerasData() : cam1_ptcld(new pcl::PointCloud<pcl::PointXYZ>), cam2_ptcld(new pcl::PointCloud<pcl::PointXYZ>) {}
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cam1_ptcld;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cam2_ptcld;
+  // struct CamerasData
+  // {
+  //   CamerasData() : cam1_ptcld(new pcl::PointCloud<pcl::PointXYZ>), cam2_ptcld(new pcl::PointCloud<pcl::PointXYZ>) {}
+  //   pcl::PointCloud<pcl::PointXYZ>::Ptr cam1_ptcld;
+  //   pcl::PointCloud<pcl::PointXYZ>::Ptr cam2_ptcld;
 
-    using SharedPtr = std::shared_ptr<CamerasData>;
-  };
+  //   using SharedPtr = std::shared_ptr<CamerasData>;
+  // };
 
   struct CameraTransform
   {
-    Eigen::Affine3f cam1_aff;
-    Eigen::Affine3f cam2_aff;
+    Eigen::Affine3f cam_aff;
 
     using SharedPtr = std::shared_ptr<CameraTransform>;
   };
@@ -78,15 +70,16 @@ namespace ptcld_transformer
   {
   public:
     COMPOSITION_PUBLIC
-    PtcldTransformer(rclcpp::Node *node);
+    PtcldTransformer(rclcpp::Node *node, bool &transformer_status);
     ~PtcldTransformer();
-    TransformedPointClouds::SharedPtr transfromPointcloud(const custom_interfaces::msg::Ptclds::SharedPtr cameras_data_msg);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr transfromPointcloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr &ptcld);
 
   private:
-
     rclcpp::Client<custom_interfaces::srv::DataStoreRgbdSyncSelect>::SharedPtr _rgbd_sync_client;
 
-    CameraTransform::SharedPtr _cameras_parameters;
+    // CameraTransform::SharedPtr _cameras_parameters;
+    std::map<std::string, CameraTransform::SharedPtr> _cam_transform;
+    size_t _cameras_amount;
     TableArea _table_area;
     rclcpp::Node *_node;
 
@@ -94,17 +87,14 @@ namespace ptcld_transformer
     void _convertCloudToPCL(const sensor_msgs::msg::PointCloud2 &ros_cloud_msg,  pcl::PointCloud<pcl::PointXYZ>::Ptr &out_pcl_cloud);
     void _convertCloudToRos(const pcl::PointCloud<pcl::PointXYZ>::Ptr &pcl_cloud, sensor_msgs::msg::PointCloud2 &out_ros_cloud_msg );
 
-    CamerasData::SharedPtr _readInputData(const custom_interfaces::msg::Ptclds::SharedPtr cameras_data_msg);
-    CameraTransform::SharedPtr _getCameraTransform();
-    TransformedPointClouds::SharedPtr _processCamerasData(CamerasData::SharedPtr cameras_data, CameraTransform::SharedPtr cameras_parameters);
-    void _filterAndTransformPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr &in_cloud, const Eigen::Affine3f &camera_pose, pcl::PointCloud<pcl::PointXYZ>::Ptr &out_cloud);
+    bool  _getCamerasTransform();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr _processCamerasData(const pcl::PointCloud<pcl::PointXYZ>::Ptr &ptcld, CameraTransform::SharedPtr cameras_parameters);
+    void _filterAndTransformPointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr &in_cloud, const Eigen::Affine3f &camera_pose, pcl::PointCloud<pcl::PointXYZ>::Ptr &out_cloud);
     void _getTableAreaFromParametersServer();
     builtin_interfaces::msg::Time _getMergedPtcldTime(const builtin_interfaces::msg::Time &cam1_stamp, const builtin_interfaces::msg::Time &cam2_stamp);
-    void joinThread();
 
     rclcpp::TimerBase::SharedPtr _timer;
     bool _param_server_read;
-    std::thread _param_server_thread;
 
 
   };

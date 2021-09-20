@@ -1,5 +1,8 @@
 #include "estimate_shape_fit_spatula/fit_spatula.hpp"
 
+//use fit tool to obrain tool rotation - spatula tool is in fixed poition in handle (always the same)
+
+
 namespace estimate_shape
 {
     FitSpatula::FitSpatula(const std::vector<CameraParameters> &camera_params, const std::vector<std::string> &args, const json &default_parameters)

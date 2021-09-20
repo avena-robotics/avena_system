@@ -1,4 +1,4 @@
 std_msgs/Float64 time_stamp
-custom_interfaces/Detections data
+custom_interfaces/DetectionsList data
 ---
 std_msgs/Bool result

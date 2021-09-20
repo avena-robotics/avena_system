@@ -32,7 +32,11 @@ def generate_launch_description():
                 ComposableNode(
                     package='compose_items',
                     plugin='compose_items::ComposeItems',
-                    name='compose_items'
+                    name='compose_items',
+                    parameters=[{'remove_shadows': False},
+                                {'log_level': 'info'}
+                                ]
+
                     )
             ],
             output='screen',

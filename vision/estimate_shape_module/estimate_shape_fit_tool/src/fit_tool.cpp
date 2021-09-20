@@ -1,5 +1,9 @@
 #include "estimate_shape_fit_tool/fit_tool.hpp"
 
+
+//fits box to handle to obtain initial tool handle position 
+//compare colors of visable sides to obtain handle rotation
+
 namespace estimate_shape
 {
     FitTool::FitTool(const std::vector<CameraParameters> &camera_params, const std::vector<std::string> &args, const json &default_parameters)
@@ -57,8 +61,8 @@ namespace estimate_shape
     int FitTool::_fixBoxEstimation(Item &item)
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr handle_merged(new pcl::PointCloud<pcl::PointXYZRGB>);
-        *handle_merged += *(item.item_elements[0].element_pcl_1);
-        *handle_merged += *(item.item_elements[0].element_pcl_2);
+        for(auto &rgb_cloud : item.item_elements[HANDLE].pclds_rgb)
+            *handle_merged = *rgb_cloud;
 
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         _extractPlane(handle_merged, plane_cloud);
@@ -128,8 +132,10 @@ namespace estimate_shape
         Eigen::Vector3f position(item.pose.translation());
 
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr handle_merged(new pcl::PointCloud<pcl::PointXYZRGB>);
-        *handle_merged += *item.item_elements[HANDLE].element_pcl_1;
-        *handle_merged += *item.item_elements[HANDLE].element_pcl_2;
+        // *handle_merged = *item.item_elements[HANDLE].pcl_merged;
+        // helpers::converters::rosPtcldtoPcl<pcl::PointXYZRGB>(item.item_elements[HANDLE].element_pcl_rgb, handle_merged);
+        for(auto &rgb_cloud: item.item_elements[HANDLE].pclds_rgb)
+            *handle_merged = *rgb_cloud;
 
         pcl::transformPointCloud(*handle_merged, *handle_merged, handle_transform.inverse());
 

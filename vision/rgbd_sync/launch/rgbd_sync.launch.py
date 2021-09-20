@@ -19,6 +19,9 @@ from launch_ros.descriptions import ComposableNode
 
 
 def generate_launch_description():
+    log_levels_params = {
+        'rgbd_sync': {'log_level': 'info'},
+    }
     """Generate launch description component."""
 
     container = ComposableNodeContainer(
@@ -31,6 +34,7 @@ def generate_launch_description():
                     package='rgbd_sync',
                     plugin='rgbd_sync::RgbdSynchronizer',
                     name='rgbd_sync',
+                    parameters=[log_levels_params['rgbd_sync']]
                 ),
             ],
             output='screen',

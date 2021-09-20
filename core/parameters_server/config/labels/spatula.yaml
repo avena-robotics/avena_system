@@ -30,3 +30,4 @@ item_description:
     x: 1.5e-02 #7.97e-03 to thin for octomap filter 
     y: 3.9e-02 #3.57e-02
     z: 8.74e-02
+detection_id: 34
