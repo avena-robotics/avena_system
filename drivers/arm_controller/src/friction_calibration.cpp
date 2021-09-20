@@ -526,6 +526,9 @@ void SimpleController::init()
         {
             direction = -1;
         }
+        else{
+            direction = 1;
+        }
 
         std::vector<double> set_vel;
         double vel_increment = 0.05 * direction, max_vel = 0.8 * direction;
@@ -536,11 +539,9 @@ void SimpleController::init()
         std::vector<std::shared_ptr<std::ofstream>> chart;
         friction_comp friction_point;
         std::vector<double> tq_acc;
-        std::vector<std::vector<double>> static_tq_acc;
         std::vector<int> tq_inc;
         std::vector<bool> vel_achi;
         std::vector<bool> cal_done;
-        std::vector<bool> static_friction_flag;
         std::vector<std::chrono::steady_clock::time_point> valid_vel_time;
 
         goal_v_avg_acc.resize(_joints_number);
@@ -559,13 +560,10 @@ void SimpleController::init()
         temp_avg_s.resize(_joints_number);
         tau_avg_s.resize(_joints_number);
         chart.resize(_joints_number);
-        static_tq_acc.resize(_joints_number);
-        static_friction_flag.resize(_joints_number);
         _measured_friction_comp.resize(_joints_number);
 
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
-            static_friction_flag[jnt_idx] = false;
             _measured_friction_comp[jnt_idx].clear();
             int file_i = 0;
             std::string filename = std::string("/f_chart_joint_") + std::to_string(jnt_idx);
@@ -665,20 +663,6 @@ void SimpleController::init()
                 // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
                 _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
 
-                //check for static friction
-                if (static_friction_flag[jnt_idx] && std::abs(v_avg[jnt_idx]) > 0.01)
-                {
-                    static_tq_acc[jnt_idx].push_back(_set_torque_val);
-                }
-                if (std::abs(v_avg[jnt_idx]) <= 0.01)
-                {
-                    static_friction_flag[jnt_idx] = true;
-                }
-                else
-                {
-                    static_friction_flag[jnt_idx] = false;
-                }
-
                 //TODO: params
                 if (std::abs(_error) < (0.03 + std::abs(set_vel[jnt_idx]) * 0.012))
                 {
@@ -711,15 +695,6 @@ void SimpleController::init()
                             //next loop
                             if (set_vel[jnt_idx]*direction > max_vel * direction){
                                 cal_done[jnt_idx] = true;
-                                
-                                double static_tq=0.;
-                                for(size_t i=0;i<static_tq_acc[jnt_idx].size();i++)
-                                    static_tq+=static_tq_acc[jnt_idx][i];
-                                static_tq/=static_tq_acc[jnt_idx].size();
-                                temp_fc.tq = static_tq;
-                                temp_fc.vel = 0.01*direction;
-                                temp_fc.temp = temp_avg_s[jnt_idx];
-                                _measured_friction_comp[jnt_idx].push_back(temp_fc);
                             }
                             set_vel[jnt_idx] += vel_increment;
                             valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
