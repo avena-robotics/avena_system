@@ -338,9 +338,8 @@ void SimpleController::jointInit()
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        //reset
 
-        while (_arm_status.joints[jnt_idx].state != 2)
+        while (_arm_status.joints[jnt_idx].state == 0)
         {
             _arm_status = _arm_interface->getArmState();
             std::cout << "Initializing joint " << jnt_idx << std::endl;
@@ -572,6 +571,7 @@ void SimpleController::init()
             set_vel[jnt_idx] = -0.8;
             prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
             p_avg_s[jnt_idx]=0;
+            temp_avg_s[jnt_idx]=0;
             while (std::filesystem::exists(std::filesystem::path(_config_path + filename + std::string("_") + std::to_string(file_i) + std::string(".txt"))))
                 file_i++;
             std::cout << _config_path + filename + std::string("_") + std::to_string(file_i) + std::string(".txt") << std::endl;
@@ -703,13 +703,13 @@ void SimpleController::init()
                         _set_torque_val = 33 * _torque_sign;
                 }
 
-                // _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
-                _arm_command.joints[jnt_idx].c_torque = 0;
+                _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
+                // _arm_command.joints[jnt_idx].c_torque = 0;
                 _arm_command.joints[jnt_idx].c_status = 3;
                 RCLCPP_INFO_STREAM(_node->get_logger(), "jnt: " << jnt_idx);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "pos: " << _arm_status.joints[jnt_idx].position);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "set_vel: " << set_vel[jnt_idx]);
-                RCLCPP_INFO_STREAM(_node->get_logger(), "v_avg: " << _arm_status.joints[jnt_idx].velocity);
+                RCLCPP_INFO_STREAM(_node->get_logger(), "v_avg: " << v_avg[jnt_idx]);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "error: " << _error);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "temp: " << temp_avg_s[jnt_idx]);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "tq: " << _arm_command.joints[jnt_idx].c_torque);
@@ -722,12 +722,13 @@ void SimpleController::init()
                     goal_v_avg_acc[jnt_idx] += v_avg[jnt_idx];
                 }
                 //monitor data
-                _set_joint_state_msg.position[jnt_idx] = 0;
-                // _set_joint_state_msg.velocity[jnt_idx] = set_vel[jnt_idx];
-                _set_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
+                _set_joint_state_msg.position[jnt_idx] = temp_avg_s[jnt_idx];
+                _set_joint_state_msg.velocity[jnt_idx] = set_vel[jnt_idx];
+                // _set_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
                 _set_joint_state_msg.effort[jnt_idx] = _set_torque_val;
                 _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
+                
                 _arm_joint_state_msg.position[jnt_idx] = _arm_status.joints[jnt_idx].position;
                 _arm_joint_state_msg.velocity[jnt_idx] = v_avg[jnt_idx];
                 _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;

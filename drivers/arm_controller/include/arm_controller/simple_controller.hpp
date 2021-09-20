@@ -10,9 +10,6 @@
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include "sensor_msgs/msg/joint_state.hpp"
-#include "PID.hpp"
-
-#include "helpers_commons/helpers_commons.hpp"
 
 #include <chrono>
 #include <functional>
@@ -26,10 +23,11 @@
 #include <iomanip>
 #include <filesystem>
 
+#include "PID.hpp"
 #include "hw_interface.hpp"
+#include "helpers_commons/helpers_commons.hpp"
 
 #include "pinocchio/parsers/urdf.hpp"
-
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
 
@@ -109,32 +107,34 @@ protected:
 
     //ID
     Eigen::VectorXd _q, _qd, _qdd, _tau;
+    pinocchio::Model _model;
+    std::shared_ptr<pinocchio::Data> _data;
 
     //TIME
     rclcpp::TimerBase::SharedPtr _timer;
     std::chrono::time_point<std::chrono::steady_clock> _t_start, _t_stop, _t_current, _t_measure;
     std::chrono::microseconds _time_accumulator, _slowdown_duration;
     double _time_factor, _prev_time_factor;
+    int _loop_it;
 
     //TRAJECTORY
     trajectory_msgs::msg::JointTrajectory _trajectory;
     trajectory_msgs::msg::JointTrajectory _saved_trajectory;
 
     //COMMUNICATION
-
     std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> _exec;
 
-    //PUBLISHERS
+    //__PUBLISHERS
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _set_joint_states_pub;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_states_pub;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr _controller_state_pub;
 
-    //SUBSCRIBERS
+    //__SUBSCRIBERS
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _security_trigger_sub;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr _time_factor_sub;
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr _trajectory_sub;
 
-    //SERVICES
+    //__SERVICES
     rclcpp::Service<custom_interfaces::srv::ControlCommand>::SharedPtr _command_service;
 
     sensor_msgs::msg::JointState _set_joint_state_msg, _arm_joint_state_msg;
@@ -148,7 +148,11 @@ protected:
     //reads friction value from loaded friction chart, corresponding to current join velocity and temperature
     double compensateFriction(double vel, double temp, int jnt_idx);
 
+    void paramInit();
+    void varInit();
     void jointInit();
+
+    void controlLoop();
 
     void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
                     std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
