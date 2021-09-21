@@ -21,7 +21,8 @@ SimpleController::SimpleController(int argc, char **argv)
         std::bind(&SimpleController::securityTriggerStatusCb, this, std::placeholders::_1));
 
     _arm_interface = std::make_shared<ArmInterface>("0AA", (int)_trajectory_rate);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
 }
 
 SimpleController::~SimpleController()
@@ -635,10 +636,6 @@ void SimpleController::controlLoop()
         //calculate torques (PID+FF)
         _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
         _error = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
-        // int error_sign = ((_error > 0) - (_error < 0));
-
-        // if (std::abs(_error) > _error_margin && std::abs(_set_vel) < 0.015)
-        //     _set_vel = 0.015 * error_sign;
 
         _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error);
         _set_torque_ff_val = _set_vel * _time_factor * _FFv[jnt_idx];
@@ -648,21 +645,6 @@ void SimpleController::controlLoop()
         _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
 
         _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + _set_torque_ff_val + compensateFriction(_set_vel * _time_factor, _arm_status.joints[jnt_idx].temperature, jnt_idx);
-
-        //FRICTION SPIKE
-
-        // int f_acu_sign = ((_frick_acu[jnt_idx] > 0) - (_frick_acu[jnt_idx] < 0));
-
-        // if (std::abs(_avg_vel[jnt_idx]) > 0.015 || (_acc_sign != _vel_sign && std::abs(_set_vel) < 0.01) || (f_acu_sign != error_sign && std::abs(_frick_acu[jnt_idx]) > 1))
-        // {
-        //     _frick_acu[jnt_idx] = _frick_acu[jnt_idx] * 0.95;
-        // }
-        // else
-        // {
-        //     if (std::abs(_set_torque_val + _frick_acu[jnt_idx]) < model.effortLimit[jnt_idx])
-        //         _frick_acu[jnt_idx] += (error_sign * 0.1);
-        // }
-        // _set_torque_val += _frick_acu[jnt_idx];
 
         _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
 
@@ -730,7 +712,7 @@ void SimpleController::init()
     jointPositionInit();
 
     //CONTROL LOOP
-    std::this_thread::sleep_for(std::chrono::microseconds(10));
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
     RCLCPP_INFO(_node->get_logger(), "Done initializing, entering control loop");
 
     while (rclcpp::ok())
@@ -753,6 +735,6 @@ int main(int argc, char **argv)
 {
     SimpleController controller(argc, argv);
 
-    controller.init();
+    // controller.init();
     return 0;
 }

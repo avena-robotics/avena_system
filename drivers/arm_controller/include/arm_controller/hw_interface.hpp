@@ -34,9 +34,20 @@ public:
     ArmInterface(std::string can_addr, int fq)
     {
         _can_addr = can_addr;
-        std::cout << "Initializing connection with arm." << std::endl;
 
-        sendArmCommand(_arm_command, std::chrono::seconds(1));
+        while (_last_msg.rx_msgs.size() < 1)
+        {
+            std::cout << "Initializing connection with CAN." << std::endl;
+            sendArmCommand(_arm_command, std::chrono::seconds(1));
+            if (_last_msg.rx_msgs.size() < 1)
+            {
+                std::cout << "Cannot establish connection with CAN." << std::endl;
+            }
+            else
+            {
+                std::cout << "Established connection with CAN" << std::endl;
+            }
+        }
 
         _arm_status.joints.resize(_last_msg.rx_msgs.size());
         _arm_command.joints.resize(_last_msg.rx_msgs.size());
