@@ -325,7 +325,7 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
     }
 }
 
-void SimpleController::jointInit()
+int SimpleController::jointInit()
 {
     //JOINT COMMUNICATION INIT
     RCLCPP_INFO(_node->get_logger(), "Starting executor");
@@ -334,8 +334,9 @@ void SimpleController::jointInit()
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
     _arm_status = _arm_interface->getArmState();
 
-    while(_arm_status.joints.size()<=0){
-        RCLCPP_ERROR(_node->get_logger(),"Received invalid arm state. Waiting ...");
+    while (_arm_status.joints.size() <= 0)
+    {
+        RCLCPP_ERROR(_node->get_logger(), "Received invalid arm state. Waiting ...");
         std::this_thread::sleep_for(std::chrono::seconds(1));
         _arm_status = _arm_interface->getArmState();
     }
@@ -352,6 +353,13 @@ void SimpleController::jointInit()
 
     RCLCPP_INFO(_node->get_logger(), "Joint number: %i", _joints_number);
 
+    std::cout << "Done initializing joints." << std::endl;
+    return 0;
+}
+
+int SimpleController::jointPositionInit()
+{
+    RCLCPP_INFO(_node->get_logger(), "Initializing joint position.");
     //JOINT POSITION INIT
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
@@ -373,11 +381,13 @@ void SimpleController::jointInit()
             std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
         }
     }
-    std::cout << "Done initializing joints." << std::endl;
+    RCLCPP_INFO(_node->get_logger(), "Done initializing robot position.");
+    return 0;
 }
 
-void SimpleController::paramInit()
+int SimpleController::paramInit()
 {
+    RCLCPP_INFO(_node->get_logger(), "Initializing robot model.");
     //ID INIT
     _urdf = helpers::commons::getRobotDescription();
     while (_urdf.size() == 0)
@@ -387,9 +397,10 @@ void SimpleController::paramInit()
         _urdf = helpers::commons::getRobotDescription();
     }
     pinocchio::urdf::buildModelFromXML(_urdf, _model, true);
-    _data= std::make_shared<pinocchio::Data>(_model);
+    _data = std::make_shared<pinocchio::Data>(_model);
     RCLCPP_INFO(_node->get_logger(), "Done loading robot model.");
 
+    RCLCPP_INFO(_node->get_logger(), "Initializing controller parameters.");
     //PARAMETERS INIT
     _node->declare_parameter<double>("error_margin", 0);
     _node->declare_parameter<std::string>("config_path", "");
@@ -426,11 +437,12 @@ void SimpleController::paramInit()
     loadFrictionChart(_config_path + std::string("/friction_chart_"));
     RCLCPP_INFO(_node->get_logger(), "Loaded friction chart");
 
-    return;
+    return 0;
 }
 
-void SimpleController::varInit()
+int SimpleController::varInit()
 {
+    RCLCPP_INFO(_node->get_logger(), "Initializing controller variables.");
     _arm_command.joints.resize(_joints_number);
     _friction_chart.resize(_joints_number);
     _Kp.resize(_joints_number);
@@ -517,7 +529,8 @@ void SimpleController::varInit()
     _t_stop = std::chrono::steady_clock::now();
     _slowdown_duration = std::chrono::microseconds(1000000);
 
-    return;
+    RCLCPP_INFO(_node->get_logger(), "Done initializing variables.");
+    return 0;
 }
 
 void SimpleController::controlLoop()
@@ -529,8 +542,9 @@ void SimpleController::controlLoop()
     //GET JOINT STATES
     _arm_status = _arm_interface->getArmState();
 
-    if(std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count()>(1000000/_trajectory_rate)){
-        RCLCPP_WARN(_node->get_logger(),"Communication delay exceeded loop period.");
+    if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
+    {
+        RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period.");
     }
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
@@ -713,6 +727,7 @@ void SimpleController::init()
     jointInit();
     paramInit();
     varInit();
+    jointPositionInit();
 
     //CONTROL LOOP
     std::this_thread::sleep_for(std::chrono::microseconds(10));

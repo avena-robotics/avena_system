@@ -325,7 +325,7 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
     }
 }
 
-void SimpleController::jointInit()
+int SimpleController::jointInit()
 {
     _arm_status = _arm_interface->getArmState();
 

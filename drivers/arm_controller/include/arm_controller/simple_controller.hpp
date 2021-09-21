@@ -148,9 +148,10 @@ protected:
     //reads friction value from loaded friction chart, corresponding to current join velocity and temperature
     double compensateFriction(double vel, double temp, int jnt_idx);
 
-    void paramInit();
-    void varInit();
-    void jointInit();
+    int paramInit();
+    int varInit();
+    int jointInit();
+    int jointPositionInit();
 
     void controlLoop();
 
