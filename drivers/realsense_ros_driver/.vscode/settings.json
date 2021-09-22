@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./realsense2_camera/launch"
+    ]
+}
