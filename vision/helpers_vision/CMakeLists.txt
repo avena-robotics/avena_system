@@ -71,19 +71,19 @@ install(
   RUNTIME DESTINATION bin
 )
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  find_package(ament_cmake_gtest REQUIRED)
+# if(BUILD_TESTING)
+#   find_package(ament_lint_auto REQUIRED)
+#   find_package(ament_cmake_gtest REQUIRED)
 
-  ament_lint_auto_find_test_dependencies()
+#   ament_lint_auto_find_test_dependencies()
 
-  ament_add_gtest(test_mask_serialization
-    test/test_mask_serialization.cpp
-  )
-  target_link_libraries(test_mask_serialization
-    helpers_vision
-  )
-endif()
+#   ament_add_gtest(test_mask_serialization
+#     test/test_mask_serialization.cpp
+#   )
+#   target_link_libraries(test_mask_serialization
+#     helpers_vision
+#   )
+# endif()
 
 ament_export_include_directories(
   include
