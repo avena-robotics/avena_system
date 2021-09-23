@@ -41,3 +41,17 @@ docker rmi ${docker images -aq}
 #install newest nvidia drivers
 apt install nvidia-utils-470
 
+sudo ubuntu-drivers install
+
+#create internal docker network
+docker network create --gateway 172.18.18.1 --subnet 172.18.18.0/24 avenanet
+
+#baremetal requirements here:
+# commons
+# drivers: arm_controller, candriver
+#gui_launchers
+#realsense2_ros2_driver
+#basler driver
+
+
+
