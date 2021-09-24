@@ -728,7 +728,7 @@ void SimpleController::init()
     _arm_command.timestamp = std::chrono::steady_clock::now();
     _arm_interface->setArmCommand(_arm_command);
     RCLCPP_INFO(_node->get_logger(), "shutting down");
-    rclcpp::shutdown();
+    exit(0);
 }
 
 int main(int argc, char **argv)

@@ -13,7 +13,7 @@ SimpleController::SimpleController(int argc, char **argv)
     _trajectory_sub = _node->create_subscription<trajectory_msgs::msg::JointTrajectory>("/trajectory", 1000, std::bind(&SimpleController::setTrajectoryCb, this, std::placeholders::_1));
     _time_factor_sub = _node->create_subscription<std_msgs::msg::Float64>("/arm_controller/time_factor", 10, std::bind(&SimpleController::setTimeFactorCb, this, std::placeholders::_1));
     _set_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("set_joint_states", 10);
-    _arm_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("arm_joint_states", 10);
+    _arm_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("aarm_joint_states", 10);
     _controller_state_pub = _node->create_publisher<std_msgs::msg::Int32>("/arm_controller/state", 10);
     _security_trigger_sub = _node->create_subscription<std_msgs::msg::Bool>(
         "/security_trigger",
@@ -715,7 +715,7 @@ void SimpleController::init()
                 }
 
                 _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
-                // _arm_command.joints[jnt_idx].c_torque = 0;
+                // _arm_command.joints[jnt_idx].c_torque = 10;
                 _arm_command.joints[jnt_idx].c_status = 3;
                 RCLCPP_INFO_STREAM(_node->get_logger(), "jnt: " << jnt_idx);
                 RCLCPP_INFO_STREAM(_node->get_logger(), "pos: " << _arm_status.joints[jnt_idx].position);
@@ -736,7 +736,8 @@ void SimpleController::init()
                 _set_joint_state_msg.position[jnt_idx] = temp_avg_s[jnt_idx];
                 _set_joint_state_msg.velocity[jnt_idx] = set_vel[jnt_idx];
                 // _set_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
-                _set_joint_state_msg.effort[jnt_idx] = _set_torque_val;
+                _set_joint_state_msg.effort[jnt_idx] = 10;
+                // _set_joint_state_msg.effort[jnt_idx] = _set_torque_val;
                 _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
                 _arm_joint_state_msg.position[jnt_idx] = _arm_status.joints[jnt_idx].position;
@@ -794,8 +795,7 @@ void SimpleController::init()
     _arm_interface->setArmCommand(_arm_command);
     std::cout << "Calibration took: " << std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - calib_time).count() << " minutes" << std::endl;
     RCLCPP_INFO(_node->get_logger(), "Done calibrating, shutting down");
-
-    rclcpp::shutdown();
+    exit(0);
 }
 
 int main(int argc, char **argv)
