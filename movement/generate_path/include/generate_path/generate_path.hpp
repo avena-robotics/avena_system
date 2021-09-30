@@ -11,17 +11,15 @@ namespace generate_path
   class GeneratePath
   {
   public:
-    explicit GeneratePath(rclcpp::Node::SharedPtr node) noexcept(false);
-    virtual ~GeneratePath();
-    GeneratedPath::SharedPtr generatePath(const InputData::SharedPtr generate_path_input) noexcept(false);
+    explicit GeneratePath(rclcpp::Node::SharedPtr node, physics_client_handler::PhysicsClientHandler::SharedPtr physics_client_handler) noexcept(false);
+    virtual ~GeneratePath() = default;
+    GeneratedPath::SharedPtr generatePath(const MovementSequence &movement_sequence) noexcept(false);
 
     using UniquePtr = std::unique_ptr<GeneratePath>;
     using SharedPtr = std::shared_ptr<GeneratePath>;
 
   private:
     // ___Methods___
-    void _initialize();
-    void _shutdown();
     ArmConfiguration _getJointStatesFromTopic(const sensor_msgs::msg::JointState::SharedPtr &joint_states);
     ReturnCode _getParametersFromServer();
     ReturnCode _checkJointLimits(const ArmConfiguration &joint_states, const std::vector<Limits> &joint_limits);
@@ -29,16 +27,15 @@ namespace generate_path
     ReturnCode _readSceneInfoFromPhysicsServer();
     void _validateArmConfiguration(const ArmConfiguration &joint_state) noexcept(false);
     sensor_msgs::msg::JointState::SharedPtr _getCurrentJointStates();
-    void _updateOctomap(const pcl::PointCloud<pcl::PointXYZ>::Ptr &octomap);
 
     // ___Attributes___
     rclcpp::Node::SharedPtr _node;
+    physics_client_handler::PhysicsClientHandler::SharedPtr _physics_client_handler;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr _joint_state_sub;
     std::mutex _current_joint_states_mtx;
     sensor_msgs::msg::JointState::SharedPtr _current_joint_states;
     helpers::commons::RobotInfo _robot_info;
     kinematics::Kinematics::SharedPtr _kinematics_engine;
-    physics_client_handler::PhysicsClientHandler::SharedPtr _physics_client_handler;
   };
 
 } // namespace generate_path

@@ -1,0 +1,7 @@
+fit_method: octomap
+is_container: false
+fit_method_parameters: null
+item: true
+element: false
+components: ["border_plastic_board_head", "long_handle"]
+detection_id: 15

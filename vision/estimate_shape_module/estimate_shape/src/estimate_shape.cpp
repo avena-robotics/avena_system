@@ -186,9 +186,17 @@ namespace estimate_shape
                 item_element_structure.item_id = topic_item.id;
                 item_element_structure.element_label = topic_item_element.label;
 
-                helpers::converters::rosPtcldtoPcl<pcl::PointXYZRGB>(topic_item_element.cam1_ptcld, item_element_structure.element_pcl_1);
-                helpers::converters::rosPtcldtoPcl<pcl::PointXYZRGB>(topic_item_element.cam2_ptcld, item_element_structure.element_pcl_2);
-                helpers::converters::rosPtcldtoPcl<pcl::PointXYZ>(topic_item_element.merged_ptcld, item_element_structure.pcl_merged);
+              
+                item_element_structure.pclds_rgb.resize(topic_item_element.ptclds.size());
+                for(size_t i=0; i< item_element_structure.pclds_rgb.size(); i++)
+                    helpers::converters::rosPtcldtoPcl<pcl::PointXYZRGB>(topic_item_element.ptclds[i], item_element_structure.pclds_rgb[i]);
+                
+                for(auto &rgb_cloud:item_element_structure.pclds_rgb)
+                    pcl::copyPointCloud(*rgb_cloud, *item_element_structure.pcl_merged);
+
+                // helpers::converters::rosPtcldtoPcl<pcl::PointXYZ>(topic_item_element.ptcld, item_element_structure.pcl_merged);
+                // helpers::converters::rosPtcldtoPcl<pcl::PointXYZRGB>(topic_item_element.cam2_ptcld, item_element_structure.element_pcl_2);
+                // helpers::converters::rosPtcldtoPcl<pcl::PointXYZ>(topic_item_element.merged_ptcld, item_element_structure.pcl_merged);
             }
         }
         return 0;
@@ -266,21 +274,31 @@ namespace estimate_shape
         // Camera affines
         auto get_camera_affine = [this](const std::string &camera_frame) -> std::optional<CameraParameters>
         {
-            std::optional<Eigen::Affine3f> camera_affine_opt;
-                camera_affine_opt = helpers::vision::getCameraTransformAffine("world", camera_frame);
-                // if (camera_affine_opt)
-                //     break;
-                // RCLCPP_WARN_STREAM_THROTTLE(LOGGER, *get_clock(), 1000, "Estimate shape - cannot obtain transform to \"" + camera_frame + "\" trying again...");
+            // std::optional<Eigen::Affine3f> camera_affine_opt;
+            //     camera_affine_opt = helpers::vision::getCameraTransformAffine("world");
+            //     // if (camera_affine_opt)
+            //     //     break;
+            //     // RCLCPP_WARN_STREAM_THROTTLE(LOGGER, *get_clock(), 1000, "Estimate shape - cannot obtain transform to \"" + camera_frame + "\" trying again...");
             
+            // if (camera_affine_opt == std::nullopt)
+            // {
+            //     camera_affine_opt = helpers::vision::getCameraTransformAffine("world");
+            //     if (camera_affine_opt == std::nullopt)
+            //     {
+
+            //         RCLCPP_WARN(this->get_logger(), "Estimate shape - cannot obtain transform to \"" + camera_frame + "\" shuting down node...");
+            //         return std::nullopt;
+            //     }
+            // }
+
+            std::optional<Eigen::Affine3f> camera_affine_opt;
+            camera_affine_opt = helpers::vision::getCameraTransformAffine("world", camera_frame);
             if (camera_affine_opt == std::nullopt)
             {
-                camera_affine_opt = helpers::vision::getCameraTransformAffine("world", "");
-                if (camera_affine_opt == std::nullopt)
-                {
 
-                    RCLCPP_WARN(this->get_logger(), "Estimate shape - cannot obtain transform to \"" + camera_frame + "\" shuting down node...");
-                    return std::nullopt;
-                }
+                RCLCPP_WARN(this->get_logger(), "Compose items - cannot obtain transform to \"" + camera_frame + "\" shuting down node...");
+                shutDownNode();
+                return std::nullopt;
             }
 
                     
@@ -289,15 +307,26 @@ namespace estimate_shape
             return std::optional<CameraParameters>(std::in_place, translation, quaternion, camera_frame);
         };
 
-        if (auto cam1_params = get_camera_affine("camera_1"))
-            out_cameras_parameters.push_back(*cam1_params);
+        size_t cameras_amount = 0;
+        RCLCPP_INFO_ONCE(get_logger(), "Reading parameters from the server");
+        auto parameters = helpers::commons::getParameters({"cameras"});
+        if (parameters.empty())
+            RCLCPP_INFO(get_logger(), "cant read parameters from server...");
         else
-            shutDownNode();
+        {
+            cameras_amount = parameters["cameras"]["cameras_amount"];
+            RCLCPP_INFO(get_logger(), "Parameters read successfully...");
+        }
 
-        if (auto cam2_params = get_camera_affine("camera_2"))
-            out_cameras_parameters.push_back(*cam2_params);
+
+        for(size_t cam_idx = 1; cam_idx <= cameras_amount; cam_idx++){
+
+        if (auto cam_params = get_camera_affine("camera_" + std::to_string(cam_idx)))
+            out_cameras_parameters.push_back(*cam_params);
         else
             shutDownNode();
+        }
+      
 
         return 0;
     }
@@ -327,11 +356,11 @@ namespace estimate_shape
             RCLCPP_WARN(LOGGER, "Module has not received data yet.");
             return 1;
         }
-        if (input_items->header.stamp == builtin_interfaces::msg::Time())
-        {
-            RCLCPP_WARN(LOGGER, "Invalid input message header.");
-            return 1;
-        }
+        // if (input_items->header.stamp == builtin_interfaces::msg::Time())
+        // {
+        //     RCLCPP_WARN(LOGGER, "Invalid input message header.");
+        //     return 1;
+        // }
         return 0;
     }
 } // namespace estimate_shape

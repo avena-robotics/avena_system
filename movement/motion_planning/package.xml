@@ -11,6 +11,7 @@
 
   <depend>generate_path</depend>
   <depend>generate_trajectory</depend>
+  <depend>spawn_collision_items</depend>
   <depend>custom_interfaces</depend>
   <depend>helpers_commons</depend>
   <depend>helpers_vision</depend>

@@ -108,6 +108,5 @@ class PyWatchdog:
         pass
 
     def _commandCallback(self, command):
-        if self._node_name != 
         pass
 

@@ -1,0 +1,7 @@
+fit_method: octomap
+is_container: false
+fit_method_parameters: null
+item: true
+element: false
+components: ["spatula_mint_grey_head", "short_handle"]
+detection_id: 33

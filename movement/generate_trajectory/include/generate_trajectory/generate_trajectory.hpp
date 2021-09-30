@@ -43,7 +43,6 @@ namespace generate_trajectory
     void _generateAcceleration(Eigen::VectorXd maxAcceleration, Trajectory &trajectory);
     void _convertToMsg(Trajectory &trajectory, const std::vector<std::string> &joint_names, trajectory_msgs::msg::JointTrajectory &out_trajectory);
     ReturnCode _getParametersFromServer();
-    void _initialize();
 
     // ___Attributes___
     rclcpp::Node::SharedPtr _node;

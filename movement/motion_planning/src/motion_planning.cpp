@@ -62,13 +62,27 @@ namespace motion_planning
 
         if (!_trajectory_insert_client->wait_for_service(timeout))
             throw std::runtime_error("Trajectory data server is not available");
+        
+        // Create physics client handler and pass it to modules that needs it
+        nlohmann::json parameters = helpers::commons::getParameter("robot");
+        if (parameters.empty())
+            throw std::runtime_error("Cannot read \"robot\" parameter from server");
 
-        _generate_path_handler = std::make_unique<generate_path::GeneratePath>(shared_from_this());
+        physics_client_handler::PhysicsClientHandler::SharedPtr pch;
+        if (auto robot_info = helpers::commons::getRobotInfo())
+        {
+            pch = std::make_shared<physics_client_handler::PhysicsClientHandler>(*robot_info, get_logger());
+        }
+        else
+            throw std::runtime_error("Cannot get robot information");
+
+        _generate_path_handler = std::make_unique<generate_path::GeneratePath>(shared_from_this(), pch);
         _generate_trajectory_handler = std::make_unique<generate_trajectory::GenerateTrajectory>(shared_from_this());
-
+        _spawn_collision_items_handler = std::make_unique<spawn_collision_items::SpawnCollisionItems>(shared_from_this(), pch);
+        
         // Debugging publishers
         _generated_path_pub_debug = create_publisher<generate_path::GeneratedPath>("/debug/generated_path", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local());
-        _generated_trajectory_pub_debug = create_publisher<trajectory_msgs::msg::JointTrajectory>("/debug/trajectory", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local());
+        _generated_trajectory_pub_debug = create_publisher<trajectory_msgs::msg::JointTrajectory>("trajectory", rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local());
     }
 
     void MotionPlanning::_shutdown()
@@ -79,6 +93,7 @@ namespace motion_planning
         _movement_sequence_select_client.reset();
         _generate_path_handler.reset();
         _generate_trajectory_handler.reset();
+        _spawn_collision_items_handler.reset();
         _generated_path_pub_debug.reset();
         _generated_trajectory_pub_debug.reset();
     }
@@ -124,15 +139,26 @@ namespace motion_planning
         }
 
         // ----------------------------------------------------
+        // Spawn collision items (items and collision octomap)
+        // ----------------------------------------------------
+        try
+        {
+            _spawn_collision_items_handler->spawnOctomap(read_data->octomap);
+        }
+        catch (const std::exception &e)
+        {
+            RCLCPP_ERROR(get_logger(), "Error occured while spawning collision items. Error: %s. Aborting...", e.what());
+            goal_handle->abort(result);
+            return;
+        }
+
+        // ----------------------------------------------------
         // Generate path
         // ----------------------------------------------------
-        generate_path::InputData::SharedPtr generate_path_input = std::make_shared<generate_path::InputData>();
-        generate_path_input->movement_sequence = read_data->movement_sequence;
-        generate_path_input->octomap = read_data->octomap;
         generate_path::GeneratedPath::SharedPtr generated_path_segments;
         try
         {
-            generated_path_segments = _generate_path_handler->generatePath(generate_path_input);
+            generated_path_segments = _generate_path_handler->generatePath(read_data->movement_sequence);
         }
         catch (const std::exception &e)
         {
@@ -229,8 +255,7 @@ namespace motion_planning
             throw std::runtime_error("Cannot read scene octomap from server");
 
         auto ros_octomap = octomap_res.get()->data.octomap.scene_octomap;
-        if (helpers::converters::rosPtcldtoPcl<pcl::PointXYZ>(ros_octomap, read_data->octomap))
-            throw std::runtime_error("Error occured while converting ROS octomap to PCL");
+        helpers::converters::rosPtcldtoPcl<pcl::PointXYZ>(ros_octomap, read_data->octomap);
 
         return read_data;
     }

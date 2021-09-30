@@ -1,7 +1,0 @@
-<root main_tree_to_execute = "MainTree">
-    <include path="/root/ros2_ws/src/avena_ros2/logic_bt/xml/subtrees/tracker/security_rgb/security_rgb_test.xml"/>
-    <BehaviorTree ID="MainTree">
-        <SubTree ID="SecurityRgb" node="node"/>
-    </BehaviorTree>
-    
-</root>

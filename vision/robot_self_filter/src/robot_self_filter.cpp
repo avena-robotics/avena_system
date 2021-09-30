@@ -2,13 +2,12 @@
 
 namespace robot_self_filter
 {
-    RobotSelfFilter::RobotSelfFilter(rclcpp::Node *node)
+    RobotSelfFilter::RobotSelfFilter(rclcpp::Node *node, float &offset)
     {   
          _node = node;
-        _offset = DEFAULT_OFFSET;
+        _offset = offset;
         _debug = false;
         RCLCPP_INFO(_node->get_logger(), "Initialization of robot self filter.");
-        _node->declare_parameter<float>("offset", DEFAULT_OFFSET);
         _loadAvenaMeshes();
 
 
@@ -36,7 +35,7 @@ namespace robot_self_filter
     {
         // helpers::Timer timer(__func__, get_logger());
         std::set<int> robot_indices_unique;
-        _node->get_parameter_or("offset", _offset, DEFAULT_OFFSET);
+        // _node->get_parameter_or("offset", _offset, DEFAULT_OFFSET);
         std::chrono::microseconds timestamp(point_cloud->header.stamp);
         int index = 0;
         for (auto link :_robot_links_names)

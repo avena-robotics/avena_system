@@ -5,11 +5,6 @@ namespace generate_trajectory
     GenerateTrajectory::GenerateTrajectory(rclcpp::Node::SharedPtr node)
         : _node(node)
     {
-        _initialize();
-    }
-
-    void GenerateTrajectory::_initialize()
-    {
         RCLCPP_INFO(_node->get_logger(), "[Generate trajectory] Initialization of ROS2 trajectory generator.");
         if (_getParametersFromServer() != ReturnCode::SUCCESS)
             throw std::runtime_error("Cannot read parameters from server");

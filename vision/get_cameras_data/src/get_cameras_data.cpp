@@ -5,105 +5,100 @@ namespace get_cameras_data
     GetCamerasData::GetCamerasData(const rclcpp::NodeOptions &options)
         : Node("get_cameras_data", options)
     {
+
+         status = custom_interfaces::msg::Heartbeat::STOPPED;
+        _watchdog = std::make_shared<helpers::Watchdog>(this, this, "system_monitor");
         helpers::commons::setLoggerLevelFromParameter(this);
+        RCLCPP_INFO(this->get_logger(), "started Node");
 
-        rclcpp::QoS qos_setting = rclcpp::QoS(rclcpp::KeepLast(2)).durability_volatile().reliable();
-
-        _rgb1_image_sub.subscribe(this, _camera1_frame + _rgb_topic, qos_setting.get_rmw_qos_profile());
-        _depth1_image_sub.subscribe(this, _camera1_frame + _depth_topic, qos_setting.get_rmw_qos_profile());
-        _rgb2_image_sub.subscribe(this, _camera2_frame + _rgb_topic, qos_setting.get_rmw_qos_profile());
-        _depth2_image_sub.subscribe(this, _camera2_frame + _depth_topic, qos_setting.get_rmw_qos_profile());
-
-        // _ptclds_sub = create_subscription<custom_interfaces::msg::Ptclds>(
-        //     _camera1_frame + _ptcld_topic, qos_setting.get_rmw_qos_profile(), [this](const custom_interfaces::msg::Ptclds::SharedPtr ptclds) {
-
-        //     });
-        _ptclds_pub = create_publisher<custom_interfaces::msg::Ptclds>("ptclds_stream", qos_setting);
-        _ptclds_sub = create_subscription<sensor_msgs::msg::PointCloud2>(_camera1_frame + _ptcld_topic, qos_setting,
-                                                                         [this](const sensor_msgs::msg::PointCloud2::SharedPtr mgs)
-                                                                         {
-                                                                             custom_interfaces::msg::Ptclds ptclds;
-                                                                             //  ptclds.header.frame_id = ""
-                                                                             ptclds.cam1_ptcld = *mgs;
-                                                                             ptclds.cam2_ptcld = *mgs;
-                                                                             ptclds.cam1_ptcld.header.frame_id = "rgb_camera_link";
-                                                                             ptclds.cam2_ptcld.header.frame_id = "rgb_camera_link";
-                                                                             ptclds.header.stamp = mgs->header.stamp;
-                                                                             _ptclds_pub->publish(ptclds);
-                                                                         });
-
-        _syncApproximate = std::make_unique<Synchronizer>(SyncPolicy(2),
-                                                          _rgb1_image_sub, _depth1_image_sub,
-                                                          _rgb2_image_sub, _depth2_image_sub);
-        _syncApproximate->registerCallback(std::bind(&GetCamerasData::_synchronizedTopicsCallback, this,
-                                                     std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
-                                                     std::placeholders::_4));
-
-        _rgb_images_pub = create_publisher<custom_interfaces::msg::RgbImages>("rgb_images_stream", qos_setting);
-        _depth_images_pub = create_publisher<custom_interfaces::msg::DepthImages>("depth_images_stream", qos_setting);
-        _ptclds_pub = create_publisher<custom_interfaces::msg::Ptclds>("ptclds_stream", qos_setting);
-
-        // _robot_links_names = helpers::commons::getRobotLinksNames(this);
     }
 
     GetCamerasData::~GetCamerasData()
     {
     }
 
-    void GetCamerasData::_synchronizedTopicsCallback(const sensor_msgs::msg::Image::ConstSharedPtr &cam1_rgb, const sensor_msgs::msg::Image::ConstSharedPtr &cam1_depth,
-                                                     const sensor_msgs::msg::Image::ConstSharedPtr &cam2_rgb, const sensor_msgs::msg::Image::ConstSharedPtr &cam2_depth)
+    void GetCamerasData::_getParametersFromServer()
     {
-        // RCLCPP_WARN_STREAM(get_logger(), "START: " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << " ms");
+        RCLCPP_INFO_ONCE(get_logger(), "Reading parameters from the server");
 
-        helpers::Timer timer("GetCamerasData::synchronizedCallback", get_logger());
-
-        custom_interfaces::msg::RgbImages::UniquePtr rgb_images_data(new custom_interfaces::msg::RgbImages);
-        custom_interfaces::msg::DepthImages::UniquePtr depth_images_data(new custom_interfaces::msg::DepthImages);
-
-        auto timestamp = now();
-
-        rgb_images_data->header.stamp = timestamp;
-        sensor_msgs::msg::Image cam1_rgb_output, cam2_rgb_output;
-        auto convertBGRAtoBGR = [](const sensor_msgs::msg::Image::ConstSharedPtr &bgra_input, sensor_msgs::msg::Image &bgr_output)
+        auto parameters = helpers::commons::getParameters({"cameras"});
+        if (parameters.empty())
+            RCLCPP_INFO(get_logger(), "cant read parameters from server...");
+        else
         {
-            cv::Mat mat;
-            // std::cout << "before: " << bgra_input->encoding << std::endl;
-            helpers::converters::rosImageToCV(*bgra_input, mat);
-            cv::cvtColor(mat, mat, CV_BGRA2BGR);
-            // std::cout << "after 1: " << mat.type() << std::endl;
-            helpers::converters::cvMatToRos(mat, bgr_output);
-
-            // std::cout << "after 2: " << bgr_output.encoding << std::endl;
-            // cv::imshow("image", mat);
-            // cv::waitKey(1);
-        };
-        convertBGRAtoBGR(cam1_rgb, cam1_rgb_output);
-        convertBGRAtoBGR(cam2_rgb, cam2_rgb_output);
-
-
-        rgb_images_data->cam1_rgb = cam1_rgb_output;
-        rgb_images_data->cam2_rgb = cam2_rgb_output;
-        rgb_images_data->cam1_rgb.header.frame_id = "rgb_camera_link";
-        rgb_images_data->cam2_rgb.header.frame_id = "rgb_camera_link";
-
-        depth_images_data->header.stamp = timestamp;
-        depth_images_data->cam1_depth = *cam1_depth;
-        depth_images_data->cam2_depth = *cam2_depth;
-
-        depth_images_data->cam1_depth.header.frame_id = "rgb_camera_link";
-        depth_images_data->cam2_depth.header.frame_id = "rgb_camera_link";
-        {
-            helpers::Timer timer("GetCamerasData::publish", get_logger());
-            // cv::Mat mat;
-            // helpers::converters::rosImageToCV(rgb_images_data->cam1_rgb, mat);
-            // cv::imshow("dupa", mat);
-            // cv::waitKey(1);
-
-
-            _rgb_images_pub->publish(std::move(rgb_images_data));
-            _depth_images_pub->publish(std::move(depth_images_data));
+            _cameras_amount = parameters["cameras"]["cameras_amount"];
+            RCLCPP_INFO(get_logger(), "Parameters read successfully...");
         }
+
     }
+
+    void GetCamerasData::initNode()
+    {
+        status = custom_interfaces::msg::Heartbeat::STARTING;
+        rclcpp::QoS qos_setting = rclcpp::QoS(rclcpp::KeepLast(2)).durability_volatile().reliable();
+        _cameras_amount = 0;
+        _getParametersFromServer();
+
+        
+
+        //create sycn_aprox object for rgb images
+        _rgb_image_subs.resize(_cameras_amount);
+        for(size_t i =1; i<=_cameras_amount ; i++){
+            std::string topic_name = _camera_frame_prefix + std::to_string(i) + _rgb_topic;
+            _rgb_image_subs[i-1] = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>();
+            _rgb_image_subs[i-1]->subscribe(this, topic_name, qos_setting.get_rmw_qos_profile());
+        }
+        _sync_rgb = std::make_shared<synchronizers_image::Images>(_cameras_amount, this, &_rgb_image_subs,"rgb_images_stream");
+
+
+        //create sycn_aprox object for depth images
+        _depth_image_subs.resize(_cameras_amount);
+        for(size_t i =1; i<=_cameras_amount ; i++){
+            std::string topic_name = _camera_frame_prefix + std::to_string(i) + _depth_topic;
+            _depth_image_subs[i-1] = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>();
+            _depth_image_subs[i-1]->subscribe(this, topic_name, qos_setting.get_rmw_qos_profile());
+        }
+        _sync_depth = std::make_shared<synchronizers_image::Images>(_cameras_amount, this, &_depth_image_subs,"depth_images_stream");
+
+        //create sycn_aprox object for ptclds
+        _ptcld_subs.resize(_cameras_amount);
+        for(size_t i =1; i<=_cameras_amount ; i++){
+            std::string topic_name = _camera_frame_prefix + std::to_string(i) + _ptcld_topic;
+            _ptcld_subs[i-1] = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>();
+            _ptcld_subs[i-1]->subscribe(this, topic_name, qos_setting.get_rmw_qos_profile());
+        }
+        _sync_ptcld = std::make_shared<synchronizers_ptcld::Ptclds>(_cameras_amount, this, &_ptcld_subs,"ptclds_stream");
+
+
+        status = custom_interfaces::msg::Heartbeat::RUNNING;
+    }
+
+
+        void GetCamerasData::shutDownNode()
+    {   
+
+        if(_sync_rgb){
+            for(auto &sub:_rgb_image_subs)
+                sub->unsubscribe();
+            _sync_rgb.reset();
+        }
+        if(_sync_depth){
+            for(auto &sub:_depth_image_subs)
+                sub->unsubscribe();
+            _sync_depth.reset();
+        }
+        if(_sync_ptcld){
+            for(auto &sub:_ptcld_subs)
+                sub->unsubscribe();
+            _sync_ptcld.reset();
+        }
+
+            
+        RCLCPP_INFO(this->get_logger(), "shut Down Node");
+        if (status != custom_interfaces::msg::Heartbeat::STOPPED)
+            status = custom_interfaces::msg::Heartbeat::STOPPED;
+    }
+
 
 } // namespace get_cameras_data
 

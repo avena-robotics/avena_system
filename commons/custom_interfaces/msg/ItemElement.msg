@@ -1,11 +1,8 @@
 int32 id
 string label
-sensor_msgs/PointCloud2 cam1_ptcld
-sensor_msgs/PointCloud2 cam2_ptcld
-sensor_msgs/PointCloud2 merged_ptcld
+
+sensor_msgs/PointCloud2[] ptclds
 sensor_msgs/PointCloud2 shadow_ptcld
-string cam1_mask
-string cam2_mask
-sensor_msgs/Image cam1_depth
-sensor_msgs/Image cam2_depth
+
+string[] masks
 string[] parts_description

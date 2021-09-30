@@ -11,15 +11,15 @@ namespace rgbd_sync
         _cant_touch_this = false;
         rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).durability_volatile().reliable();
 
-        _rgb_images_sub = create_subscription<custom_interfaces::msg::RgbImages>("rgb_images_stream", qos_settings,
-                                                                                       [this](const custom_interfaces::msg::RgbImages::SharedPtr rgb_image_msg) {
+        _rgb_images_sub = create_subscription<custom_interfaces::msg::Images>("rgb_images_stream", qos_settings,
+                                                                                       [this](const custom_interfaces::msg::Images::SharedPtr rgb_image_msg) {
                                                                                            if(_cant_touch_this)
                                                                                              return;
                                                                                            _rgb_images_data = rgb_image_msg;
                                                                                        });        
                                                                                        
-        _depth_images_sub = create_subscription<custom_interfaces::msg::DepthImages>("depth_images_stream", qos_settings,
-                                                                                       [this](const custom_interfaces::msg::DepthImages::SharedPtr depth_image_msg) {
+        _depth_images_sub = create_subscription<custom_interfaces::msg::Images>("depth_images_stream", qos_settings,
+                                                                                       [this](const custom_interfaces::msg::Images::SharedPtr depth_image_msg) {
                                                                                            if(_cant_touch_this)
                                                                                              return;
                                                                                            _depth_images_data = depth_image_msg;
@@ -148,13 +148,13 @@ namespace rgbd_sync
 
     }
 
-    Request::SharedPtr RgbdSynchronizer::_prepareOutputMessages(const RgbImages::SharedPtr &rgb_images, const DepthImages::SharedPtr &depth_images, const Ptclds::SharedPtr &ptclds)
+    Request::SharedPtr RgbdSynchronizer::_prepareOutputMessages(const Images::SharedPtr &rgb_images, const Images::SharedPtr &depth_images, const Ptclds::SharedPtr &ptclds)
     {
         Request::SharedPtr request_msg = std::make_shared<Request>();
         request_msg->data.header.stamp = now();
-        request_msg->data.rgb = *rgb_images;
-        request_msg->data.depth = *depth_images;
-        request_msg->data.ptclds = *ptclds;
+        request_msg->data.rgbs = rgb_images->data;
+        request_msg->data.depths = depth_images->data;
+        request_msg->data.ptclds = ptclds->data;
 
         _cant_touch_this = false;
         return request_msg;

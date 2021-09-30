@@ -47,7 +47,7 @@ namespace robot_self_filter
     {
     public:
         COMPOSITION_PUBLIC
-        RobotSelfFilter(rclcpp::Node *node);
+        RobotSelfFilter(rclcpp::Node *node, float &offset);
     void removeRobotFromCloud( pcl::PointCloud<pcl::PointXYZ>::Ptr merged_ptcld);
 
           
@@ -81,7 +81,6 @@ namespace robot_self_filter
 
         float _offset;
         bool _debug;
-        const float DEFAULT_OFFSET = 0.05;
     };
 
 } // namespace robot_self_filter

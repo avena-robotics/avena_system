@@ -32,6 +32,7 @@ namespace motion_planning
 
     generate_path::GeneratePath::UniquePtr _generate_path_handler;
     generate_trajectory::GenerateTrajectory::UniquePtr _generate_trajectory_handler;
+    spawn_collision_items::SpawnCollisionItems::UniquePtr _spawn_collision_items_handler;
     
     // Action servers and data store clients
     rclcpp_action::Server<MotionPlanningAction>::SharedPtr _action_server_motion_planning;

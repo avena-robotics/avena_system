@@ -1,5 +1,8 @@
 #include "estimate_shape_fit_knife/fit_knife.hpp"
 
+//use fit tool to obrain tool rotation and position - knife blade is in fixed poition in handle (always the same)
+
+
 namespace estimate_shape
 {
     FitKnife::FitKnife(const std::vector<CameraParameters> &camera_params, const std::vector<std::string> &args, const json &default_parameters)

@@ -2,9 +2,11 @@
 
 namespace generate_path
 {
-    GeneratePath::GeneratePath(rclcpp::Node::SharedPtr node)
-        : _node(node)
+    GeneratePath::GeneratePath(rclcpp::Node::SharedPtr node, physics_client_handler::PhysicsClientHandler::SharedPtr physics_client_handler)
+        : _node(node),
+          _physics_client_handler(physics_client_handler)
     {
+        // Setup OMPL logging level accoring to ROS node logging level
         auto log_level = rcutils_logging_get_logger_level(_node->get_logger().get_name());
         if (log_level == RCUTILS_LOG_SEVERITY_DEBUG)
             ompl::msg::setLogLevel(ompl::msg::LOG_DEBUG);
@@ -15,16 +17,6 @@ namespace generate_path
         else if (log_level == RCUTILS_LOG_SEVERITY_ERROR || log_level == RCUTILS_LOG_SEVERITY_FATAL)
             ompl::msg::setLogLevel(ompl::msg::LOG_ERROR);
 
-        _initialize();
-    }
-
-    GeneratePath::~GeneratePath()
-    {
-        _shutdown();
-    }
-
-    void GeneratePath::_initialize()
-    {
         _joint_state_sub = _node->create_subscription<sensor_msgs::msg::JointState>("joint_states", 10,
                                                                                     [this](const sensor_msgs::msg::JointState::SharedPtr joint_states_msg)
                                                                                     {
@@ -36,23 +28,15 @@ namespace generate_path
         if (_getParametersFromServer() != ReturnCode::SUCCESS)
             throw GeneratePathError("Cannot read parameters from server");
 
-        _physics_client_handler = std::make_shared<physics_client_handler::PhysicsClientHandler>(_robot_info, _node->get_logger());
+        if (!_physics_client_handler)
+            throw GeneratePathError("Physics client handler is not initialized");
+            
         _kinematics_engine = std::make_shared<kinematics::Kinematics>(_physics_client_handler, _robot_info, _node->get_logger());
     }
 
-    void GeneratePath::_shutdown()
-    {
-        _joint_state_sub.reset();
-        _physics_client_handler.reset();
-        _kinematics_engine.reset();
-    }
-
-    GeneratedPath::SharedPtr GeneratePath::generatePath(const InputData::SharedPtr generate_path_input)
+    GeneratedPath::SharedPtr GeneratePath::generatePath(const MovementSequence &movement_sequence)
     {
         helpers::Timer timer("Generate path to pose", _node->get_logger());
-
-        // TODO: This function has to be implemented
-        _updateOctomap(generate_path_input->octomap);
 
         auto current_joint_states = _getCurrentJointStates();
         if (!current_joint_states)
@@ -80,14 +64,14 @@ namespace generate_path
         _validateArmConfiguration(path_planning_input.start_state);
 
         GeneratedPath::SharedPtr generated_path = std::make_shared<GeneratedPath>();
-        generated_path->path_segments.resize(generate_path_input->movement_sequence.size());
+        generated_path->path_segments.resize(movement_sequence.size());
 
         // Iterate over all request end effector poses, generate path for each of them
-        for (size_t seq_element_id = 0; seq_element_id < generate_path_input->movement_sequence.size(); seq_element_id++)
+        for (size_t seq_element_id = 0; seq_element_id < movement_sequence.size(); seq_element_id++)
         {
-            RCLCPP_INFO(_node->get_logger(), "[Generate path] Generating path for end effector %d / %d", seq_element_id + 1, generate_path_input->movement_sequence.size());
+            RCLCPP_INFO(_node->get_logger(), "[Generate path] Generating path for end effector %d / %d", seq_element_id + 1, movement_sequence.size());
 
-            const auto &req_end_effector_pose = generate_path_input->movement_sequence[seq_element_id];
+            const auto &req_end_effector_pose = movement_sequence[seq_element_id];
 
             // Inverse kinematics
             RCLCPP_DEBUG(_node->get_logger(), "[Generate path] Inverse kinematics calculation");
@@ -222,11 +206,6 @@ namespace generate_path
         current_joint_states = std::make_shared<sensor_msgs::msg::JointState>(*_current_joint_states);
         _current_joint_states.reset();
         return current_joint_states;
-    }
-
-    void GeneratePath::_updateOctomap(const pcl::PointCloud<pcl::PointXYZ>::Ptr & /*octomap*/)
-    {
-        // TODO: Implement
     }
 
 } // namespace generate_path

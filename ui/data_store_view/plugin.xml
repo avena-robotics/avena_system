@@ -1,0 +1,17 @@
+<library path="data_store_view">
+  <class name="data_store_view/DataStoreView" type="data_store_view::DataStoreView" base_class_type="rqt_gui_cpp::Plugin">
+    <description>
+      DataStore View
+    </description>
+    <qtgui>
+      <group>
+        <label>Visualization</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to visualization.</statustip>
+      </group>
+      <label>DataStore View</label>
+      <icon type="theme">image-x-generic</icon>
+      <statustip>A GUI for data_store debug view</statustip>
+    </qtgui>
+  </class>
+</library>

@@ -1,60 +1,57 @@
 #include "ptcld_transformer/ptcld_transformer.hpp"
 namespace ptcld_transformer
 {
-    PtcldTransformer::PtcldTransformer(rclcpp::Node *node)
+    PtcldTransformer::PtcldTransformer(rclcpp::Node *node, bool &transformer_status)
     {
         _node = node;
-        _cameras_parameters = _getCameraTransform();
-        _getTableAreaFromParametersServer();
-    }
 
-    void PtcldTransformer::joinThread()
-    {
-        if (_param_server_read && _param_server_thread.joinable())
+        if (_getCamerasTransform())
         {
-            _param_server_thread.join();
-            _timer.reset();
+            // _cameras_parameters = std::make_shared<CameraTransform>();
+            // CameraTransform::SharedPtr cameras_parameters(new CameraTransform);
+            // cameras_parameters->cam_aff = *camera_aff_opt;
+            // _cameras_parameters = cameras_parameters;
+
+            _getTableAreaFromParametersServer();
+            transformer_status = true;
         }
+        else
+            transformer_status = false;
+    }
+    PtcldTransformer::~PtcldTransformer(){
+        
     }
 
-    TransformedPointClouds::SharedPtr PtcldTransformer::transfromPointcloud(const custom_interfaces::msg::Ptclds::SharedPtr cameras_data_msg)
+    pcl::PointCloud<pcl::PointXYZ>::Ptr PtcldTransformer::transfromPointcloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr &ptcld)
     {
         helpers::Timer timer(__func__, _node->get_logger());
         if (!_param_server_read)
-            return TransformedPointClouds::SharedPtr();
-        helpers::TicTok::GetInstance()->start();
-        CamerasData::SharedPtr cameras_data = _readInputData(cameras_data_msg);
+            return pcl::PointCloud<pcl::PointXYZ>::Ptr();
 
-        return _processCamerasData(cameras_data, _cameras_parameters);
+        return _processCamerasData(ptcld, _cam_transform[ptcld->header.frame_id]);
     }
 
-    TransformedPointClouds::SharedPtr PtcldTransformer::_processCamerasData(CamerasData::SharedPtr cameras_data, CameraTransform::SharedPtr cameras_parameters)
+    pcl::PointCloud<pcl::PointXYZ>::Ptr PtcldTransformer::_processCamerasData(const pcl::PointCloud<pcl::PointXYZ>::Ptr &ptcld, CameraTransform::SharedPtr cameras_parameters)
     {
-        TransformedPointClouds::SharedPtr transformed_point_clouds(new TransformedPointClouds);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr temp1(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr temp2(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-        if (cameras_parameters->cam1_aff.matrix() != Eigen::Affine3f().matrix() || cameras_parameters->cam2_aff.matrix() != Eigen::Affine3f().matrix())
+        if (cameras_parameters->cam_aff.matrix() != Eigen::Affine3f().matrix())
         {
-            std::thread t3(std::bind(&PtcldTransformer::_filterAndTransformPointCloud, this, cameras_data->cam1_ptcld, cameras_parameters->cam1_aff, temp1));
-            std::thread t4(std::bind(&PtcldTransformer::_filterAndTransformPointCloud, this, cameras_data->cam2_ptcld, cameras_parameters->cam2_aff, temp2));
-            t3.join();
-            t4.join();
-            *transformed_point_clouds->merged_ptcld += *temp1;
-            *transformed_point_clouds->merged_ptcld += *temp2;
+            _filterAndTransformPointCloud(ptcld, cameras_parameters->cam_aff, transformed_point_cloud);
         }
         else
         {
             RCLCPP_WARN_STREAM(_node->get_logger(), "there is no valid camera pose, cant transform pointCloud");
         }
 
-        return transformed_point_clouds;
+        return transformed_point_cloud;
     }
 
-    void PtcldTransformer::_filterAndTransformPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr &in_cloud, const Eigen::Affine3f &camera_pose, pcl::PointCloud<pcl::PointXYZ>::Ptr &out_cloud)
+    void PtcldTransformer::_filterAndTransformPointCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr &in_cloud, const Eigen::Affine3f &camera_pose, pcl::PointCloud<pcl::PointXYZ>::Ptr &out_cloud)
     {
-        helpers::vision::voxelize(in_cloud, 0.005);
-        pcl::transformPointCloud(*in_cloud, *out_cloud, camera_pose); // transform point cloud to world frame
+        *out_cloud = *in_cloud;
+        helpers::vision::voxelize(out_cloud, 0.005);
+        pcl::transformPointCloud(*out_cloud, *out_cloud, camera_pose); // transform point cloud to world frame
 
         pcl::PointXYZ min;
         min.getVector3fMap() = Eigen::Vector3f(_table_area.x_min, _table_area.y_min, _table_area.z_min - 0.01);
@@ -67,31 +64,32 @@ namespace ptcld_transformer
         crop_box_table_edge_ext.filter(*out_cloud);
     }
 
-    CameraTransform::SharedPtr PtcldTransformer::_getCameraTransform()
+    bool PtcldTransformer::_getCamerasTransform()
     {
-        // helpers::Timer timer(__func__, get_logger());
-        CameraTransform::SharedPtr cameras_parameters(new CameraTransform);
-        auto get_camera_affine = [this](std::string camera_frame)
-        {
-            std::optional<Eigen::Affine3f> camera_affine_opt;
-            camera_affine_opt = helpers::vision::getCameraTransformAffine("world", camera_frame);
-            if (camera_affine_opt == std::nullopt)
-            {
-                RCLCPP_WARN(_node->get_logger(), "Ptcld transformer - cannot obtain transform to \"" + camera_frame);
-                throw(std::runtime_error(std::string("Ptcld transformer - cannot obtain transform to \"") + camera_frame));
-            }
-            else
-            {
-                Eigen::Affine3f cam_aff = *camera_affine_opt;
-                return cam_aff;
-            }
-            Eigen::Affine3f cam_aff;
-            return cam_aff;
-        };
-        cameras_parameters->cam1_aff = get_camera_affine("camera_1");
-        cameras_parameters->cam2_aff = get_camera_affine("camera_2");
 
-        return cameras_parameters;
+        RCLCPP_INFO_ONCE(_node->get_logger(), "Reading parameters from the server");
+        auto parameters = helpers::commons::getParameters({"cameras"});
+        if (parameters.empty())
+            RCLCPP_INFO(_node->get_logger(), "cant read parameters from server...");
+        else
+        {
+            _cameras_amount = parameters["cameras"]["cameras_amount"];
+            RCLCPP_INFO(_node->get_logger(), "Parameters read successfully...");
+        }
+
+
+        for (size_t cam_idx = 1; cam_idx <= _cameras_amount; cam_idx++){
+            std::string frame = "camera_" + std::to_string(cam_idx);
+            std::optional<Eigen::Affine3f> camera_affine_opt;
+             camera_affine_opt = helpers::vision::getCameraTransformAffine("world", frame);
+            if (camera_affine_opt == std::nullopt)
+                return false;           
+             CameraTransform::SharedPtr transform(new CameraTransform);
+            transform->cam_aff = *camera_affine_opt;
+            _cam_transform[frame] = transform;
+        }
+
+        return true;
     }
 
     void PtcldTransformer::_getTableAreaFromParametersServer()
@@ -128,19 +126,6 @@ namespace ptcld_transformer
             throw std::runtime_error(error_message);
         }
         // return table_area;
-    }
-
-    CamerasData::SharedPtr PtcldTransformer::_readInputData(const custom_interfaces::msg::Ptclds::SharedPtr cameras_data_msg)
-    {
-        CamerasData::SharedPtr cameras_data(new CamerasData);
-
-        std::thread t1(std::bind(&PtcldTransformer::_convertCloudToPCL, this, cameras_data_msg->cam1_ptcld, cameras_data->cam1_ptcld));
-        std::thread t2(std::bind(&PtcldTransformer::_convertCloudToPCL, this, cameras_data_msg->cam2_ptcld, cameras_data->cam2_ptcld));
-
-        t1.join();
-        t2.join();
-
-        return cameras_data;
     }
 
     void PtcldTransformer::_convertCloudToPCL(const sensor_msgs::msg::PointCloud2 &ros_cloud_msg, pcl::PointCloud<pcl::PointXYZ>::Ptr &out_pcl_cloud)

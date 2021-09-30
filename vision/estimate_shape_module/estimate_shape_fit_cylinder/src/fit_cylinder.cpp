@@ -39,30 +39,54 @@ namespace estimate_shape
     {
         Timer timer("FitCylinder::fit", LOGGER);
 
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr obj_ptcld1_rgb(new pcl::PointCloud<pcl::PointXYZRGB>);
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr obj_ptcld2_rgb(new pcl::PointCloud<pcl::PointXYZRGB>);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr obj_ptcld1(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::PointCloud<pcl::PointXYZ>::Ptr obj_ptcld2(new pcl::PointCloud<pcl::PointXYZ>);
-        *obj_ptcld1_rgb += *item.item_elements[0].element_pcl_1;
-        *obj_ptcld2_rgb += *item.item_elements[0].element_pcl_2;
-        pcl::copyPointCloud(*obj_ptcld1_rgb, *obj_ptcld1);
-        pcl::copyPointCloud(*obj_ptcld2_rgb, *obj_ptcld2);
+        // pcl::PointCloud<pcl::PointXYZRGB>::Ptr obj_ptcld1_rgb(new pcl::PointCloud<pcl::PointXYZRGB>);
+        // pcl::PointCloud<pcl::PointXYZRGB>::Ptr obj_ptcld2_rgb(new pcl::PointCloud<pcl::PointXYZRGB>);
+        // pcl::PointCloud<pcl::PointXYZ>::Ptr obj_ptcld1(new pcl::PointCloud<pcl::PointXYZ>);
+        // pcl::PointCloud<pcl::PointXYZ>::Ptr obj_ptcld2(new pcl::PointCloud<pcl::PointXYZ>);
+        // *obj_ptcld1_rgb += *item.item_elements[0].element_pcl_1;
+        // *obj_ptcld2_rgb += *item.item_elements[0].element_pcl_2;
+        // pcl::copyPointCloud(*obj_ptcld1_rgb, *obj_ptcld1);
+        // pcl::copyPointCloud(*obj_ptcld2_rgb, *obj_ptcld2);
         // helpers::commons::statisticalOutlierRemovalFilter(obj_ptcld1);
         // helpers::commons::statisticalOutlierRemovalFilter(obj_ptcld2);
 
-        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals1(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals2(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+        // pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+        // pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals2(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
         pcl::ModelCoefficients::Ptr cylinder_coefficients(new pcl::ModelCoefficients);
 
-        _estimateNormals(obj_ptcld1, CamerasFrames::camera_1, cloud_with_normals1);
-        _estimateNormals(obj_ptcld2, CamerasFrames::camera_2, cloud_with_normals2);
+        // _estimateNormals(obj_ptcld1, CamerasFrames::camera_1, cloud_with_normals1);
+        // _estimateNormals(obj_ptcld2, CamerasFrames::camera_2, cloud_with_normals2);
 
-        *cloud_with_normals = *cloud_with_normals1 + *cloud_with_normals2;
+        // *cloud_with_normals = *cloud_with_normals1 + *cloud_with_normals2;
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr obj_ptcld(new pcl::PointCloud<pcl::PointXYZ>);
-        *obj_ptcld = *obj_ptcld1 + *obj_ptcld2;
-        _fitModelNormals(cloud_with_normals, pcl::SACMODEL_CYLINDER, *cylinder_coefficients);
+        // *obj_ptcld = *obj_ptcld1 + *obj_ptcld2;
+
+
+
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr obj_ptclds(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr clouds_with_normals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+
+        for (size_t i = 0; i < item.item_elements[0].pclds_rgb.size(); i++)
+        {
+            pcl::PointCloud<pcl::PointXYZ>::Ptr obj_ptcld(new pcl::PointCloud<pcl::PointXYZ>);
+            pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+            pcl::copyPointCloud(*item.item_elements[0].pclds_rgb[i], *obj_ptcld);
+            //TODO fix it
+            std::string frame = _camera_prefix + std::to_string(i+1);
+
+            _estimateNormals(obj_ptcld, frame, cloud_with_normals);
+
+            *clouds_with_normals += *cloud_with_normals;
+            *obj_ptclds += *obj_ptcld;
+
+
+        }
+
+
+
+
+        _fitModelNormals(clouds_with_normals, pcl::SACMODEL_CYLINDER, *cylinder_coefficients);
         if (cylinder_coefficients->values.size() == 0)
         {
             return 1;
@@ -70,11 +94,11 @@ namespace estimate_shape
 
         std::vector<float> out_obj_dim;
         out_obj_dim.resize(2);
-        out_obj_dim[0] = _computeCylinderHeight(cylinder_coefficients, obj_ptcld);
+        out_obj_dim[0] = _computeCylinderHeight(cylinder_coefficients, obj_ptclds);
 
         //cylinder radius
         out_obj_dim[1] = (cylinder_coefficients->values[6]);
-        pcl::PointXYZ center = _computeCylinderCentroid(cylinder_coefficients, obj_ptcld, out_obj_dim);
+        pcl::PointXYZ center = _computeCylinderCentroid(cylinder_coefficients, obj_ptclds, out_obj_dim);
 
         Eigen::Affine3f out_obj_pose;
         out_obj_pose = Eigen::Translation3f(center.getVector3fMap()) * Eigen::Quaternionf::Identity();
@@ -82,7 +106,7 @@ namespace estimate_shape
         _computeCylinderRotation(cylinder_coefficients, out_obj_pose);
 
         float radius;
-        _computeCylinderRadius(center, obj_ptcld, out_obj_pose, radius);
+        _computeCylinderRadius(center, obj_ptclds, out_obj_pose, radius);
 
         // Assign output
         item.pose = out_obj_pose;
