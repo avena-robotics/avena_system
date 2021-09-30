@@ -30,18 +30,18 @@ find_package(pinocchio REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_executable(simple_controller
-    src/simple_controller.cpp
+add_executable(base_controller
+    src/base_controller.cpp
     src/PID.cpp)
 
-target_include_directories(simple_controller  PUBLIC
+target_include_directories(base_controller  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(simple_controller  Eigen3::Eigen)
+target_link_libraries(base_controller  Eigen3::Eigen)
 
 
-ament_target_dependencies(simple_controller 
+ament_target_dependencies(base_controller 
   pluginlib
   rclcpp
   std_msgs 
@@ -52,35 +52,93 @@ ament_target_dependencies(simple_controller
   pinocchio
 )
 
-add_executable(friction_calibration
-    src/friction_calibration.cpp
-    src/PID.cpp)
+add_executable(diagnostics
+    src/diagnostics.cpp
+    )
 
-target_include_directories(friction_calibration  PUBLIC
+target_include_directories(diagnostics  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(friction_calibration  Eigen3::Eigen)
+target_link_libraries(diagnostics  base_controller_lib Eigen3::Eigen)
 
-
-ament_target_dependencies(friction_calibration 
+ament_target_dependencies(diagnostics 
   pluginlib
   rclcpp
   std_msgs 
+  sensor_msgs
+  custom_interfaces
   helpers_commons
   candriver
-  custom_interfaces
-  sensor_msgs
   pinocchio
 )
 
+# add_executable(friction_calibration
+#     src/friction_calibration.cpp
+#     src/PID.cpp)
+
+# target_include_directories(friction_calibration  PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   $<INSTALL_INTERFACE:include>)
+
+# target_link_libraries(friction_calibration  Eigen3::Eigen)
 
 
+# ament_target_dependencies(friction_calibration 
+#   pluginlib
+#   rclcpp
+#   std_msgs 
+#   helpers_commons
+#   candriver
+#   custom_interfaces
+#   sensor_msgs
+#   pinocchio
+# )
 
-install(TARGETS simple_controller
-  friction_calibration
+
+add_library(base_controller_lib SHARED 
+  src/base_controller.cpp
+  src/PID.cpp
+)
+
+target_include_directories(base_controller_lib  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(base_controller_lib  Eigen3::Eigen)
+
+target_compile_definitions(base_controller_lib PRIVATE "BASE_CONTROLLER_BUILDING_LIBRARY")
+
+ament_target_dependencies(base_controller_lib 
+  pluginlib
+  rclcpp
+  std_msgs 
+  sensor_msgs
+  custom_interfaces
+  helpers_commons
+  candriver
+  pinocchio
+)
+
+install(TARGETS
+  base_controller
+  diagnostics
+  # friction_calibration
   DESTINATION lib/${PROJECT_NAME})
 
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(
+  TARGETS base_controller_lib
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -97,6 +155,14 @@ install(DIRECTORY
   launch
   config
   DESTINATION share/${PROJECT_NAME}/
+)
+
+ament_export_include_directories(
+  include
+)
+
+ament_export_libraries(
+  base_controller_lib
 )
 
 ament_package()

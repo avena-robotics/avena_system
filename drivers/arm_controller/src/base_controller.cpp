@@ -1,35 +1,35 @@
-#include "arm_controller/simple_controller.hpp"
+#include "arm_controller/base_controller.hpp"
 
 //TODO: init essential functionalities, get ready to start
-SimpleController::SimpleController(int argc, char **argv)
+BaseController::BaseController(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    _node = rclcpp::Node::make_shared("simple_controller");
+    // rclcpp::init(NULL,NULL);
+    _node = rclcpp::Node::make_shared("base_controller");
     _watchdog = std::make_shared<helpers::Watchdog>(_node.get(), this, "system_monitor");
     status = custom_interfaces::msg::Heartbeat::RUNNING;
 
     //COMMUNICATION INIT
-    _command_service = _node->create_service<custom_interfaces::srv::ControlCommand>("/arm_controller/commands", std::bind(&SimpleController::setStateCb, this, std::placeholders::_1, std::placeholders::_2));
-    _trajectory_sub = _node->create_subscription<trajectory_msgs::msg::JointTrajectory>("/trajectory", 1000, std::bind(&SimpleController::setTrajectoryCb, this, std::placeholders::_1));
-    _time_factor_sub = _node->create_subscription<std_msgs::msg::Float64>("/arm_controller/time_factor", 10, std::bind(&SimpleController::setTimeFactorCb, this, std::placeholders::_1));
+    _command_service = _node->create_service<custom_interfaces::srv::ControlCommand>("/arm_controller/commands", std::bind(&BaseController::setStateCb, this, std::placeholders::_1, std::placeholders::_2));
+    _trajectory_sub = _node->create_subscription<trajectory_msgs::msg::JointTrajectory>("/trajectory", 1000, std::bind(&BaseController::setTrajectoryCb, this, std::placeholders::_1));
+    _time_factor_sub = _node->create_subscription<std_msgs::msg::Float64>("/arm_controller/time_factor", 10, std::bind(&BaseController::setTimeFactorCb, this, std::placeholders::_1));
     _set_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("set_joint_states", 10);
     _arm_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("arm_joint_states", 10);
     _controller_state_pub = _node->create_publisher<std_msgs::msg::Int32>("/arm_controller/state", 10);
     _security_trigger_sub = _node->create_subscription<std_msgs::msg::Bool>(
         "/security_trigger",
         rclcpp::QoS(rclcpp::KeepLast(1)),
-        std::bind(&SimpleController::securityTriggerStatusCb, this, std::placeholders::_1));
+        std::bind(&BaseController::securityTriggerStatusCb, this, std::placeholders::_1));
 
     _arm_interface = std::make_shared<ArmInterface>("0AA", (int)_trajectory_rate);
     std::this_thread::sleep_for(std::chrono::seconds(3));
-
 }
 
-SimpleController::~SimpleController()
+BaseController::~BaseController()
 {
 }
 
-void SimpleController::loadFrictionChart(std::string path)
+void BaseController::loadFrictionChart(std::string path)
 {
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
@@ -82,7 +82,7 @@ void SimpleController::loadFrictionChart(std::string path)
     }
 }
 
-double SimpleController::compensateFriction(double vel, double temp, int jnt_idx)
+double BaseController::compensateFriction(double vel, double temp, int jnt_idx)
 {
     if (vel == 0.0)
         return 0;
@@ -142,7 +142,7 @@ double SimpleController::compensateFriction(double vel, double temp, int jnt_idx
 }
 
 //only for debug purposes
-void SimpleController::loadTrajTxt(std::string path)
+void BaseController::loadTrajTxt(std::string path)
 {
 
     trajectory_msgs::msg::JointTrajectoryPoint temp_point;
@@ -202,7 +202,7 @@ void SimpleController::loadTrajTxt(std::string path)
 }
 
 //dynamic PID parameters
-void SimpleController::updateParams(PID &pid, int joint_index)
+void BaseController::updateParams(PID &pid, int joint_index)
 {
     _node->get_parameter("Kp_gain_" + std::to_string(joint_index), _Kp[joint_index]);
     _node->get_parameter("Ki_gain_" + std::to_string(joint_index), _Ki[joint_index]);
@@ -212,26 +212,26 @@ void SimpleController::updateParams(PID &pid, int joint_index)
     pid.update(_Kp[joint_index], _Ki[joint_index], _Kd[joint_index]);
 }
 
-void SimpleController::setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg)
+void BaseController::setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg)
 {
-    RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received trajectory");
+    RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received trajectory");
     if (msg->joint_names.size() != _joints_number)
     {
-        RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Trajectory joint number does not match robot configuration");
+        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Trajectory joint number does not match robot configuration");
         return;
     }
     _saved_trajectory = *msg;
 }
 
 //TODO:
-void SimpleController::securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr msg)
+void BaseController::securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr msg)
 {
-    RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received security pause trigger.");
+    RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received security pause trigger.");
     _controller_state = 1;
     return;
 }
 
-void SimpleController::setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg)
+void BaseController::setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg)
 {
     if (_controller_state != 4)
     {
@@ -245,14 +245,14 @@ void SimpleController::setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg)
     return;
 }
 
-void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
-                                  std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response)
+void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
+                                std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response)
 {
     switch (request.get()->command)
     {
     //init
     case 0:
-        RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received start command.");
+        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received start command.");
         _controller_state = 4;
         _t_start = std::chrono::steady_clock::now();
         _time_accumulator = std::chrono::microseconds(0);
@@ -264,7 +264,7 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
 
     //stop
     case 1:
-        RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received stop command.");
+        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received stop command.");
         _controller_state = 1;
         if (_time_factor != 0.)
             _prev_time_factor = _time_factor;
@@ -273,7 +273,7 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
         break;
     //resume
     case 2:
-        RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received resume command.");
+        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received resume command.");
         if (_controller_state == 3)
         {
             _controller_state = 2;
@@ -282,7 +282,7 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
         }
         else
         {
-            RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Controller needs to be paused before resuming.");
+            RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Controller needs to be paused before resuming.");
             response->feedback = "Controller needs to be paused before resuming.";
         }
         break;
@@ -290,7 +290,7 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
     case 3:
         if (_controller_state == 4)
         {
-            RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received pause command.");
+            RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received pause command.");
             _controller_state = 3;
             _t_stop = std::chrono::steady_clock::now();
             if (_time_factor != 0.)
@@ -299,13 +299,13 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
         }
         else
         {
-            RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Controller needs to be running before pausing.");
+            RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Controller needs to be running before pausing.");
             response->feedback = "Controller needs to be running before pausing.";
         }
         break;
     //execute
     case 4:
-        RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received execute command.");
+        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received execute command.");
         if (_saved_trajectory.points.size() == 0)
         {
             response->feedback = "Please send trajectory before trying to execute it.";
@@ -320,13 +320,13 @@ void SimpleController::setStateCb(const std::shared_ptr<custom_interfaces::srv::
         response->feedback = "Received execute command.";
         break;
     default:
-        RCLCPP_INFO(rclcpp::get_logger("simple_controller"), "Received unknown command.");
+        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received unknown command.");
         response->feedback = "Received unknown command.";
         break;
     }
 }
 
-int SimpleController::jointInit()
+int BaseController::jointInit()
 {
     //JOINT COMMUNICATION INIT
     RCLCPP_INFO(_node->get_logger(), "Starting executor");
@@ -354,11 +354,11 @@ int SimpleController::jointInit()
 
     RCLCPP_INFO(_node->get_logger(), "Joint number: %i", _joints_number);
 
-    std::cout << "Done initializing joints." << std::endl;
+    RCLCPP_INFO(_node->get_logger(), "Done initializing joints.");
     return 0;
 }
 
-int SimpleController::jointPositionInit()
+int BaseController::jointPositionInit()
 {
     RCLCPP_INFO(_node->get_logger(), "Initializing joint position.");
     //JOINT POSITION INIT
@@ -373,7 +373,8 @@ int SimpleController::jointPositionInit()
         while (_arm_status.joints[jnt_idx].state == 0)
         {
             _arm_status = _arm_interface->getArmState();
-            std::cout << "Initializing joint " << jnt_idx << std::endl;
+            RCLCPP_INFO(_node->get_logger(), "Joint number: %i", jnt_idx);
+            // std::cout << "Initializing joint " << jnt_idx << std::endl;
 
             //send init command to a single joint
             _arm_command.joints[jnt_idx].c_status = 1;
@@ -386,7 +387,7 @@ int SimpleController::jointPositionInit()
     return 0;
 }
 
-int SimpleController::paramInit()
+int BaseController::idInit()
 {
     RCLCPP_INFO(_node->get_logger(), "Initializing robot model.");
     //ID INIT
@@ -401,8 +402,13 @@ int SimpleController::paramInit()
     _data = std::make_shared<pinocchio::Data>(_model);
     RCLCPP_INFO(_node->get_logger(), "Done loading robot model.");
 
-    RCLCPP_INFO(_node->get_logger(), "Initializing controller parameters.");
+    return 0;
+}
+
+int BaseController::paramInit()
+{
     //PARAMETERS INIT
+    RCLCPP_INFO(_node->get_logger(), "Initializing controller parameters.");
     _node->declare_parameter<double>("error_margin", 0);
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
@@ -441,7 +447,7 @@ int SimpleController::paramInit()
     return 0;
 }
 
-int SimpleController::varInit()
+int BaseController::varInit()
 {
     RCLCPP_INFO(_node->get_logger(), "Initializing controller variables.");
     _arm_command.joints.resize(_joints_number);
@@ -516,7 +522,6 @@ int SimpleController::varInit()
         _trajectory.points[0].accelerations[i] = 0.;
         _trajectory.points[0].time_from_start.sec = 0.;
         _trajectory.points[0].time_from_start.nanosec = 0.;
-        std::cout << _arm_status.joints[i].position << '\t' << std::endl;
     }
 
     //TIME INIT
@@ -533,21 +538,8 @@ int SimpleController::varInit()
     RCLCPP_INFO(_node->get_logger(), "Done initializing variables.");
     return 0;
 }
-
-void SimpleController::controlLoop()
+int BaseController::getAverageArmState()
 {
-    //GET TIME
-    _time_accumulator += std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _t_current) * _time_factor);
-    _t_current = std::chrono::steady_clock::now();
-
-    //GET JOINT STATES
-    _arm_status = _arm_interface->getArmState();
-
-    if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
-    {
-        RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period.");
-    }
-
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         _avg_pos_b[jnt_idx][_loop_it % _avg_samples] = _arm_status.joints[jnt_idx].position;
@@ -569,11 +561,15 @@ void SimpleController::controlLoop()
         _avg_temp[jnt_idx] /= _avg_samples;
         _avg_tau[jnt_idx] /= _avg_samples;
 
-        // _avg_vel[jnt_idx] = ((_avg_pos[jnt_idx] - _prev_pos[jnt_idx]) * _trajectory_rate);
-        // _prev_pos[jnt_idx] = _avg_pos[jnt_idx];
-        _avg_vel[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
+        _avg_vel[jnt_idx] = ((_avg_pos[jnt_idx] - _prev_pos[jnt_idx]) * _trajectory_rate);
+        _prev_pos[jnt_idx] = _avg_pos[jnt_idx];
+        // _avg_vel[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
     }
+    return 0;
+}
 
+int BaseController::handleControllerState()
+{
     //STATES
     //stop
     if (_controller_state == 3)
@@ -600,33 +596,11 @@ void SimpleController::controlLoop()
             }
         }
     }
-    //get trajectory time index
-    _trajectory_index = int(std::min(double(_trajectory.points.size() - 1), std::floor(float(std::chrono::duration_cast<std::chrono::microseconds>(_time_accumulator).count()) / 1000000 * _trajectory_rate)));
+    return 0;
+}
 
-    //GO INTO HOLD IF TRAJECTORY FINISHED
-    if (_trajectory_index == _trajectory.points.size() - 1)
-    {
-        if (_time_factor != 0.0)
-        {
-            _prev_time_factor = _time_factor;
-            RCLCPP_INFO(_node->get_logger(), "Finished trajectory");
-            _time_factor = 0.0;
-            _controller_state = 3;
-        }
-    }
-
-    //TORQUE CALCULATION
-    //ID
-    std::vector<double> q_temp;
-    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
-    {
-        q_temp.push_back(_arm_status.joints[jnt_idx].position);
-    }
-    _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(q_temp.data(), q_temp.size());
-    _qd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].velocities.data(), _trajectory.points[_trajectory_index].velocities.size());
-    _qdd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].accelerations.data(), _trajectory.points[_trajectory_index].accelerations.size());
-    pinocchio::rnea(_model, *_data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
-    _tau = _data->tau;
+int BaseController::calculateTorque()
+{
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
@@ -665,11 +639,35 @@ void SimpleController::controlLoop()
             _arm_command.joints[jnt_idx].c_torque = 0;
             _arm_command.joints[jnt_idx].c_status = 2;
         }
+    }
+    return 0;
+}
 
+int BaseController::calculateID()
+{
+    //ID
+    std::vector<double> q_temp;
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
+        q_temp.push_back(_arm_status.joints[jnt_idx].position);
+    }
+    _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(q_temp.data(), q_temp.size());
+    _qd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].velocities.data(), _trajectory.points[_trajectory_index].velocities.size());
+    _qdd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].accelerations.data(), _trajectory.points[_trajectory_index].accelerations.size());
+    pinocchio::rnea(_model, *_data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
+    _tau = _data->tau;
+    return 0;
+}
+
+int BaseController::communicate()
+{
+
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
         //monitor data
         _set_joint_state_msg.position[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx];
         _set_joint_state_msg.velocity[jnt_idx] = _trajectory.points[_trajectory_index].velocities[jnt_idx];
-        _set_joint_state_msg.effort[jnt_idx] = _set_torque_val;
+        _set_joint_state_msg.effort[jnt_idx] = _arm_command.joints[jnt_idx].c_torque;
         _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
         _arm_joint_state_msg.name[jnt_idx] = _model.names[jnt_idx + 1]; //first object is 'universe', hence the +1
@@ -687,6 +685,45 @@ void SimpleController::controlLoop()
     _controller_state_pub->publish(state_msg);
     _arm_command.timestamp = std::chrono::steady_clock::now();
     _arm_interface->setArmCommand(_arm_command);
+    return 0;
+}
+
+void BaseController::controlLoop()
+{
+    //GET TIME
+    _time_accumulator += std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _t_current) * _time_factor);
+    _t_current = std::chrono::steady_clock::now();
+
+    //GET JOINT STATES
+    _arm_status = _arm_interface->getArmState();
+
+    if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
+    {
+        RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period.");
+    }
+
+    getAverageArmState();
+
+    handleControllerState();
+
+    //get trajectory time index
+    _trajectory_index = int(std::min(double(_trajectory.points.size() - 1), std::floor(float(std::chrono::duration_cast<std::chrono::microseconds>(_time_accumulator).count()) / 1000000 * _trajectory_rate)));
+
+    //GO INTO HOLD IF TRAJECTORY FINISHED
+    if (_trajectory_index == _trajectory.points.size() - 1)
+    {
+        if (_time_factor != 0.0)
+        {
+            _prev_time_factor = _time_factor;
+            RCLCPP_INFO(_node->get_logger(), "Finished trajectory");
+            _time_factor = 0.0;
+            _controller_state = 3;
+        }
+    }
+
+    calculateID();
+    calculateTorque();
+    communicate();
 
     //execute callbacks
     _exec->spin_some(std::chrono::nanoseconds(10000));
@@ -703,10 +740,11 @@ void SimpleController::controlLoop()
 }
 
 //initialize movement functionalities, start controller
-void SimpleController::init()
+void BaseController::init()
 {
 
     jointInit();
+    idInit();
     paramInit();
     varInit();
     jointPositionInit();
@@ -733,7 +771,7 @@ void SimpleController::init()
 
 int main(int argc, char **argv)
 {
-    SimpleController controller(argc, argv);
+    BaseController controller(argc, argv);
 
     // controller.init();
     return 0;

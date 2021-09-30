@@ -1,4 +1,8 @@
 #pragma once
+
+#ifndef BASE_CONTROLLER_HPP_
+#define BASE_CONTROLLER_HPP_
+
 #include "custom_interfaces/srv/set_arm_torques.hpp"
 #include "custom_interfaces/srv/get_arm_state.hpp"
 #include "custom_interfaces/srv/control_command.hpp"
@@ -38,16 +42,16 @@ struct friction_comp
     double temp;
 };
 
-class SimpleController : public helpers::WatchdogInterface
+class BaseController : public helpers::WatchdogInterface
 {
 public:
     std::shared_ptr<rclcpp::Node> _node;
-    // SimpleController();
-    SimpleController(int argc, char **argv);
-    ~SimpleController();
+    // BaseController();
+    BaseController(int argc, char **argv);
+    ~BaseController();
 
     //initialize all controller components, start control loop
-    void init();
+    virtual void init();
 
     void initNode() override
     {
@@ -65,7 +69,7 @@ protected:
     std::shared_ptr<ArmInterface> _arm_interface;
 
     //TODO:
-    const double _trajectory_rate = 1000;
+    const double _trajectory_rate = 500;
 
     //PARAMETERS
     size_t _joints_number;
@@ -90,12 +94,15 @@ protected:
     int _torque_sign, _vel_sign, _time, _remaining_time, _acc_sign;
     size_t _trajectory_index;
     int _controller_state;
+    std::vector<int> _jitter_counter, _jitter_threshold;
+    std::vector<double> _jitter_multiplier;
+    std::vector<bool> _jitter_present;
 
     ArmStatus _arm_status;
     ArmCommand _arm_command;
 
     //MEASUREMENT
-    const size_t _avg_samples = 100;
+    const size_t _avg_samples = 1000;
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;
@@ -148,12 +155,18 @@ protected:
     //reads friction value from loaded friction chart, corresponding to current join velocity and temperature
     double compensateFriction(double vel, double temp, int jnt_idx);
 
-    int paramInit();
-    int varInit();
-    int jointInit();
-    int jointPositionInit();
+    virtual int idInit();
+    virtual int paramInit();
+    virtual int varInit();
+    virtual int jointInit();
+    virtual int jointPositionInit();
+    virtual int getAverageArmState();
+    virtual int handleControllerState();
+    virtual int calculateTorque();
+    virtual int calculateID();
+    virtual int communicate();
 
-    void controlLoop();
+    virtual void controlLoop();
 
     void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
                     std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
@@ -161,3 +174,5 @@ protected:
     void setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg);
     void securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr);
 };
+
+#endif // BASE_CONTROLLER_HPP_

@@ -1,4 +1,4 @@
-/simple_controller:
+/base_controller:
   ros__parameters:
 
     error_margin: 0.003
