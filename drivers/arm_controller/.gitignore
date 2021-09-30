@@ -1,4 +1,6 @@
 /config/*.txt
+/config/save/**
+/config/friction/
+/config/diag/
 /trajectory/
 /zero_trajectory/
-/config/save/**

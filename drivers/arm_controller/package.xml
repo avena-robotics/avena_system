@@ -12,6 +12,7 @@
   <depend>launch</depend>
   <depend>helpers_commons</depend>
   <depend>candriver</depend>
+  <depend>avena_bringup</depend>
 
   <build_depend>std_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>

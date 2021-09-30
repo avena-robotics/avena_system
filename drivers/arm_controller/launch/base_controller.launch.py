@@ -15,15 +15,14 @@ def launch_setup(context, *args, **kwargs):
 
     pkg_share = FindPackageShare('arm_controller').find('arm_controller')
     config = os.path.join(pkg_share,'config')
-    params = os.path.join(config,'base_controller_friction.yaml')
+    params = os.path.join(config,'base_controller.yaml')
 
     return [
         Node(
             package='arm_controller',
-            executable='friction_calibration',
+            executable='base_controller',
             output='both',
-            parameters=[params, {'config_path':config}],
-            remappings=[('arm_joint_states','asdf')]
+            parameters=[params, {'config_path':config}]
         )
     ]
 

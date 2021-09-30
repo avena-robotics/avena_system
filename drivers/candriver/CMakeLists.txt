@@ -34,29 +34,6 @@ find_package(Boost REQUIRED
 find_package(Threads REQUIRED)
 
 
-add_executable(can_node 
-  src/can_node.cpp
-  src/can_operations.cpp
-)
-target_include_directories(can_node PRIVATE include)
-# target_link_libraries(can_node can_lib)
-ament_target_dependencies(can_node
-  pluginlib
-  rclcpp
-  helpers_commons
-  std_msgs 
-  custom_interfaces
-  sensor_msgs
-  # socketcan
-)
-
-
-add_executable(talker src/talker.cpp)
-target_include_directories(talker PRIVATE include)
-# target_link_libraries(talker can_lib)
-ament_target_dependencies(talker rclcpp std_msgs custom_interfaces)
-
-
 add_library(candriver SHARED 
   src/lib.c
   src/candriver.cpp
@@ -70,9 +47,6 @@ target_compile_definitions(candriver PRIVATE "CANDRIVER_BUILDING_LIBRARY")
 
 # INSTALL
 install(TARGETS
-  can_node
-  # can_lib
-  talker
   candriver
   DESTINATION lib/${PROJECT_NAME}
   )

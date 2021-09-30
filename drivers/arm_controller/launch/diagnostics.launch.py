@@ -15,22 +15,15 @@ def launch_setup(context, *args, **kwargs):
 
     pkg_share = FindPackageShare('arm_controller').find('arm_controller')
     config = os.path.join(pkg_share,'config')
-    params = os.path.join(config,'simple_controller.yaml')
+    params = os.path.join(config,'diagnostics.yaml')
 
     return [
         Node(
             package='arm_controller',
-            executable='simple_controller',
+            executable='diagnostics',
             output='both',
             parameters=[params, {'config_path':config}]
         )
-        # ,
-        # Node(
-        #     package='candriver',
-        #     executable='can_node',
-        #     output='both',
-        #     parameters=[params]
-        # ),
     ]
 
 
