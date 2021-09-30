@@ -32,33 +32,33 @@
     i_clamp_h_2: 25.
     i_clamp_l_2: -25.
 
-
     Fv_gain_3: 0.
     FFa_gain_3: 0.
-    Kd_gain_3: 0.1
+    Kd_gain_3: 0.
     Ki_gain_3: 5.
-    Kp_gain_3: 20.0
+    Kp_gain_3: 10.0
     Coulomb_friction_3: 0.
-    i_clamp_h_3: 10.
-    i_clamp_l_3: -10.
-    
+    i_clamp_h_3: 25.
+    i_clamp_l_3: -25.
+
     Fv_gain_4: 0.
     FFa_gain_4: 0.
-    Kd_gain_4: 0.1
+    Kd_gain_4: 0.
     Ki_gain_4: 5.
-    Kp_gain_4: 20.0
+    Kp_gain_4: 10.0
     Coulomb_friction_4: 0.
-    i_clamp_h_4: 10.
-    i_clamp_l_4: -10.
+    i_clamp_h_4: 25.
+    i_clamp_l_4: -25.
 
     Fv_gain_5: 0.
     FFa_gain_5: 0.
-    Kd_gain_5: 0.1
+    Kd_gain_5: 0.
     Ki_gain_5: 5.
-    Kp_gain_5: 20.0
+    Kp_gain_5: 10.0
     Coulomb_friction_5: 0.
-    i_clamp_h_5: 10.
-    i_clamp_l_5: -10.
+    i_clamp_h_5: 25.
+    i_clamp_l_5: -25.
+
 
 
 

@@ -6,12 +6,52 @@ int Diagnostics::saveDiagnostics()
 {
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        if(_avg_vel[jnt_idx]<0)
+        if (_avg_vel[jnt_idx] < 0)
             continue;
-        int index = std::floor(std::fmod(std::fmod(_avg_pos[jnt_idx], (2. * M_PI))+(2. * M_PI),(2. * M_PI)) / (2. * M_PI) * (double)_diag_samples);
+        int index = std::floor(std::fmod(std::fmod(_avg_pos[jnt_idx], (2. * M_PI)) + (2. * M_PI), (2. * M_PI)) / (2. * M_PI) * (double)_diag_samples);
         _diag_data[jnt_idx].velocity[index] += _avg_vel[jnt_idx];
-        _diag_data[jnt_idx].position[index] += 1.;
+        _diag_data[jnt_idx].position[index] += 1;
         _diag_data[jnt_idx].temperature[index] += _avg_temp[jnt_idx];
+    }
+    return 0;
+}
+
+int Diagnostics::getAverageArmState()
+{
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
+
+        if (std::abs(_arm_status.joints[jnt_idx].position - _prev_pos[jnt_idx]) > 10)
+        {
+            for (size_t i = 0; i < _avg_samples; i++)
+            {
+                _avg_pos_b[jnt_idx][i] = _arm_status.joints[jnt_idx].position;
+            }
+            _prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
+        }
+
+        _avg_pos_b[jnt_idx][_loop_it % _avg_samples] = _arm_status.joints[jnt_idx].position;
+        _avg_temp_b[jnt_idx][_loop_it % _avg_samples] = _arm_status.joints[jnt_idx].temperature;
+        _avg_tau_b[jnt_idx][_loop_it % _avg_samples] = _arm_status.joints[jnt_idx].torque;
+
+        _avg_pos[jnt_idx] = 0;
+        _avg_temp[jnt_idx] = 0;
+        _avg_tau[jnt_idx] = 0;
+
+        for (size_t i = 0; i < _avg_samples; i++)
+        {
+            _avg_pos[jnt_idx] += _avg_pos_b[jnt_idx][i];
+            _avg_temp[jnt_idx] += _avg_temp_b[jnt_idx][i];
+            _avg_tau[jnt_idx] += _avg_tau_b[jnt_idx][i];
+        }
+
+        _avg_pos[jnt_idx] /= _avg_samples;
+        _avg_temp[jnt_idx] /= _avg_samples;
+        _avg_tau[jnt_idx] /= _avg_samples;
+
+        _avg_vel[jnt_idx] = ((_avg_pos[jnt_idx] - _prev_pos[jnt_idx]) * _trajectory_rate);
+        _prev_pos[jnt_idx] = _avg_pos[jnt_idx];
+        // _avg_vel[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
     }
     return 0;
 }
@@ -31,7 +71,7 @@ int Diagnostics::writeDiagnostics()
         chart.precision(6);
         for (size_t j = 0; j < _diag_data[jnt_idx].position.size(); j++)
         {
-            chart << std::to_string(j/(double)_diag_samples*2*M_PI) << " " << std::to_string(_diag_data[jnt_idx].velocity[j] / _diag_data[jnt_idx].position[j]) << " " << std::to_string(_diag_data[jnt_idx].temperature[j] / _diag_data[jnt_idx].position[j]) << std::endl;
+            chart << std::to_string(j / (double)_diag_samples * 2 * M_PI) << " " << std::to_string(_diag_data[jnt_idx].velocity[j] / _diag_data[jnt_idx].position[j]) << " " << std::to_string(_diag_data[jnt_idx].temperature[j] / _diag_data[jnt_idx].position[j]) << std::endl;
         }
         chart.flush();
         chart.close();

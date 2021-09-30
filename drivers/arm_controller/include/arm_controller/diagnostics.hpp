@@ -23,6 +23,7 @@ private:
     int writeDiagnostics();
 
     //overrides
+    int getAverageArmState() override;
     int communicate() override;
     int paramInit() override;
     int idInit() override;
