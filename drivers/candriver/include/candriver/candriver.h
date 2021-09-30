@@ -39,7 +39,7 @@ public:
     CanInterface(std::string can_id = "can1");
     ~CanInterface();
 
-    ResponseMsg getResponse(int expected_msg = 0);
+    ResponseMsg getResponse(size_t expected_msg = 0);
     bool sendMessage(std::string msg, std::chrono::microseconds read_duration);
 
 private:

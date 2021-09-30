@@ -1,4 +1,8 @@
 #pragma once
+
+#ifndef BASE_CONTROLLER_HPP_
+#define BASE_CONTROLLER_HPP_
+
 #include "custom_interfaces/srv/set_arm_torques.hpp"
 #include "custom_interfaces/srv/get_arm_state.hpp"
 #include "custom_interfaces/srv/control_command.hpp"
@@ -10,9 +14,6 @@
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include "sensor_msgs/msg/joint_state.hpp"
-#include "PID.hpp"
-
-#include "helpers_commons/helpers_commons.hpp"
 
 #include <chrono>
 #include <functional>
@@ -26,10 +27,11 @@
 #include <iomanip>
 #include <filesystem>
 
+#include "PID.hpp"
 #include "hw_interface.hpp"
+#include "helpers_commons/helpers_commons.hpp"
 
 #include "pinocchio/parsers/urdf.hpp"
-
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
 
@@ -40,16 +42,16 @@ struct friction_comp
     double temp;
 };
 
-class SimpleController : public helpers::WatchdogInterface
+class BaseController : public helpers::WatchdogInterface
 {
 public:
     std::shared_ptr<rclcpp::Node> _node;
-    SimpleController();
-    SimpleController(int argc, char **argv);
-    ~SimpleController();
+    // BaseController();
+    BaseController(int argc, char **argv);
+    ~BaseController();
 
     //initialize all controller components, start control loop
-    void init();
+    virtual void init();
 
     void initNode() override
     {
@@ -61,7 +63,7 @@ public:
         rclcpp::shutdown();
     };
 
-private:
+protected:
     helpers::Watchdog::SharedPtr _watchdog;
 
     std::shared_ptr<ArmInterface> _arm_interface;
@@ -70,7 +72,7 @@ private:
     const double _trajectory_rate = 500;
 
     //PARAMETERS
-    int _joints_number;
+    size_t _joints_number;
     double _error_margin;
     std::string _config_path;
     std::string _urdf;
@@ -90,14 +92,17 @@ private:
     //CONTROL
     double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _error, _c_friction_comp, _set_vel;
     int _torque_sign, _vel_sign, _time, _remaining_time, _acc_sign;
-    int _trajectory_index;
+    size_t _trajectory_index;
     int _controller_state;
+    std::vector<int> _jitter_counter, _jitter_threshold;
+    std::vector<double> _jitter_multiplier;
+    std::vector<bool> _jitter_present;
 
     ArmStatus _arm_status;
     ArmCommand _arm_command;
 
     //MEASUREMENT
-    const int _avg_samples = 50;
+    const size_t _avg_samples = 1000;
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;
@@ -109,43 +114,37 @@ private:
 
     //ID
     Eigen::VectorXd _q, _qd, _qdd, _tau;
+    pinocchio::Model _model;
+    std::shared_ptr<pinocchio::Data> _data;
 
     //TIME
     rclcpp::TimerBase::SharedPtr _timer;
     std::chrono::time_point<std::chrono::steady_clock> _t_start, _t_stop, _t_current, _t_measure;
     std::chrono::microseconds _time_accumulator, _slowdown_duration;
     double _time_factor, _prev_time_factor;
+    int _loop_it;
 
+    //TRAJECTORY
     trajectory_msgs::msg::JointTrajectory _trajectory;
-
     trajectory_msgs::msg::JointTrajectory _saved_trajectory;
 
     //COMMUNICATION
-
     std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> _exec;
 
-    //PUBLISHERS
+    //__PUBLISHERS
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _set_joint_states_pub;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_states_pub;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr _controller_state_pub;
 
-    //SUBSCRIBERS
+    //__SUBSCRIBERS
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr _security_trigger_sub;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr _time_factor_sub;
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr _trajectory_sub;
 
-    //SERVICES
+    //__SERVICES
     rclcpp::Service<custom_interfaces::srv::ControlCommand>::SharedPtr _command_service;
 
-    //CLIENTS
-    // rclcpp::Client<custom_interfaces::srv::SetArmTorques>::SharedPtr _set_client;
-    // rclcpp::Client<custom_interfaces::srv::GetArmState>::SharedPtr _get_client;
-
-    sensor_msgs::msg::JointState _set_joint_state_msg,_arm_joint_state_msg;
-    // std::shared_future<std::shared_ptr<custom_interfaces::srv::SetArmTorques_Response>> _set_result;
-    // std::shared_future<std::shared_ptr<custom_interfaces::srv::GetArmState_Response>> _get_result;
-
-    //methods
+    sensor_msgs::msg::JointState _set_joint_state_msg, _arm_joint_state_msg;
 
     //loads friction chart
     void loadFrictionChart(std::string path);
@@ -155,11 +154,25 @@ private:
     void loadTrajTxt(std::string path);
     //reads friction value from loaded friction chart, corresponding to current join velocity and temperature
     double compensateFriction(double vel, double temp, int jnt_idx);
-    // void setTrajectoryCb(const std::shared_ptr<custom_interfaces::srv::SetTrajectory::Request> request,
-    //                    std::shared_ptr<custom_interfaces::srv::SetTrajectory::Response> response);
+
+    virtual int idInit();
+    virtual int paramInit();
+    virtual int varInit();
+    virtual int jointInit();
+    virtual int jointPositionInit();
+    virtual int getAverageArmState();
+    virtual int handleControllerState();
+    virtual int calculateTorque();
+    virtual int calculateID();
+    virtual int communicate();
+
+    virtual void controlLoop();
+
     void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
                     std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
     void setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg);
     void setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg);
     void securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr);
 };
+
+#endif // BASE_CONTROLLER_HPP_
