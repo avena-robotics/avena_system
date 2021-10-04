@@ -437,7 +437,6 @@ int BaseController::paramInit()
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("error_margin", _error_margin);
-
     for (size_t i = 0; i < _joints_number; i++)
     {
         //set defaults in case config file is not provided

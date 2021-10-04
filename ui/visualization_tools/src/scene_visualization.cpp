@@ -9,8 +9,8 @@ namespace visualization_tools
         _getParametersFromServer();
         _table_marker_pub = create_publisher<visualization_msgs::msg::Marker>("scene_markers", 1);
 
-        auto qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
-        _octomap_changed_sub = create_subscription<OctomapChangeFlag>("scene_change_flag", qos_settings, std::bind(&SceneVisualization::_octomapUpdated, this, std::placeholders::_1));
+        auto qos_reliable = rclcpp::QoS(rclcpp::KeepLast(1)).reliable();
+        _octomap_changed_sub = create_subscription<OctomapChangeFlag>("scene_change_flag", qos_reliable, std::bind(&SceneVisualization::_octomapUpdated, this, std::placeholders::_1));
         _octomap_select_client = create_client<OctomapSelect>("scene_select");
     }
 

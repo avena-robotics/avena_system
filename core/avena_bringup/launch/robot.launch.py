@@ -22,22 +22,24 @@ def launch_setup(context, *args, **kwargs):
         p = subprocess.Popen(['xacro', xacro_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     robot_desc, error_msg = p.communicate()
     print(error_msg.decode())
-    params = {'robot_description': robot_desc.decode('utf-8')}
 
     return [
-        # Node(
-        #     package='joint_state_publisher',
-        #     executable='joint_state_publisher',
-        #     output='both',
-        #     parameters=[{'source_list': ['arm_joint_states', 'gripper_joint_states'],
-        #                  'rate': 50,
-        #                  'publish_default_positions': False}]
-        # ),
+        Node(
+            package='joint_state_publisher',
+            executable='joint_state_publisher',
+            output='both',
+            parameters=[{'source_list': ['arm_joint_states', 'gripper_joint_states'],
+                         'rate': 1000,
+                         'publish_default_positions': False}]
+        ),
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
             output='both',
-            parameters=[params]
+            parameters=[{
+                'robot_description': robot_desc.decode('utf-8'),
+                'publish_frequency': 1000.0,
+            }]
         ),
     ]
 

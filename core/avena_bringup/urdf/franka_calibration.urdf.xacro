@@ -12,7 +12,7 @@
   <xacro:property name="grid_size" value="0.04025" />
   <xacro:property name="x_axis_offset" value="${grid_size}" />
   <xacro:property name="y_axis_offset" value="${1.5 * grid_size}" />
-  <xacro:property name="z_axis_offset" value="0.02306" />
+  <xacro:property name="z_axis_offset" value="0.02506" />
   <xacro:property name="x_axis_rot" value="${pi}" />
   <xacro:property name="y_axis_rot" value="0" />
   <xacro:property name="z_axis_rot" value="${-pi/2}" />

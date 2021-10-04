@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="probe">
+  <xacro:macro name="probe" params="connected_to:='' description_pkg:='avena_bringup' arm_id:='franka' rpy:='0 0 0' x:='0' y:='0' z:='0'">
+
+    <xacro:unless value="${connected_to == ''}">
+      <joint name="${arm_id}_hand_joint" type="fixed">
+        <parent link="${connected_to}"/>
+        <child link="${arm_id}_probe"/>
+        <origin xyz="${x} ${y} ${z}" rpy="${rpy}"/>
+      </joint>
+    </xacro:unless>
+
+    <link name="${arm_id}_probe">
+      <visual>
+        <origin xyz="${x} ${y} ${-0.1079}" />
+        <geometry>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/probe.stl" scale="0.001 0.001 0.001" />
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="${x} ${y} ${-0.1079}" />
+        <geometry>
+          <mesh filename="file://$(find ${description_pkg})/urdf/meshes/probe.stl" scale="0.001 0.001 0.001" />
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+</robot>
