@@ -23,11 +23,12 @@ namespace visualization_tools
             return;
         }
 
-        auto qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
-        _nav_path_pub = create_publisher<nav_msgs::msg::Path>("nav_path", qos_settings);
-        _trajectory_change_flag_sub = create_subscription<TrajectoryChangeFlag>("trajectory_change_flag", qos_settings, std::bind(&MovementVisualization::_trajectoryUpdated, this, std::placeholders::_1));
+        auto qos_latching = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
+        auto qos_reliable = rclcpp::QoS(rclcpp::KeepLast(1)).reliable();
+        _nav_path_pub = create_publisher<nav_msgs::msg::Path>("nav_path", qos_latching);
+        _trajectory_change_flag_sub = create_subscription<TrajectoryChangeFlag>("trajectory_change_flag", qos_reliable, std::bind(&MovementVisualization::_trajectoryUpdated, this, std::placeholders::_1));
         _trajectory_select_client = create_client<TrajectorySelect>("trajectory_select");
-        _generated_path_sub_debug = create_subscription<GeneratedPath>("/debug/generated_path", qos_settings, std::bind(&MovementVisualization::_callbackGeneratedPath, this, std::placeholders::_1));
+        _generated_path_sub_debug = create_subscription<GeneratedPath>("/debug/generated_path", qos_latching, std::bind(&MovementVisualization::_callbackGeneratedPath, this, std::placeholders::_1));
 
         _tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(this);
         _static_tf_broadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);

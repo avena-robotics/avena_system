@@ -4,7 +4,7 @@
   <!-- arm_id: Namespace of the franka arm. Serves to differentiate between arms in case of multiple instances. -->
   <xacro:macro name="franka_arm" params="arm_id:='franka' description_pkg:='avena_bringup' connected_to:='' xyz:='0 0 0' rpy:='0 0 0' safety_distance:=0">
     <!-- Links -->
-    <link name="base_link" />
+    <link name="robot_base_link" />
     <link name="${arm_id}_link_0">
       <visual>
         <geometry>
@@ -106,7 +106,7 @@
     <!-- Joints -->
     <joint name="base_joint" type="fixed">
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <parent link="base_link"/>
+      <parent link="robot_base_link"/>
       <child link="${arm_id}_link_0"/>
       <axis xyz="0 0 0"/>
     </joint>

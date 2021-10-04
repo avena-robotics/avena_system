@@ -1,31 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="table">
-  <!-- Constants -->
-  <material name="transparent">
-    <color rgba="1 1 1 0.2" />
-  </material>
 
   <!-- Collision box -->
-  <xacro:macro name="collision_box" params="name size visual:='true' transparent:='false' xyz:='0 0 0' rpy:='0 0 0' rgba:='0.8 0.8 0.8 1' table_base_link:='table_base_link'">
+  <xacro:macro name="collision_box" params="name size visual:='true' xyz:='0 0 0' rpy:='0 0 0' rgba:='0.8 0.8 0.8 1' table_base_link:='table_base_link'">
     <joint name="${name}" type="fixed">
       <origin xyz="${xyz}" rpy="${rpy}" />
       <parent link="${table_base_link}" />
       <child link="${name}" />
     </joint>
-    <link name="${name}">
-      <xacro:if value="${visual}">        
+    <link name="${name}">    
+      <xacro:if value="${visual}">
         <visual>
           <geometry>
             <box size="${size}"/>
           </geometry>
-          <xacro:if value="${transparent}">
-            <material name="transparent" />
-          </xacro:if>
-          <xacro:unless value="${transparent}">
-            <material name="custom_color">
-              <color rgba="${rgba}" />
-            </material>
-          </xacro:unless>
+          <material name="">
+            <color rgba="${rgba}" />
+          </material>
         </visual>
       </xacro:if>
       <collision>
@@ -36,16 +27,16 @@
     </link>
   </xacro:macro>
 
-  <!-- Table -->
+ <!-- Table -->
   <xacro:macro name="table" params="x_min:=0 x_max:=0 y_min:=0 y_max:=0">
-    <xacro:property name="thickness" value="0.01" />
-    <xacro:property name="walls_height" value="1.5" />
+    <xacro:property name="wall_thickness" value="0.01" />
+    <xacro:property name="walls_height" value="1.7" />
     <xacro:property name="x_origin" value="${(x_max + x_min) / 2}" />
     <xacro:property name="y_origin" value="${(y_max + y_min) / 2}" />
     <xacro:property name="x_dim" value="${x_max - x_min}" />
     <xacro:property name="y_dim" value="${y_max - y_min}" />
-    <xacro:property name="camera_stick_size" value="0.05" />
-    <xacro:property name="camera_stick_height" value="${walls_height}" />
+    <xacro:property name="stick_size" value="0.05" />
+    <xacro:property name="stick_height" value="${walls_height}" />
     <xacro:property name="camera_size" value="0.1" />
     <xacro:property name="camera_height" value="1.05" />
 
@@ -54,8 +45,8 @@
     <!-- Table top -->
     <xacro:collision_box 
       name="table_top" 
-      xyz="${x_origin} ${y_origin} ${-thickness / 2}" 
-      size="${x_dim} ${y_dim} ${thickness}"
+      xyz="${x_origin} ${y_origin} ${-wall_thickness / 2}" 
+      size="${x_dim} ${y_dim} ${wall_thickness}" 
       rgba="1 0.6 0.5 1"
     />
 
@@ -63,71 +54,93 @@
     <!-- WALLS -->
     <xacro:collision_box 
       name="front_wall" 
-      xyz="${1 + thickness / 2} ${y_origin} ${walls_height / 2}" 
-      size="${thickness} ${y_dim} ${walls_height}" 
-      transparent="true"
+      xyz="${x_dim + wall_thickness / 2} ${y_origin} ${walls_height / 2}" 
+      size="${wall_thickness} ${y_dim} ${walls_height}" 
       visual="false"
     />
     <xacro:collision_box 
       name="back_wall" 
-      xyz="${-thickness / 2} ${y_origin} ${walls_height / 2}" 
-      size="${thickness} ${y_dim} ${walls_height}" 
-      transparent="true"
+      xyz="${-wall_thickness / 2} ${y_origin} ${walls_height / 2}" 
+      size="${wall_thickness} ${y_dim} ${walls_height}"
+      visual="false"
     />
     <xacro:collision_box 
       name="left_side_wall" 
-      xyz="${x_dim / 2} ${y_max + thickness / 2} ${walls_height / 2}" 
-      size="${x_dim} ${thickness} ${walls_height}" 
-      transparent="true"
+      xyz="${x_dim / 2} ${y_max + wall_thickness / 2} ${walls_height / 2}" 
+      size="${x_dim} ${wall_thickness} ${walls_height}" 
+      visual="false"
     />
     <xacro:collision_box 
       name="right_side_wall" 
-      xyz="${x_dim / 2} ${y_min - thickness / 2} ${walls_height / 2}" 
-      size="${x_dim} ${thickness} ${walls_height}" 
-      transparent="true"
+      xyz="${x_dim / 2} ${y_min - wall_thickness / 2} ${walls_height / 2}" 
+      size="${x_dim} ${wall_thickness} ${walls_height}" 
+      visual="false"
     />
-    <!-- <xacro:collision_box 
-      name="top_wall" 
-      xyz="${x_origin} ${y_origin} ${walls_height + thickness / 2}" 
-      size="${x_dim} ${y_dim} ${thickness}" 
-      transparent="true"
-    /> -->
-
-    <!-- ******************************************************* -->
-    <!-- <xacro:collision_box 
-      name="temporary_wall" 
-      xyz="${x_origin + 0.1} ${-0.1} ${walls_height / 2}" 
-      size="${x_dim + 0.2} ${thickness} ${walls_height}" 
-      transparent="true"
-    /> -->
-    <!-- ******************************************************* -->
+    <xacro:collision_box 
+      name="temp_left_collision_wall_0" 
+      xyz="${x_dim / 2} 0.7 ${walls_height / 2}"  
+      size="${x_dim} ${wall_thickness} ${walls_height}" 
+      rgba="1 1 1 0.2"
+    />
+    <xacro:collision_box 
+      name="temp_left_collision_wall_1" 
+      xyz="${x_dim / 2} 0.1 ${walls_height / 2}"  
+      size="${x_dim} ${wall_thickness} ${walls_height}" 
+      rgba="1 1 1 0.2"
+    />
 
 
     <!-- ********************************************* -->
-    <!-- CAMERAS STICKS -->
+    <!-- STICKS -->
     <xacro:collision_box 
-      name="left_camera_stick" 
-      xyz="${x_max - camera_stick_size / 2} ${y_max - camera_stick_size / 2} ${camera_stick_height / 2}" 
-      size="${camera_stick_size} ${camera_stick_size} ${camera_stick_height}" 
+      name="left_back" 
+      xyz="${stick_size / 2} 0.8 ${stick_height / 2}" 
+      size="${stick_size} ${2 * stick_size} ${stick_height}"
+      visual="false"  
     />
     <xacro:collision_box 
-      name="right_camera_stick" 
-      xyz="${x_max - camera_stick_size / 2} ${y_min + camera_stick_size / 2} ${camera_stick_height / 2}" 
-      size="${camera_stick_size} ${camera_stick_size} ${camera_stick_height}" 
+      name="left_front" 
+      xyz="${x_dim - stick_size / 2} 0.8 ${stick_height / 2}" 
+      size="${stick_size} ${2 * stick_size} ${stick_height}"
+      visual="false"
+    />
+    <xacro:collision_box 
+      name="middle_front" 
+      xyz="${x_dim - stick_size / 2} 0 ${stick_height / 2}" 
+      size="${stick_size} ${2 * stick_size} ${stick_height}"
+      visual="false"  
+    />
+    <xacro:collision_box 
+      name="middle_back" 
+      xyz="${stick_size / 2} 0 ${stick_height / 2}" 
+      size="${stick_size} ${2 * stick_size} ${stick_height}"
+      visual="false"
+    />
+    <xacro:collision_box 
+      name="right_front" 
+      xyz="${x_dim - stick_size / 2} -0.8 ${stick_height / 2}" 
+      size="${stick_size} ${2 * stick_size} ${stick_height}"
+      visual="false"    
+    />
+    <xacro:collision_box 
+      name="right_back" 
+      xyz="${stick_size / 2} -0.8 ${stick_height / 2}" 
+      size="${stick_size} ${2 * stick_size} ${stick_height}"
+      visual="false" 
     />
 
     <!-- ********************************************* -->
     <!-- CAMERAS -->
-    <xacro:collision_box 
+    <!-- <xacro:collision_box 
       name="left_camera" 
       xyz="${x_max - camera_size / 2} ${y_max - camera_size / 2} ${camera_height}" 
       size="${camera_size} ${camera_size} ${camera_size}" 
-    />
-    <xacro:collision_box 
+    /> -->
+    <!-- <xacro:collision_box 
       name="right_camera" 
       xyz="${x_max - camera_size / 2} ${y_min + camera_size / 2} ${camera_height}" 
       size="${camera_size} ${camera_size} ${camera_size}" 
-    />
+    /> -->
 
   </xacro:macro>
 </robot>
