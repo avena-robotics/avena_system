@@ -230,6 +230,21 @@ ament_export_targets(
 )
 ##############################################################################
 
+# tf2_echo program
+set(PROGRAM_NAME tf2_echo)
+add_executable(${PROGRAM_NAME} 
+  src/${PROGRAM_NAME}.cpp
+)
+ament_target_dependencies(${PROGRAM_NAME} 
+  rclcpp 
+  tf2_ros
+)
+install(
+  TARGETS ${PROGRAM_NAME}
+  DESTINATION lib/${PROJECT_NAME}
+)
+##############################################################################
+
 install(DIRECTORY
   launch
   rviz

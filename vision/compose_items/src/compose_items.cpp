@@ -20,8 +20,8 @@ namespace compose_items
         parameter_descriptor.read_only = false;
         this->declare_parameter(remove_shadows_param_name, false, parameter_descriptor);
         this->get_parameter<bool>(remove_shadows_param_name, _remove_shadows);
-
         RCLCPP_INFO(this->get_logger(), "started Node");
+        
     }
 
     void ComposeItems::initNode()

@@ -18,6 +18,7 @@ import launch
 import sys
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
+from launch.actions import DeclareLaunchArgument
 
 
 def generate_launch_description():
@@ -32,11 +33,28 @@ def generate_launch_description():
                 ComposableNode(
                     package='camera_extrinsics_calibration',
                     plugin='PclCalibrator',
-                    name='hand_eye_calibration'
-                    )
+                    name='hand_eye_calibration',
+                    parameters=[
+                        {'camera_id': launch.substitutions.LaunchConfiguration('camera_id')},
+                        {'samples_amount': launch.substitutions.LaunchConfiguration('samples_amount')},
+                        {'log_level': 'debug'},
+                    ]
+                )
             ],
             output='screen',
             # prefix=['xterm -e gdb -ex run --args'],
     )
 
-    return launch.LaunchDescription([container])
+    return launch.LaunchDescription([
+        DeclareLaunchArgument(
+            name='camera_id',
+            default_value='1',
+            description='index of camera'
+        ),
+        DeclareLaunchArgument(
+            name='samples_amount',
+            default_value='5',
+            description='amount of samples'
+        ),
+        container
+    ])

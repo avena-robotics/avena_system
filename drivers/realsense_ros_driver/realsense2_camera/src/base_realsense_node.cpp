@@ -773,6 +773,8 @@ void BaseRealSenseNode::getParameters()
         param_name = static_cast<std::ostringstream &&>(std::ostringstream() << STREAM_NAME(stream) << "_optical_frame_id").str();
         setNgetNodeParameter(_optical_frame_id[stream], param_name, OPTICAL_FRAME_ID(stream));
         _optical_frame_id[stream] = _camera_name + "/" + _optical_frame_id[stream];
+
+        std::cout << _optical_frame_id[stream] << std::endl;
     }
 
     std::string unite_imu_method_str;
@@ -1081,10 +1083,10 @@ void BaseRealSenseNode::publishAlignedDepthToOthers(rs2::frameset frames, const 
             try
             {
                 align = _align.at(stream_type);
+                ROS_INFO_STREAM("Allocate align filter for:" << rs2_stream_to_string(sip.first) << sip.second);
             }
             catch (const std::out_of_range &e)
             {
-                ROS_DEBUG_STREAM("Allocate align filter for:" << rs2_stream_to_string(sip.first) << sip.second);
                 align = (_align[stream_type] = std::make_shared<rs2::align>(stream_type));
             }
             rs2::frameset processed = frames.apply_filter(*align);
@@ -1786,7 +1788,7 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
                 auto stream_index = f.get_profile().stream_index();
                 auto stream_format = f.get_profile().format();
 
-                ROS_DEBUG("Frameset contain (%s, %d, %s) frame. frame_number: %llu ; frame_TS: %f ; ros_TS(NSec): %lu",
+                ROS_WARN("Frameset contain (%s, %d, %s) frame. frame_number: %llu ; frame_TS: %f ; ros_TS(NSec): %lu",
                           rs2_stream_to_string(stream_type), stream_index, rs2_format_to_string(stream_format), frame.get_frame_number(), frame_time, t.nanoseconds());
 
                 if (f.is<rs2::points>())
@@ -1829,7 +1831,7 @@ void BaseRealSenseNode::frame_callback(rs2::frame frame)
                 // Uncomment to check times
                 // std::chrono::time_point<std::chrono::system_clock> start_align = std::chrono::system_clock::now();
 
-                ROS_DEBUG("publishAlignedDepthToOthers(...)");
+                ROS_ERROR("publishAlignedDepthToOthers(...)");
                 publishAlignedDepthToOthers(frameset, t);
 
 
@@ -2470,7 +2472,8 @@ void BaseRealSenseNode::publishPointCloud(rs2::points pc, const rclcpp::Time &t,
     }
     _msg_pointcloud.header.stamp = t;
     _msg_pointcloud.header.frame_id = _optical_frame_id[DEPTH];
-    // ROS_ERROR_STREAM("pointcloud frame : "<<_optical_frame_id[DEPTH]);
+    ROS_ERROR_STREAM("pointcloud topic name: " << _pointcloud_publisher->get_topic_name());
+    ROS_ERROR_STREAM("pointcloud frame: " << _msg_pointcloud.header.frame_id);
     if (_remove_shadows)
     {
         auto start = std::chrono::high_resolution_clock::now();

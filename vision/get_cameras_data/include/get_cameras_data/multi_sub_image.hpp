@@ -14,8 +14,8 @@
 #include "helpers_vision/helpers_vision.hpp"
 #include "helpers_commons/helpers_commons.hpp"
 
-#define SYNCHRO message_filters::Synchronizer < ApproximateTime
-#define PTR std::shared_ptr
+#define SYNCHRO(x) message_filters::Synchronizer < ApproximateTime <x> > 
+#define PTR(x) std::shared_ptr<x>
 
 #define IMAGE_2 sensor_msgs::msg::Image, sensor_msgs::msg::Image
 #define IMAGE_3 IMAGE_2, sensor_msgs::msg::Image
@@ -59,19 +59,19 @@ namespace synchronizers_image
   using namespace message_filters;
   using namespace sync_policies;
 
-  using image_subscriptions = std::vector<PTR<message_filters::Subscriber<sensor_msgs::msg::Image>>>;
+  using image_subscriptions = std::vector<PTR(message_filters::Subscriber<sensor_msgs::msg::Image>)>;
 
-  using cam2 = SYNCHRO<IMAGE_2> > ;
-  using cam3 = SYNCHRO<IMAGE_3> > ;
-  using cam4 = SYNCHRO<IMAGE_4> > ;
-  using cam5 = SYNCHRO<IMAGE_5> > ;
-  using cam6 = SYNCHRO<IMAGE_6> > ;
-  using cam7 = SYNCHRO<IMAGE_7> > ;
-  using cam8 = SYNCHRO<IMAGE_8> > ;
-  using cam9 = SYNCHRO<IMAGE_9> > ;
+  using cam2 = SYNCHRO(IMAGE_2);
+  using cam3 = SYNCHRO(IMAGE_3);
+  using cam4 = SYNCHRO(IMAGE_4);
+  using cam5 = SYNCHRO(IMAGE_5);
+  using cam6 = SYNCHRO(IMAGE_6);
+  using cam7 = SYNCHRO(IMAGE_7);
+  using cam8 = SYNCHRO(IMAGE_8);
+  using cam9 = SYNCHRO(IMAGE_9);
 
   using img_msg = sensor_msgs::msg::Image::ConstSharedPtr;
-  using cam_tup = std::tuple<PTR<cam2>, PTR<cam3>, PTR<cam4>, PTR<cam5>, PTR<cam6>, PTR<cam7>, PTR<cam8>, PTR<cam9>>;
+  using cam_tup = std::tuple<PTR(cam2), PTR(cam3), PTR(cam4), PTR(cam5), PTR(cam6), PTR(cam7), PTR(cam8), PTR(cam9)>;
 
   class Images
   {
@@ -86,28 +86,28 @@ namespace synchronizers_image
                                           { _synchronizedTopicsCallback(msg); });
         break;
       case 2:
-        std::get<PTR<cam2>>(tup) = std::make_shared<cam2>(2, SUBS_2);
+        std::get<PTR(cam2)>(tup) = std::make_shared<cam2>(2, SUBS_2);
         break;
       case 3:
-        std::get<PTR<cam3>>(tup) = std::make_shared<cam3>(3, SUBS_3);
+        std::get<PTR(cam3)>(tup) = std::make_shared<cam3>(3, SUBS_3);
         break;
       case 4:
-        std::get<PTR<cam4>>(tup) = std::make_shared<cam4>(4, SUBS_4);
+        std::get<PTR(cam4)>(tup) = std::make_shared<cam4>(4, SUBS_4);
         break;
       case 5:
-        std::get<PTR<cam5>>(tup) = std::make_shared<cam5>(5, SUBS_5);
+        std::get<PTR(cam5)>(tup) = std::make_shared<cam5>(5, SUBS_5);
         break;
       case 6:
-        std::get<PTR<cam6>>(tup) = std::make_shared<cam6>(6, SUBS_6);
+        std::get<PTR(cam6)>(tup) = std::make_shared<cam6>(6, SUBS_6);
         break;
       case 7:
-        std::get<PTR<cam7>>(tup) = std::make_shared<cam7>(7, SUBS_7);
+        std::get<PTR(cam7)>(tup) = std::make_shared<cam7>(7, SUBS_7);
         break;
       case 8:
-        std::get<PTR<cam8>>(tup) = std::make_shared<cam8>(8, SUBS_8);
+        std::get<PTR(cam8)>(tup) = std::make_shared<cam8>(8, SUBS_8);
         break;
       case 9:
-        std::get<PTR<cam9>>(tup) = std::make_shared<cam9>(9, SUBS_9);
+        std::get<PTR(cam9)>(tup) = std::make_shared<cam9>(9, SUBS_9);
         break;
       default:
         return;
@@ -125,28 +125,28 @@ namespace synchronizers_image
       switch (_cam_amount)
       {
       case 2:
-        std::get<PTR<cam2>>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_2>, this, PLACEHOLDERS_2));
+        std::get<PTR(cam2)>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_2>, this, PLACEHOLDERS_2));
         break;
       case 3:
-        std::get<PTR<cam3>>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_3>, this, PLACEHOLDERS_3));
+        std::get<PTR(cam3)>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_3>, this, PLACEHOLDERS_3));
         break;
       case 4:
-        std::get<PTR<cam4>>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_4>, this, PLACEHOLDERS_4));
+        std::get<PTR(cam4)>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_4>, this, PLACEHOLDERS_4));
         break;
       case 5:
-        std::get<PTR<cam5>>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_5>, this, PLACEHOLDERS_5));
+        std::get<PTR(cam5)>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_5>, this, PLACEHOLDERS_5));
         break;
       case 6:
-        std::get<PTR<cam6>>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_6>, this, PLACEHOLDERS_6));
+        std::get<PTR(cam6)>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_6>, this, PLACEHOLDERS_6));
         break;
       case 7:
-        std::get<PTR<cam7>>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_7>, this, PLACEHOLDERS_7));
+        std::get<PTR(cam7)>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_7>, this, PLACEHOLDERS_7));
         break;
       case 8:
-        std::get<PTR<cam8>>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_8>, this, PLACEHOLDERS_8));
+        std::get<PTR(cam8)>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_8>, this, PLACEHOLDERS_8));
         break;
       case 9:
-        std::get<PTR<cam9>>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_9>, this, PLACEHOLDERS_9));
+        std::get<PTR(cam9)>(tup)->registerCallback(std::bind(&Images::_synchronizedTopicsCallback<IMG_MSG_9>, this, PLACEHOLDERS_9));
         break;
       default:
         return;
@@ -185,6 +185,7 @@ namespace synchronizers_image
     cam_tup tup;
     bool _lock = false;
     rclcpp::Node *_node;
+
 
     std::vector<img_msg> _data_vec;
     rclcpp::Publisher<custom_interfaces::msg::Images>::SharedPtr _images_pub;

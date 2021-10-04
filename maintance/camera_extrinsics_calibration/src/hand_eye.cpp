@@ -6,8 +6,12 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
     helpers::commons::setLoggerLevel(get_logger(), "info");
     rclcpp::QoS qos_settings = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort().durability_volatile();
 
+    _getParameter("camera_id", _camera_index, 1);
+    _getParameter("samples_amount", _samples_amount, 5);
+
     _initializeSubscribers(qos_settings);
-    _change_tool_client = create_client<custom_interfaces::srv::ChangeTool>("change_tool");
+
+    // _change_tool_client = create_client<custom_interfaces::srv::ChangeTool>("change_tool");
 
     _tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
@@ -16,12 +20,12 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
 
     _static_broadcaster = std::make_unique<tf2_ros::StaticTransformBroadcaster>(get_node_topics_interface());
 
-    _cam1_robot_positions.resize(1);
-    _cam1_robot_positions[0] = Eigen::Translation3f(0.571, -0.902, 0.701) * Eigen::Quaternionf(0.603, -0.058, 0.337, -0.720);
+    // _cam1_robot_positions.resize(1);
+    // _cam1_robot_positions[0] = Eigen::Translation3f(0.571, -0.902, 0.701) * Eigen::Quaternionf(0.603, -0.058, 0.337, -0.720);
 
-    _cam2_robot_positions.resize(1);
-    _cam2_robot_positions[0] = Eigen::Translation3f(0.422, 0.457, 0.477) * Eigen::Quaternionf(0.669, -0.022, 0.510, 0.540);
-    
+    // _cam2_robot_positions.resize(1);
+    // _cam2_robot_positions[0] = Eigen::Translation3f(0.422, 0.457, 0.477) * Eigen::Quaternionf(0.669, -0.022, 0.510, 0.540);
+
     _action_server = rclcpp_action::create_server<HandEyeAction>(
         this,
         "calibrate_cameras",
@@ -30,68 +34,36 @@ PclCalibrator::PclCalibrator(const rclcpp::NodeOptions &options)
         std::bind(&PclCalibrator::_handleAccepted, this, std::placeholders::_1));
 }
 
+void PclCalibrator::_getParameter(std::string param_name, int &param_var, int default_value)
+{
+
+    rcl_interfaces::msg::ParameterDescriptor parameter_descriptor;
+    parameter_descriptor.name = param_name;
+    parameter_descriptor.type = rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER;
+    parameter_descriptor.read_only = false;
+    this->declare_parameter(param_name, default_value, parameter_descriptor);
+    this->get_parameter<int>(param_name, param_var);
+}
+
 void PclCalibrator::_initializeSubscribers(const rclcpp::QoS &qos_settings)
 {
     rclcpp::QoS qos_settings_info = rclcpp::QoS(rclcpp::KeepLast(1));
+    std::string topic_prefix = _camera_prefix + std::to_string(_camera_index);
+    _camera_rgb_sub = create_subscription<sensor_msgs::msg::Image>(topic_prefix + _camera_rgb_topic, qos_settings,
+                                                                   [this](sensor_msgs::msg::Image::SharedPtr msg)
+                                                                   {
+                                                                       RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received RGB image (message prints once every second)");
+                                                                       std::lock_guard<std::mutex> lg(_rgb_image_mtx);
+                                                                       _rgb_image = msg;
+                                                                   });
 
-    _camera1_rgb_sub = create_subscription<sensor_msgs::msg::Image>(_camera1_rgb_topic, qos_settings,
-                                                                    [this](sensor_msgs::msg::Image::SharedPtr msg)
-                                                                    {
-                                                                        RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera 1 RGB image (message print every 0.5 seconds)");
-                                                                        std::lock_guard<std::mutex> lg(_camera1_rgb_image_mtx);
-                                                                        _camera1_rgb_image = msg;
-                                                                    });
-    _camera2_rgb_sub = create_subscription<sensor_msgs::msg::Image>(_camera2_rgb_topic, qos_settings,
-                                                                    [this](sensor_msgs::msg::Image::SharedPtr msg)
-                                                                    {
-                                                                        RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera 2 RGB image (message print every 0.5 seconds)");
-                                                                        std::lock_guard<std::mutex> lg(_camera2_rgb_image_mtx);
-                                                                        _camera2_rgb_image = msg;
-                                                                    });
-    _camera1_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera1_info_topic, qos_settings_info,
-                                                                          [this](sensor_msgs::msg::CameraInfo::SharedPtr msg)
-                                                                          {
-                                                                              RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera 1 info (message print every 0.5 seconds)");
-                                                                              std::lock_guard<std::mutex> lg(_camera1_info_mtx);
-                                                                              _camera1_info = msg;
-                                                                          });
-    _camera2_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(_camera2_info_topic, qos_settings_info,
-                                                                          [this](sensor_msgs::msg::CameraInfo::SharedPtr msg)
-                                                                          {
-                                                                              RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera 2 info (message print every 0.5 seconds)");
-                                                                              std::lock_guard<std::mutex> lg(_camera2_info_mtx);
-                                                                              _camera2_info = msg;
-                                                                          });
-}
-
-int PclCalibrator::_changeTool(const std::string &tool_name)
-{
-    if (!_change_tool_client->service_is_ready())
-    {
-        RCLCPP_ERROR(get_logger(), "Service to change tool is not ready...");
-        return 0;
-    }
-
-    auto request = std::make_shared<custom_interfaces::srv::ChangeTool::Request>();
-    request->tool_name = tool_name;
-
-    auto result = _change_tool_client->async_send_request(request);
-    if (result.wait_for(std::chrono::seconds(5)) == std::future_status::timeout)
-    {
-        RCLCPP_ERROR(get_logger(), "Cannot get result from change tool service");
-        return 1;
-    }
-
-    if (result.get()->success)
-    {
-        RCLCPP_INFO_STREAM(get_logger(), "Tool changed to " << tool_name << " successfully.");
-        return 0;
-    }
-    else
-    {
-        RCLCPP_ERROR_STREAM(get_logger(), "Cannot change tool to " << tool_name);
-        return 1;
-    }
+    _camera_info_sub = create_subscription<sensor_msgs::msg::CameraInfo>(topic_prefix + _camera_info_topic, qos_settings_info,
+                                                                         [this](sensor_msgs::msg::CameraInfo::SharedPtr msg)
+                                                                         {
+                                                                             RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 1000, "Received camera info (message prints once every second)");
+                                                                             std::lock_guard<std::mutex> lg(_camera_info_mtx);
+                                                                             _camera_info = msg;
+                                                                         });
 }
 
 rclcpp_action::GoalResponse PclCalibrator::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const HandEyeAction::Goal> /*goal*/)
@@ -113,200 +85,146 @@ void PclCalibrator::_handleAccepted(const std::shared_ptr<GoalHandleHandEye> goa
 
 void PclCalibrator::_rotateSamples(std::vector<Eigen::Affine3f> &input_samples, const size_t rotations_per_sample, std::vector<Eigen::Affine3f> &output_samples)
 {
-    // int rotations_per_sample = AMOUNT_SAMPLES_PER_CAMERA;
     for (auto &initial_sample : input_samples)
         for (size_t i = 0; i < rotations_per_sample; i++)
             output_samples.push_back(initial_sample.rotate(helpers::vision::assignRotationMatrixAroundZ(2 * M_PI / rotations_per_sample)));
-
-    // helpers::visualization::visualize({},output_samples);
 }
 
 void PclCalibrator::_execute(const std::shared_ptr<GoalHandleHandEye> goal_handle)
 {
     auto result = std::make_shared<HandEyeAction::Result>();
-    if (_changeTool(CALIBRATION_MAT_NAME))
-        goal_handle->abort(result);
+
+    if (_poses.size() >= static_cast<size_t>(_samples_amount))
+        _poses.clear();
 
     auto calibration_return_code = _initiateCalibration();
-
-    if (_goHome())
-    {
-        goal_handle->abort(result);
-        return;
-    }
-
-    if (_changeTool(GRIPPER_NAME))
-    {
-        goal_handle->abort(result);
-        return;
-    }
 
     if (calibration_return_code == 0)
         goal_handle->succeed(result);
     else
         goal_handle->abort(result);
-    return;
-}
 
-int PclCalibrator::_goHome()
-{
-    if (_callSimpleAction(_generate_path_home, 10s) != 0)
-        return 1;
-    if (_callSimpleAction(_generate_trajectory_name, 10s) != 0)
-        return 1;
-    if (_callSimpleAction(_execute_move_name, 30s) != 0)
-        return 1;
-    return 0;
+    if(_poses.size() > 0)
+        RCLCPP_INFO(get_logger(), "Sample: " + std::to_string(_poses.size()) +"/" +std::to_string(_samples_amount));
+
+    return;
 }
 
 int PclCalibrator::_initiateCalibration()
 {
-    auto single_camera_calibration = [this](std::vector<Eigen::Affine3f> &positions, std::string &rgb_topic, std::string &camera_info_topic) -> Eigen::Affine3f
+    auto single_camera_calibration = [this]() -> std::optional<Eigen::Affine3f>
     {
-        int nr_cam_fails = 0;
-        int nr_cam_succeses = 0;
+        // int nr_cam_fails = 0;
+        // int nr_cam_succeses = 0;
 
-        std::vector<Eigen::Affine3f> cam_robot_positions;
-        _rotateSamples(positions, AMOUNT_SAMPLES_PER_CAMERA, cam_robot_positions);
-        std::vector<Eigen::Affine3f> cam_to_base_samples;
+        // std::vector<Eigen::Affine3f> cam_robot_positions;
+        // _rotateSamples(positions, AMOUNT_SAMPLES_PER_CAMERA, cam_robot_positions);
+        // std::vector<Eigen::Affine3f> cam_to_base_samples;
 
-        int current_threshold = -1;
+        // for (auto position = cam_robot_positions.begin(); position != cam_robot_positions.end(); position++)
+        // {
+        // RCLCPP_INFO_STREAM(get_logger(), "Processing position number: " << std::distance(cam_robot_positions.begin(), position) + 1 << " of " << cam_robot_positions.size());
+        // if (_moveRobot(*position) != 0)
+        // {
+        //     RCLCPP_WARN_STREAM(this->get_logger(), "Robot was not able to reach position!");
+        //     continue;
+        // }
 
-        for (auto position = cam_robot_positions.begin(); position != cam_robot_positions.end(); position++)
+        Eigen::Affine3f cam_to_base_sample;
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        int calibrate_return_code = calibrate(cam_to_base_sample, _current_threshold);
+        if (calibrate_return_code == CalibrateReturnCode::SUCCESS)
         {
-            RCLCPP_INFO_STREAM(get_logger(), "Processing position number: " << std::distance(cam_robot_positions.begin(), position) + 1 << " of " << cam_robot_positions.size());
-            if (_moveRobot(*position) != 0)
-            {
-                RCLCPP_WARN_STREAM(this->get_logger(), "Robot was not able to reach position!");
-                continue;
-            }
-
-            // cv::imshow("wait", cv::Mat::ones(200, 200, CV_8UC1) * 255);
-            // cv::waitKey(0);
-
-            Eigen::Affine3f cam_to_base_sample;
-            std::this_thread::sleep_for(std::chrono::seconds(2));
-            int calibrate_return_code = calibrate(rgb_topic, camera_info_topic, cam_to_base_sample, current_threshold);
-            if (calibrate_return_code == CalibrateReturnCode::SUCCESS)
-            {
-                RCLCPP_INFO(get_logger(), "Calibration for single position successfully");
-            }
-            else if (calibrate_return_code == CalibrateReturnCode::CAMERA_INFO_ERROR)
-            {
-                RCLCPP_WARN_STREAM(this->get_logger(), "Cannot obtain camera info from topic");
-            }
-            else if (calibrate_return_code == CalibrateReturnCode::IMAGE_ERROR)
-            {
-                RCLCPP_WARN_STREAM(this->get_logger(), "Cannot obtain RGB image from topic");
-            }
-            else if (calibrate_return_code == CalibrateReturnCode::WORLD_TO_END_EFFECTOR_TF_ERROR)
-            {
-                RCLCPP_WARN_STREAM(this->get_logger(), "Cannot obtain TF from \"world\" to \"end effector\"");
-            }
-            else if (calibrate_return_code == CalibrateReturnCode::CAMERA_BASE_TO_RGB_LINK_TF_ERROR)
-            {
-                RCLCPP_WARN_STREAM(this->get_logger(), "Cannot obtain TF from \"camera base\" to \"rgb camera link\"");
-            }
-            else if (calibrate_return_code == CalibrateReturnCode::CALIBRATION_MAT_NOT_FOUND)
-            {
-                RCLCPP_WARN_STREAM(this->get_logger(), "Cannot find calibration mat");
-            }
-            else if (calibrate_return_code == CalibrateReturnCode::PNP_ERROR)
-            {
-                RCLCPP_WARN_STREAM(this->get_logger(), "PnP algorith was not able to solve the problem, skipping sample...");
-            }
-
-            if (calibrate_return_code != CalibrateReturnCode::SUCCESS)
-            {
-                nr_cam_fails++;
-                continue;
-            }
-
-            nr_cam_succeses++;
-            cam_to_base_samples.push_back(cam_to_base_sample);
+            RCLCPP_INFO(get_logger(), "Calibration for single position successfull");
+        }
+        else if (calibrate_return_code == CalibrateReturnCode::CAMERA_INFO_ERROR)
+        {
+            RCLCPP_WARN_STREAM(this->get_logger(), "Cannot obtain camera info from topic");
+        }
+        else if (calibrate_return_code == CalibrateReturnCode::IMAGE_ERROR)
+        {
+            RCLCPP_WARN_STREAM(this->get_logger(), "Cannot obtain RGB image from topic");
+        }
+        else if (calibrate_return_code == CalibrateReturnCode::WORLD_TO_END_EFFECTOR_TF_ERROR)
+        {
+            RCLCPP_WARN_STREAM(this->get_logger(), "Cannot obtain TF from \"world\" to \"end effector\"");
+        }
+        else if (calibrate_return_code == CalibrateReturnCode::CAMERA_BASE_TO_RGB_LINK_TF_ERROR)
+        {
+            RCLCPP_WARN_STREAM(this->get_logger(), "Cannot obtain TF from \"camera base\" to \"rgb camera link\"");
+        }
+        else if (calibrate_return_code == CalibrateReturnCode::CALIBRATION_MAT_NOT_FOUND)
+        {
+            RCLCPP_WARN_STREAM(this->get_logger(), "Cannot find calibration mat");
+        }
+        else if (calibrate_return_code == CalibrateReturnCode::PNP_ERROR)
+        {
+            RCLCPP_WARN_STREAM(this->get_logger(), "PnP algorith was not able to solve the problem, skipping sample...");
         }
 
-        Eigen::Affine3f cam_pose(Eigen::Matrix4f::Zero());
-        RCLCPP_INFO(get_logger(), "Calculation of camera transforms from all poses");
-        if (cam_to_base_samples.size() == 0)
-            RCLCPP_ERROR_STREAM(this->get_logger(), "Calibration was not succesful!");
+        if (calibrate_return_code != CalibrateReturnCode::SUCCESS)
+        {
+            // nr_cam_fails++;
+            // continue;
+            RCLCPP_WARN_STREAM(this->get_logger(), "Calibration failed for current position.");
+            return std::nullopt;
+        }
 
-        for (auto &pose : cam_to_base_samples)
-            cam_pose.matrix() = cam_pose.matrix() + pose.matrix();
+        // nr_cam_succeses++;
+        // cam_to_base_samples.push_back(cam_to_base_sample);
+        // }
 
-        std::cout << "cam fails: " << nr_cam_fails << ", cam succeses: " << nr_cam_succeses << std::endl;
-        std::cout << "cam sample size: " << cam_to_base_samples.size() << std::endl;
+        // Eigen::Affine3f cam_pose(Eigen::Matrix4f::Zero());
+        // RCLCPP_INFO(get_logger(), "Calculation of camera transforms from all poses");
+        // if (cam_to_base_samples.size() == 0)
+        //     RCLCPP_ERROR_STREAM(this->get_logger(), "Calibration was not succesful!");
 
-        if (cam_to_base_samples.size() > 0)
-            cam_pose.matrix() = cam_pose.matrix() / cam_to_base_samples.size();
-        return cam_pose;
+        // for (auto &pose : cam_to_base_samples)
+        //     cam_pose.matrix() = cam_pose.matrix() + pose.matrix();
+
+        // std::cout << "cam fails: " << nr_cam_fails << ", cam succeses: " << nr_cam_succeses << std::endl;
+        // std::cout << "cam sample size: " << cam_to_base_samples.size() << std::endl;
+
+        // if (cam_to_base_samples.size() > 0)
+        //     cam_pose.matrix() = cam_pose.matrix() / cam_to_base_samples.size();
+        // std::optional<Eigen::Affine3f> cam_to_base_sample;
+        return cam_to_base_sample;
     };
 
-    RCLCPP_INFO(get_logger(), "Calibrating camera 1");
-    auto cam1_pose = single_camera_calibration(_cam1_robot_positions, _camera1_rgb_topic, _camera1_info_topic);
+    RCLCPP_INFO(get_logger(), "Calibrating camera " + std::to_string(_camera_index) + " sample nr: " + std::to_string(_poses.size() + 1));
 
-    RCLCPP_INFO(get_logger(), "Calibrating camera 2");
-    auto cam2_pose = single_camera_calibration(_cam2_robot_positions, _camera2_rgb_topic, _camera2_info_topic);
-
-    bool invalid_calibration = false;
-    if (cam1_pose.matrix() != Eigen::Matrix4f::Zero())
+    auto cam_pose_sample = single_camera_calibration();
+    RCLCPP_INFO(get_logger(), "calibration for sample nr: " + std::to_string(_poses.size() + 1) + " finished");
+    if (cam_pose_sample != std::nullopt)
     {
-        _displayTransform(cam1_pose, WORLD, _camera1_base);
-        _saveToYaml(cam1_pose, WORLD, _camera1_base, "camera1_calibration.yaml");
+        _poses.push_back(*cam_pose_sample);
+        RCLCPP_INFO(get_logger(), "status: Success");
     }
-    else
-        invalid_calibration = true;
+    else{
+        RCLCPP_INFO(get_logger(), "status: Fail");
+        return 1;
+    }
 
-    if (cam2_pose.matrix() != Eigen::Matrix4f::Zero())
+    if (_poses.size() >= static_cast<size_t>(_samples_amount))
     {
-        _displayTransform(cam2_pose, WORLD, _camera2_base);
-        _saveToYaml(cam2_pose, WORLD, _camera2_base, "camera2_calibration.yaml");
+
+        Eigen::Affine3f cam_pose(Eigen::Matrix4f::Zero());
+        for (auto &pose : _poses)
+            cam_pose.matrix() = cam_pose.matrix() + pose.matrix();
+        cam_pose.matrix() = cam_pose.matrix() / _poses.size();
+        RCLCPP_INFO(get_logger(), "Found " + std::to_string(_poses.size()) + " valid poses for camera " + std::to_string(_camera_index));
+
+        if (cam_pose.matrix() != Eigen::Matrix4f::Zero())
+        {
+            std::string base = _camera_prefix + std::to_string(_camera_index) + _camera_base;
+            //     _displayTransform(cam_pose, WORLD, base);
+            std::string filename = _camera_prefix + std::to_string(_camera_index) + "_calibration.yaml";
+            _saveToYaml(cam_pose, WORLD, base, filename);
+        }
+        _poses.clear();
     }
-    else
-        invalid_calibration = true;
-
-    return invalid_calibration;
-}
-
-int PclCalibrator::_moveRobot(Eigen::Affine3f &pose)
-{
-    // return 0;
-
-    trajectory_msgs::msg::JointTrajectory path;
-    if (_callGeneratePath(_generate_path_name, 10s, pose) != 0)
-        return 1;
-    if (_callSimpleAction(_generate_trajectory_name, 10s) != 0)
-        return 1;
-    if (_callSimpleAction(_execute_move_name, 30s) != 0)
-        return 1;
 
     return 0;
-}
-
-int PclCalibrator::_callGeneratePath(std::string name, std::chrono::seconds timeout, Eigen::Affine3f &pose)
-{
-
-    auto action_client = rclcpp_action::create_client<custom_interfaces::action::GeneratePathPose>(this, name);
-    // RCLCPP_INFO_STREAM(this->get_logger(), "Waiting for " + name + "action server...");
-    if (waitForServer<custom_interfaces::action::GeneratePathPose>(action_client))
-        return 1;
-    // RCLCPP_INFO_STREAM(this->get_logger(), "Send goal to \"" << name << "\" action.");
-    auto goal_msg = custom_interfaces::action::GeneratePathPose::Goal();
-    // send  goal
-    helpers::converters::eigenAffineToGeometry(pose, goal_msg.end_effector_pose);
-    auto goal_future = action_client->async_send_goal(goal_msg);
-    // wait for results
-    if (goal_future.wait_for(timeout) == std::future_status::timeout)
-    {
-        // RCLCPP_ERROR(this->get_logger(), "Timeout while waiting for " + name + " results...");
-        return 1;
-    }
-    auto result_future = action_client->async_get_result(goal_future.get());
-
-    if (result_future.get().code == rclcpp_action::ResultCode::SUCCEEDED)
-        return 0;
-    else
-        return 1;
 }
 
 int PclCalibrator::_callSimpleAction(std::string name, std::chrono::seconds timeout)
@@ -356,7 +274,7 @@ int PclCalibrator::_lookupTransform(const std::string &target_frame, const std::
     geometry_msgs::msg::TransformStamped transform_stamped;
     try
     {
-        rclcpp::Duration duration(std::chrono::milliseconds(100));
+        rclcpp::Duration duration(std::chrono::milliseconds(1000));
         transform_stamped = _transforms_buffer->lookupTransform(target_frame, source_frame, timestamp, duration);
         helpers::converters::geometryToEigenAffine(transform_stamped.transform, out_transform);
     }
@@ -391,9 +309,9 @@ int PclCalibrator::_lookupTransform(const std::string &target_frame, const std::
 //     _publishTransform(cv_to_eigen_aff, "cv_to_eigen", PANDA_EE_LINK, true);
 // }
 
-CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std::string &cam_info_topic, Eigen::Affine3f &out_transform, int &in_out_curr_threshold)
+CalibrateReturnCode PclCalibrator::calibrate(Eigen::Affine3f &out_transform, int &in_out_curr_threshold)
 {
-    auto find_tf = [this, &camera_rgb_topic](const sensor_msgs::msg::Image::SharedPtr &rgb_img, const cv::Mat &view, const cv::Mat &equ_img, const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs, const int threshold, Eigen::Affine3f &out_transform) -> CalibrateReturnCode
+    auto find_tf = [this](const sensor_msgs::msg::Image::SharedPtr &rgb_img, const cv::Mat &view, const cv::Mat &equ_img, const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs, const int threshold, Eigen::Affine3f &out_transform) -> CalibrateReturnCode
     {
         std::vector<cv::Point2f> corners1;
         cv::Mat rotation_vector; // Rotation in axis-angle form
@@ -409,11 +327,6 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
         cv::Mat chessboard_mask;
         cv::threshold(equ_img, chessboard_mask, threshold, 255, cv::THRESH_BINARY);
 
-        // cv::Mat resized_mask;
-        // cv::resize(chessboard_mask, resized_mask, chessboard_mask.size() / 4);
-        // cv::imshow("chessboard_mask", resized_mask);
-        // cv::waitKey(50);
-
         RCLCPP_DEBUG(get_logger(), "Finding chessboard corners...");
         bool found = false;
         if (view.empty() != 1)
@@ -427,15 +340,12 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
                 cv::Mat resized_mask;
                 cv::resize(chessboard_mask, resized_mask, chessboard_mask.size() / 4);
                 cv::imshow("chessboard_mask", resized_mask);
-                // cv::Mat input_img;
-                // cv::resize(img, input_img, img.size() / 4);
-                // cv::imshow("input_img", input_img);
                 cv::waitKey(0);
             }
 
             cv::Mat gray_img;
             cv::cvtColor(view, gray_img, CV_BGR2GRAY);
-            cv::cornerSubPix(gray_img, corners1, cv::Size(5, 5), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+            cv::cornerSubPix(gray_img, corners1, cv::Size(11, 11), cv::Size(3, 3), cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
             cv::solvePnP(objectPoints, corners1, camera_matrix, dist_coeffs, rotation_vector, translation_vector);
             cv::Mat aa_cv;
             cv::Rodrigues(rotation_vector, aa_cv);
@@ -450,7 +360,7 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
             Eigen::Affine3f world_to_end_effector_tf;
             Eigen::Affine3f rgb_to_base;
 
-            std::string camera_base = (camera_rgb_topic == _camera1_rgb_topic) ? _camera1_base : _camera2_base;
+            std::string camera_base = _camera_prefix + std::to_string(_camera_index) + _camera_base;
 
             if (_lookupTransform(WORLD, PANDA_EE_LINK, now(), world_to_end_effector_tf) == 1)
                 return CalibrateReturnCode::WORLD_TO_END_EFFECTOR_TF_ERROR;
@@ -487,7 +397,6 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
 
             out_transform = (out_transform.inverse() * rgb_to_base).inverse();
             out_transform = world_to_end_effector_tf * out_transform.inverse();
-            // out_transform = out_transform.inverse();
 
             if (_display_cv)
             {
@@ -504,7 +413,6 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
                 cv::circle(view, point2D[2], 3, cv::Scalar(0, 255, 0), 4, 8, 0);
 
                 // Display image.
-
                 cv::Mat resized_img;
                 cv::drawChessboardCorners(view, patternSize, corners1, found);
                 cv::resize(view, resized_img, view.size() / 4);
@@ -518,7 +426,7 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
         return CalibrateReturnCode::CALIBRATION_MAT_NOT_FOUND;
     };
 
-    auto [image, cam_info] = _getData(camera_rgb_topic, cam_info_topic);
+    auto [image, cam_info] = _getData();
 
     if (!image)
         return CalibrateReturnCode::IMAGE_ERROR;
@@ -598,33 +506,19 @@ CalibrateReturnCode PclCalibrator::calibrate(std::string &camera_rgb_topic, std:
     return CalibrateReturnCode::CALIBRATION_MAT_NOT_FOUND;
 }
 
-std::tuple<sensor_msgs::msg::Image::SharedPtr, sensor_msgs::msg::CameraInfo::SharedPtr> PclCalibrator::_getData(const std::string &rgb_image_topic, const std::string &camera_info_topic)
+std::tuple<sensor_msgs::msg::Image::SharedPtr, sensor_msgs::msg::CameraInfo::SharedPtr> PclCalibrator::_getData()
 {
     // Get RGB data
     sensor_msgs::msg::Image::SharedPtr image;
-    if (rgb_image_topic == _camera1_rgb_topic)
-    {
-        std::lock_guard<std::mutex> lg(_camera1_rgb_image_mtx);
-        image = std::make_shared<sensor_msgs::msg::Image>(*_camera1_rgb_image);
-    }
-    else
-    {
-        std::lock_guard<std::mutex> lg(_camera2_rgb_image_mtx);
-        image = std::make_shared<sensor_msgs::msg::Image>(*_camera2_rgb_image);
-    }
+
+    std::lock_guard<std::mutex> lg_rgb(_rgb_image_mtx);
+    image = std::make_shared<sensor_msgs::msg::Image>(*_rgb_image);
 
     // Camera info
     sensor_msgs::msg::CameraInfo::SharedPtr cam_info;
-    if (camera_info_topic == _camera1_info_topic)
-    {
-        std::lock_guard<std::mutex> lg(_camera1_info_mtx);
-        cam_info = std::make_shared<sensor_msgs::msg::CameraInfo>(*_camera1_info);
-    }
-    else
-    {
-        std::lock_guard<std::mutex> lg(_camera2_info_mtx);
-        cam_info = std::make_shared<sensor_msgs::msg::CameraInfo>(*_camera2_info);
-    }
+
+    std::lock_guard<std::mutex> lg_info(_camera_info_mtx);
+    cam_info = std::make_shared<sensor_msgs::msg::CameraInfo>(*_camera_info);
 
     return {image, cam_info};
 }
@@ -648,6 +542,8 @@ void PclCalibrator::_saveToYaml(Eigen::Affine3f &camera_transform, std::string p
     config["child"] = child;
     file << config;
     file.close();
+    RCLCPP_INFO(get_logger(), "Transform saved in " + filename);
+
 }
 
 // void PclCalibrator::_publishTransform(const Eigen::Affine3f &in_transform, const std::string &parent,
