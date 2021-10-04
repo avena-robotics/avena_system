@@ -214,10 +214,10 @@ void BaseController::updateParams(PID &pid, int joint_index)
 
 void BaseController::setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg)
 {
-    RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received trajectory");
+    RCLCPP_INFO(_node->get_logger(), "Received trajectory");
     if (msg->joint_names.size() != _joints_number)
     {
-        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Trajectory joint number does not match robot configuration");
+        RCLCPP_INFO(_node->get_logger(), "Trajectory joint number does not match robot configuration");
         return;
     }
     _saved_trajectory = *msg;
@@ -226,8 +226,11 @@ void BaseController::setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::Shar
 //TODO:
 void BaseController::securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr msg)
 {
-    RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received security pause trigger.");
+    RCLCPP_INFO(_node->get_logger(), "Received security pause trigger.");
     _controller_state = 1;
+    if (_time_factor != 0.)
+        _prev_time_factor = _time_factor;
+    _time_factor = 0.;
     return;
 }
 
@@ -252,7 +255,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
     {
     //init
     case 0:
-        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received start command.");
+        RCLCPP_INFO(_node->get_logger(), "Received start command.");
         _controller_state = 4;
         _t_start = std::chrono::steady_clock::now();
         _time_accumulator = std::chrono::microseconds(0);
@@ -264,25 +267,20 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
 
     //stop
     case 1:
-        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received stop command.");
-        _controller_state = 1;
-        if (_time_factor != 0.)
-            _prev_time_factor = _time_factor;
-        _time_factor = 0.;
+        stopArm();
         response->feedback = "Received stop command.";
         break;
     //resume
     case 2:
-        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received resume command.");
+        RCLCPP_INFO(_node->get_logger(), "Received resume command.");
         if (_controller_state == 3)
         {
-            _controller_state = 2;
-            _t_stop = std::chrono::steady_clock::now();
+            resumeArm();
             response->feedback = "Received resume command.";
         }
         else
         {
-            RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Controller needs to be paused before resuming.");
+            RCLCPP_INFO(_node->get_logger(), "Controller needs to be paused before resuming.");
             response->feedback = "Controller needs to be paused before resuming.";
         }
         break;
@@ -290,22 +288,18 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
     case 3:
         if (_controller_state == 4)
         {
-            RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received pause command.");
-            _controller_state = 3;
-            _t_stop = std::chrono::steady_clock::now();
-            if (_time_factor != 0.)
-                _prev_time_factor = _time_factor;
+            pauseArm();
             response->feedback = "Received pause command.";
         }
         else
         {
-            RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Controller needs to be running before pausing.");
+            RCLCPP_INFO(_node->get_logger(), "Controller needs to be running before pausing.");
             response->feedback = "Controller needs to be running before pausing.";
         }
         break;
     //execute
     case 4:
-        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received execute command.");
+        RCLCPP_INFO(_node->get_logger(), "Received execute command.");
         if (_saved_trajectory.points.size() == 0)
         {
             response->feedback = "Please send trajectory before trying to execute it.";
@@ -320,10 +314,37 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         response->feedback = "Received execute command.";
         break;
     default:
-        RCLCPP_INFO(rclcpp::get_logger("base_controller"), "Received unknown command.");
+        RCLCPP_INFO(_node->get_logger(), "Received unknown command.");
         response->feedback = "Received unknown command.";
         break;
     }
+}
+
+int BaseController::stopArm()
+{
+    RCLCPP_INFO(_node->get_logger(), "Received stop command.");
+    _controller_state = 1;
+    if (_time_factor != 0.)
+        _prev_time_factor = _time_factor;
+    _time_factor = 0.;
+    return 0;
+}
+
+int BaseController::pauseArm()
+{
+    RCLCPP_INFO(_node->get_logger(), "Received pause command.");
+    _controller_state = 3;
+    _t_stop = std::chrono::steady_clock::now();
+    if (_time_factor != 0.)
+        _prev_time_factor = _time_factor;
+    return 0;
+}
+
+int BaseController::resumeArm()
+{
+    _controller_state = 2;
+    _t_stop = std::chrono::steady_clock::now();
+    return 0;
 }
 
 int BaseController::jointInit()
@@ -611,6 +632,23 @@ int BaseController::calculateTorque()
         _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
         _error = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
 
+        if (_error > _error_margin)
+        {
+            _arm_command.joints[jnt_idx].c_torque = 0;
+            _arm_command.joints[jnt_idx].c_status = 3;
+
+            RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin", jnt_idx);
+            stopArm();
+
+            // RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin", jnt_idx);
+            // _controller_state = 3;
+            // _t_stop = std::chrono::steady_clock::now();
+            // if (_time_factor != 0.)
+            //     _prev_time_factor = _time_factor;
+
+            return 1;
+        }
+
         _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error);
         _set_torque_ff_val = _set_vel * _time_factor * _FFv[jnt_idx];
         _set_torque_ff_val += _trajectory.points[_trajectory_index].accelerations[jnt_idx] * pow(_time_factor, 2) * _FFa[jnt_idx];
@@ -651,11 +689,14 @@ int BaseController::calculateID()
     {
         q_temp.push_back(_arm_status.joints[jnt_idx].position);
     }
+    _q_traj = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].positions.data(), _trajectory.points[_trajectory_index].positions.size());
     _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(q_temp.data(), q_temp.size());
     _qd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].velocities.data(), _trajectory.points[_trajectory_index].velocities.size());
     _qdd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].accelerations.data(), _trajectory.points[_trajectory_index].accelerations.size());
     pinocchio::rnea(_model, *_data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
     _tau = _data->tau;
+    pinocchio::forwardKinematics(_model, _ * data, _q);
+    std::cout << std::setw(24) << std::left << std::fixed << std::setprecision(2) << data.oMi[6].translation().transpose() << std::endl;
     return 0;
 }
 
@@ -714,10 +755,9 @@ void BaseController::controlLoop()
     {
         if (_time_factor != 0.0)
         {
-            _prev_time_factor = _time_factor;
             RCLCPP_INFO(_node->get_logger(), "Finished trajectory");
-            _time_factor = 0.0;
-            _controller_state = 3;
+            pauseArm();
+            _time_factor = 0.;
         }
     }
 

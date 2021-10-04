@@ -34,6 +34,7 @@
 #include "pinocchio/parsers/urdf.hpp"
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
+#include "pinocchio/algorithm/kinematics.hpp"
 
 struct friction_comp
 {
@@ -69,7 +70,7 @@ protected:
     std::shared_ptr<ArmInterface> _arm_interface;
 
     //TODO:
-    const double _trajectory_rate = 500;
+    const double _trajectory_rate = 1000;
 
     //PARAMETERS
     size_t _joints_number;
@@ -112,8 +113,11 @@ protected:
     std::vector<std::vector<std::vector<friction_comp>>> _friction_chart;
     std::vector<std::vector<friction_comp>> _measured_friction_comp;
 
+    //KINEMATICS
+
+
     //ID
-    Eigen::VectorXd _q, _qd, _qdd, _tau;
+    Eigen::VectorXd _q, _qd, _qdd, _tau _q_traj;
     pinocchio::Model _model;
     std::shared_ptr<pinocchio::Data> _data;
 
@@ -167,6 +171,10 @@ protected:
     virtual int communicate();
 
     virtual void controlLoop();
+
+    int stopArm();
+    int pauseArm();
+    int resumeArm();
 
     void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
                     std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);

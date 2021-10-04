@@ -114,7 +114,7 @@ void FrictionCalibration::init()
     RCLCPP_INFO(_node->get_logger(), "Done setting PIDs");
 
     //FRICTION INIT
-    loadFrictionChart(_config_path + std::string("/friction_chart_"));
+    loadFrictionChart(_config_path + std::string("/friction/friction_chart_"));
     RCLCPP_INFO(_node->get_logger(), "Loaded friction chart");
 
     //MEASUREMENT INIT
@@ -361,7 +361,7 @@ void FrictionCalibration::init()
                         valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
                     else
                     {
-                        if ((std::chrono::steady_clock::now() - valid_vel_time[jnt_idx]) > std::chrono::seconds(5))
+                        if ((std::chrono::steady_clock::now() - valid_vel_time[jnt_idx]) > std::chrono::seconds(50))
                         {
                             // std::string temp_str = std::to_string(set_vel[jnt_idx]) + " " + std::to_string(tq_acc[jnt_idx] / double(tq_inc[jnt_idx])) + "\_avg_samples";
                             // std::cout << set_vel[jnt_idx] << " " << (tq_acc[jnt_idx] / double(tq_inc[jnt_idx])) << std::endl;
@@ -418,7 +418,7 @@ void FrictionCalibration::init()
                 // }
 
                 _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
-                // _arm_command.joints[jnt_idx].c_torque = -9;
+                // _arm_command.joints[jnt_idx].c_torque = -15;
                 _arm_command.joints[jnt_idx].c_status = 3;
                 // RCLCPP_INFO_STREAM(_node->get_logger(), "jnt: " << jnt_idx);
                 // RCLCPP_INFO_STREAM(_node->get_logger(), "pos: " << _arm_status.joints[jnt_idx].position);

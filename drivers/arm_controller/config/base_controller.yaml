@@ -1,7 +1,7 @@
 /base_controller:
   ros__parameters:
 
-    error_margin: 0.003
+    error_margin: 0.09
 
     FFv_gain_0: 0.0
     FFa_gain_0: 0.
