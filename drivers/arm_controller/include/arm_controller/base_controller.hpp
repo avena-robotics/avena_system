@@ -91,7 +91,7 @@ protected:
     std::vector<PID> _pid_ctrl;
 
     //CONTROL
-    double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _error, _c_friction_comp, _set_vel;
+    double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _error, _cartesian_error_norm, _c_friction_comp, _set_vel;
     int _torque_sign, _vel_sign, _time, _remaining_time, _acc_sign;
     size_t _trajectory_index;
     int _controller_state;
@@ -117,9 +117,9 @@ protected:
 
 
     //ID
-    Eigen::VectorXd _q, _qd, _qdd, _tau _q_traj;
+    Eigen::VectorXd _q, _qd, _qdd, _tau, _q_traj;
     pinocchio::Model _model;
-    std::shared_ptr<pinocchio::Data> _data;
+    std::shared_ptr<pinocchio::Data> _data, _traj_data;
 
     //TIME
     rclcpp::TimerBase::SharedPtr _timer;
@@ -138,6 +138,7 @@ protected:
     //__PUBLISHERS
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _set_joint_states_pub;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_states_pub;
+    rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr _cartesian_error_norm_pub;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr _controller_state_pub;
 
     //__SUBSCRIBERS

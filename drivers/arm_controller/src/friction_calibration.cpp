@@ -285,7 +285,7 @@ void FrictionCalibration::init()
                 {
                     for (size_t i = 0; i < _avg_samples; i++)
                     {
-                        p_avg[jnt_idx][i] = _arm_status.joints[jnt_idx].position;
+                        p_avg[jnt_idx][i] = _arm_status.joints[jnt_idx].position-(i*_avg_vel[jnt_idx]);
                     }
                     prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
                 }

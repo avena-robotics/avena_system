@@ -16,6 +16,7 @@ BaseController::BaseController(int argc, char **argv)
     _set_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("set_joint_states", 10);
     _arm_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("arm_joint_states", 10);
     _controller_state_pub = _node->create_publisher<std_msgs::msg::Int32>("/arm_controller/state", 10);
+    _cartesian_error_norm_pub = _node->create_publisher<std_msgs::msg::Float64>("/arm_controller/error", 10);
     _security_trigger_sub = _node->create_subscription<std_msgs::msg::Bool>(
         "/security_trigger",
         rclcpp::QoS(rclcpp::KeepLast(1)),
@@ -238,11 +239,11 @@ void BaseController::setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg)
 {
     if (_controller_state != 4)
     {
-        _prev_time_factor = msg->data / 100;
+        _prev_time_factor = msg->data / 100.;
     }
     else
     {
-        _time_factor = msg->data / 100;
+        _time_factor = msg->data / 100.;
     }
     RCLCPP_INFO_STREAM(_node->get_logger(), "Time factor set to: " << _time_factor);
     return;
@@ -369,7 +370,7 @@ int BaseController::jointInit()
     {
         if (_arm_status.joints[i].state == 255)
         {
-            RCLCPP_INFO_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
+            RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
         }
     }
 
@@ -421,8 +422,9 @@ int BaseController::idInit()
     }
     pinocchio::urdf::buildModelFromXML(_urdf, _model, true);
     _data = std::make_shared<pinocchio::Data>(_model);
+    _traj_data = std::make_shared<pinocchio::Data>(_model);
     RCLCPP_INFO(_node->get_logger(), "Done loading robot model.");
-
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     return 0;
 }
 
@@ -434,6 +436,7 @@ int BaseController::paramInit()
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("error_margin", _error_margin);
+
     for (size_t i = 0; i < _joints_number; i++)
     {
         //set defaults in case config file is not provided
@@ -445,7 +448,6 @@ int BaseController::paramInit()
         _node->declare_parameter<double>("Coulomb_friction_" + std::to_string(i), 9);
         _node->declare_parameter<double>("i_clamp_h_" + std::to_string(i), 20);
         _node->declare_parameter<double>("i_clamp_l_" + std::to_string(i), -20);
-
         //get parameter values from config file
         _node->get_parameter("Kp_gain_" + std::to_string(i), _Kp[i]);
         _node->get_parameter("Ki_gain_" + std::to_string(i), _Ki[i]);
@@ -455,7 +457,6 @@ int BaseController::paramInit()
         _node->get_parameter("Coulomb_friction_" + std::to_string(i), _c_friction_val[i]);
         _node->get_parameter("i_clamp_h_" + std::to_string(i), _i_clamp_h[i]);
         _node->get_parameter("i_clamp_l_" + std::to_string(i), _i_clamp_l[i]);
-
         //initialize PIDs
         _pid_ctrl.push_back(PID(_Kp[i], _Ki[i], _Kd[i], 1.0 / _trajectory_rate, _i_clamp_l[i], _i_clamp_h[i], _avg_samples));
     }
@@ -464,7 +465,6 @@ int BaseController::paramInit()
     //FRICTION INIT
     loadFrictionChart(_config_path + std::string("/friction_chart_"));
     RCLCPP_INFO(_node->get_logger(), "Loaded friction chart");
-
     return 0;
 }
 
@@ -675,7 +675,8 @@ int BaseController::calculateTorque()
         else
         {
             _arm_command.joints[jnt_idx].c_torque = 0;
-            _arm_command.joints[jnt_idx].c_status = 2;
+            //TODO: change to stop (2)
+            _arm_command.joints[jnt_idx].c_status = 3;
         }
     }
     return 0;
@@ -695,8 +696,10 @@ int BaseController::calculateID()
     _qdd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].accelerations.data(), _trajectory.points[_trajectory_index].accelerations.size());
     pinocchio::rnea(_model, *_data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
     _tau = _data->tau;
-    pinocchio::forwardKinematics(_model, _ * data, _q);
-    std::cout << std::setw(24) << std::left << std::fixed << std::setprecision(2) << data.oMi[6].translation().transpose() << std::endl;
+    pinocchio::forwardKinematics(_model, *_data, _q);
+    pinocchio::forwardKinematics(_model, *_traj_data, _q_traj);
+    _cartesian_error_norm = (_data->oMi[6].translation() - _traj_data->oMi[6].translation()).transpose().norm();
+
     return 0;
 }
 
@@ -720,9 +723,12 @@ int BaseController::communicate()
 
     //comms
     std_msgs::msg::Int32 state_msg;
+    std_msgs::msg::Float64 error_msg;
     state_msg.set__data(_controller_state);
+    error_msg.set__data(_cartesian_error_norm);
     _set_joint_states_pub->publish(_set_joint_state_msg);
     _arm_joint_states_pub->publish(_arm_joint_state_msg);
+    _cartesian_error_norm_pub->publish(error_msg);
     _controller_state_pub->publish(state_msg);
     _arm_command.timestamp = std::chrono::steady_clock::now();
     _arm_interface->setArmCommand(_arm_command);
@@ -738,7 +744,16 @@ void BaseController::controlLoop()
     //GET JOINT STATES
     _arm_status = _arm_interface->getArmState();
 
-    if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
+    for (size_t i = 0; i < _joints_number; i++)
+    {
+        if (_arm_status.joints[i].state == 255)
+        {
+            RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
+        }
+    }
+    
+
+    if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate * 1.2))
     {
         RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period.");
     }
@@ -766,7 +781,7 @@ void BaseController::controlLoop()
     communicate();
 
     //execute callbacks
-    _exec->spin_some(std::chrono::nanoseconds(10000));
+    _exec->spin_some();
 
     _loop_it++;
     //control loop frequency
@@ -785,8 +800,8 @@ void BaseController::init()
 
     jointInit();
     idInit();
-    paramInit();
     varInit();
+    paramInit();
     jointPositionInit();
 
     //CONTROL LOOP
@@ -801,7 +816,8 @@ void BaseController::init()
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         _arm_command.joints[jnt_idx].c_torque = 0;
-        _arm_command.joints[jnt_idx].c_status = 2;
+        //TODO: change to stop (2)
+        _arm_command.joints[jnt_idx].c_status = 3;
     }
     _arm_command.timestamp = std::chrono::steady_clock::now();
     _arm_interface->setArmCommand(_arm_command);
@@ -813,6 +829,6 @@ int main(int argc, char **argv)
 {
     BaseController controller(argc, argv);
 
-    // controller.init();
+    controller.init();
     return 0;
 }

@@ -25,7 +25,7 @@ int Diagnostics::getAverageArmState()
         {
             for (size_t i = 0; i < _avg_samples; i++)
             {
-                _avg_pos_b[jnt_idx][i] = _arm_status.joints[jnt_idx].position;
+                _avg_pos_b[jnt_idx][i] = _arm_status.joints[jnt_idx].position-(i*_avg_vel[jnt_idx]);
             }
             _prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
         }
@@ -125,7 +125,8 @@ void Diagnostics::controlLoop()
         RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period by %i us.", std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count());
     }
     getAverageArmState();
-    saveDiagnostics();
+    if ((_t_current - _t_start) > std::chrono::seconds(2))
+        saveDiagnostics();
     handleControllerState();
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
