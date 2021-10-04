@@ -147,7 +147,7 @@ private:
     bool sendArmCommand(ArmCommand arm_command, std::chrono::microseconds read_time)
     {
         std::stringstream can_msg_str;
-        std::scoped_lock(_arm_status_mutex);
+        std::scoped_lock lock(_arm_status_mutex);
 
         can_msg_str << _can_addr << "##1";
         for (size_t i = 0; i < arm_command.joints.size(); i++)
@@ -179,7 +179,7 @@ private:
 
     bool updateArmState()
     {
-        std::scoped_lock(_arm_status_mutex);
+        std::scoped_lock lock(_arm_status_mutex);
         int arm_id;
 
         for (size_t i = 0; i < _last_msg.rx_msgs.size(); i++)

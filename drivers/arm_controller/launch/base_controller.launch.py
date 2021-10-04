@@ -23,6 +23,7 @@ def launch_setup(context, *args, **kwargs):
             executable='base_controller',
             output='both',
             parameters=[params, {'config_path':config}]
+            # prefix=['valgrind --leak-check=yes --track-origins=yes']
         )
     ]
 

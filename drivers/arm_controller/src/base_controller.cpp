@@ -6,6 +6,7 @@ BaseController::BaseController(int argc, char **argv)
     rclcpp::init(argc, argv);
     // rclcpp::init(NULL,NULL);
     _node = rclcpp::Node::make_shared("base_controller");
+    // helpers::commons::setLoggerLevel(_node->get_logger(),"debug");
     _watchdog = std::make_shared<helpers::Watchdog>(_node.get(), this, "system_monitor");
     status = custom_interfaces::msg::Heartbeat::RUNNING;
 
@@ -622,7 +623,7 @@ int BaseController::handleControllerState()
 
 int BaseController::calculateTorque()
 {
-
+    // helpers::Timer asdf(__func__,_node->get_logger());
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         //dynamic PID reconfigure
@@ -684,6 +685,7 @@ int BaseController::calculateTorque()
 
 int BaseController::calculateID()
 {
+    // helpers::Timer asdf(__func__,_node->get_logger());
     //ID
     std::vector<double> q_temp;
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
@@ -705,7 +707,7 @@ int BaseController::calculateID()
 
 int BaseController::communicate()
 {
-
+    // helpers::Timer asdf(__func__,_node->get_logger());
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         //monitor data
@@ -775,7 +777,6 @@ void BaseController::controlLoop()
             _time_factor = 0.;
         }
     }
-
     calculateID();
     calculateTorque();
     communicate();
