@@ -74,7 +74,7 @@ protected:
 
     //PARAMETERS
     size_t _joints_number;
-    double _error_margin, _cartesian_error_margin;
+    double _error_margin;
     std::string _config_path;
     std::string _urdf;
 
@@ -91,8 +91,7 @@ protected:
     std::vector<PID> _pid_ctrl;
 
     //CONTROL
-    double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _cartesian_error_norm, _c_friction_comp, _set_vel;
-    std::vector<double> _error;
+    double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _error, _cartesian_error_norm, _c_friction_comp, _set_vel;
     int _torque_sign, _vel_sign, _time, _remaining_time, _acc_sign;
     size_t _trajectory_index;
     int _controller_state;
@@ -100,12 +99,11 @@ protected:
     std::vector<double> _jitter_multiplier;
     std::vector<bool> _jitter_present;
 
-
     ArmStatus _arm_status;
     ArmCommand _arm_command;
 
     //MEASUREMENT
-    const size_t _avg_samples = 100;
+    const size_t _avg_samples = 1000;
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;
@@ -116,6 +114,7 @@ protected:
     std::vector<std::vector<friction_comp>> _measured_friction_comp;
 
     //KINEMATICS
+
 
     //ID
     Eigen::VectorXd _q, _qd, _qdd, _tau, _q_traj;
@@ -139,7 +138,6 @@ protected:
     //__PUBLISHERS
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _set_joint_states_pub;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_states_pub;
-    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_errors_pub;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr _cartesian_error_norm_pub;
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr _controller_state_pub;
 
@@ -151,7 +149,7 @@ protected:
     //__SERVICES
     rclcpp::Service<custom_interfaces::srv::ControlCommand>::SharedPtr _command_service;
 
-    sensor_msgs::msg::JointState _set_joint_state_msg, _arm_joint_state_msg, _arm_joint_errors_msg;
+    sensor_msgs::msg::JointState _set_joint_state_msg, _arm_joint_state_msg;
 
     //loads friction chart
     void loadFrictionChart(std::string path);

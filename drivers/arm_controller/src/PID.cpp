@@ -13,10 +13,6 @@ PID::PID(double Kp, double Ki, double Kd, double dt, int d_n)
     _d_n = d_n;
     _d_buffer.resize(d_n);
     _iter = 0;
-    for (size_t i = 0; i > d_n; i++)
-    {
-        _d_buffer[i] = 0.;
-    }
 }
 
 PID::PID(double Kp, double Ki, double Kd, double dt, double i_clamp_low, double i_clamp_high, int d_n)
@@ -25,25 +21,13 @@ PID::PID(double Kp, double Ki, double Kd, double dt, double i_clamp_low, double 
     Ki_ = Ki;
     Kd_ = Kd;
     dt_ = dt;
-    if (Ki != 0)
-    {
-        i_clamp_low_ = i_clamp_low / Ki;
-        i_clamp_high_ = i_clamp_high / Ki;
-    }
-    else
-    {
-        i_clamp_high_ = DBL_MAX;
-        i_clamp_low_ = -DBL_MAX;
-    }
+    i_clamp_low_ = i_clamp_low / Ki;
+    i_clamp_high_ = i_clamp_high / Ki;
     i_val_ = 0;
     prev_error_ = 0;
     _d_n = d_n;
     _d_buffer.resize(d_n);
     _iter = 0;
-    for (size_t i = 0; i > d_n; i++)
-    {
-        _d_buffer[i] = 0.;
-    }
 }
 
 PID::~PID() {}

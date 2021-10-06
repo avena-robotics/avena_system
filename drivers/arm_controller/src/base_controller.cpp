@@ -16,7 +16,6 @@ BaseController::BaseController(int argc, char **argv)
     _time_factor_sub = _node->create_subscription<std_msgs::msg::Float64>("/arm_controller/time_factor", 10, std::bind(&BaseController::setTimeFactorCb, this, std::placeholders::_1));
     _set_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("set_joint_states", 10);
     _arm_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("arm_joint_states", 10);
-    _arm_joint_errors_pub = _node->create_publisher<sensor_msgs::msg::JointState>("arm_joint_errors", 10);
     _controller_state_pub = _node->create_publisher<std_msgs::msg::Int32>("/arm_controller/state", 10);
     _cartesian_error_norm_pub = _node->create_publisher<std_msgs::msg::Float64>("/arm_controller/error", 10);
     _security_trigger_sub = _node->create_subscription<std_msgs::msg::Bool>(
@@ -302,38 +301,20 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         break;
     //execute
     case 4:
-    {
         RCLCPP_INFO(_node->get_logger(), "Received execute command.");
-
         if (_saved_trajectory.points.size() == 0)
         {
             response->feedback = "Please send trajectory before trying to execute it.";
             break;
         }
-
-        bool in_place = true;
-        for(size_t jnt_idx;jnt_idx<_joints_number;jnt_idx++){
-            _error[jnt_idx] = _saved_trajectory.points[0].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
-            in_place*=_error[jnt_idx]<_error_margin;
-        }
-
-        if (in_place)
-        {
-            _trajectory = _saved_trajectory;
-            _controller_state = 4;
-            _time_factor = _prev_time_factor;
-            _t_start = std::chrono::steady_clock::now();
-            _time_accumulator = std::chrono::microseconds(0);
-            _t_current = std::chrono::steady_clock::now();
-        }
-        else
-        {
-            RCLCPP_INFO(_node->get_logger(), "Trajectory starting point is too far away from current end-effector position.");
-        }
-
+        _trajectory = _saved_trajectory;
+        _controller_state = 4;
+        _time_factor = _prev_time_factor;
+        _t_start = std::chrono::steady_clock::now();
+        _time_accumulator = std::chrono::microseconds(0);
+        _t_current = std::chrono::steady_clock::now();
         response->feedback = "Received execute command.";
         break;
-    }
     default:
         RCLCPP_INFO(_node->get_logger(), "Received unknown command.");
         response->feedback = "Received unknown command.";
@@ -353,14 +334,11 @@ int BaseController::stopArm()
 
 int BaseController::pauseArm()
 {
-    if (_controller_state != 3)
-    {
-        RCLCPP_INFO(_node->get_logger(), "Received pause command.");
-        _controller_state = 3;
-        _t_stop = std::chrono::steady_clock::now();
-        if (_time_factor != 0.)
-            _prev_time_factor = _time_factor;
-    }
+    RCLCPP_INFO(_node->get_logger(), "Received pause command.");
+    _controller_state = 3;
+    _t_stop = std::chrono::steady_clock::now();
+    if (_time_factor != 0.)
+        _prev_time_factor = _time_factor;
     return 0;
 }
 
@@ -455,12 +433,10 @@ int BaseController::paramInit()
 {
     //PARAMETERS INIT
     RCLCPP_INFO(_node->get_logger(), "Initializing controller parameters.");
-    _node->declare_parameter<double>("error_margin", 0.01);
-    _node->declare_parameter<double>("_cartesian_error_margin", 0.01);
+    _node->declare_parameter<double>("error_margin", 0);
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("error_margin", _error_margin);
-    _node->get_parameter("_cartesian_error_margin", _cartesian_error_margin);
     for (size_t i = 0; i < _joints_number; i++)
     {
         //set defaults in case config file is not provided
@@ -505,7 +481,6 @@ int BaseController::varInit()
     _i_clamp_h.resize(_joints_number);
     _i_clamp_l.resize(_joints_number);
     _c_friction_val.resize(_joints_number);
-    _error.resize(_joints_number);
 
     _set_joint_state_msg.name.resize(_joints_number);
     _set_joint_state_msg.position.resize(_joints_number);
@@ -516,11 +491,6 @@ int BaseController::varInit()
     _arm_joint_state_msg.position.resize(_joints_number);
     _arm_joint_state_msg.velocity.resize(_joints_number);
     _arm_joint_state_msg.effort.resize(_joints_number);
-
-    _arm_joint_errors_msg.name.resize(_joints_number);
-    _arm_joint_errors_msg.position.resize(_joints_number);
-    _arm_joint_errors_msg.velocity.resize(_joints_number);
-    _arm_joint_errors_msg.effort.resize(_joints_number);
 
     _q.resize(_joints_number);
     _qd.resize(_joints_number);
@@ -579,7 +549,7 @@ int BaseController::varInit()
     _loop_it = 0;
     _t_start = std::chrono::steady_clock::now();
     _time_accumulator = std::chrono::microseconds(0);
-    _controller_state = 4;
+    _controller_state = 1;
     _time_factor = 0.;
     _prev_time_factor = 1.;
     _t_current = std::chrono::steady_clock::now();
@@ -660,15 +630,15 @@ int BaseController::calculateTorque()
 
         //calculate torques (PID+FF)
         _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
-        _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
+        _error = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
 
-        if (_error[jnt_idx] > _error_margin)
+        if (_error > _error_margin)
         {
-            // _arm_command.joints[jnt_idx].c_torque = 0;
-            // _arm_command.joints[jnt_idx].c_status = 3;
+            _arm_command.joints[jnt_idx].c_torque = 0;
+            _arm_command.joints[jnt_idx].c_status = 3;
 
             RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin", jnt_idx);
-            // pauseArm();
+            stopArm();
 
             // RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin", jnt_idx);
             // _controller_state = 3;
@@ -676,18 +646,18 @@ int BaseController::calculateTorque()
             // if (_time_factor != 0.)
             //     _prev_time_factor = _time_factor;
 
-            // return 1;
+            return 1;
         }
 
-        _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
-        // _set_torque_ff_val = _set_vel * _time_factor * _FFv[jnt_idx];
-        // _set_torque_ff_val += _trajectory.points[_trajectory_index].accelerations[jnt_idx] * pow(_time_factor, 2) * _FFa[jnt_idx];
+        _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error);
+        _set_torque_ff_val = _set_vel * _time_factor * _FFv[jnt_idx];
+        _set_torque_ff_val += _trajectory.points[_trajectory_index].accelerations[jnt_idx] * pow(_time_factor, 2) * _FFa[jnt_idx];
 
         _vel_sign = ((_set_vel > 0) - (_set_vel < 0));
         _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
 
         _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + _set_torque_ff_val + compensateFriction(_set_vel * _time_factor, _arm_status.joints[jnt_idx].temperature, jnt_idx);
-        _set_torque_val = _tau[jnt_idx];
+
         _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
 
         //limit torque
@@ -750,9 +720,6 @@ int BaseController::communicate()
         _arm_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
         _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
         _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
-
-        _arm_joint_errors_msg.position[jnt_idx] = _error[jnt_idx];
-        _arm_joint_errors_msg.header.stamp = rclcpp::Clock().now();
     }
 
     //comms
@@ -762,7 +729,6 @@ int BaseController::communicate()
     error_msg.set__data(_cartesian_error_norm);
     _set_joint_states_pub->publish(_set_joint_state_msg);
     _arm_joint_states_pub->publish(_arm_joint_state_msg);
-    _arm_joint_errors_pub->publish(_arm_joint_errors_msg);
     _cartesian_error_norm_pub->publish(error_msg);
     _controller_state_pub->publish(state_msg);
     _arm_command.timestamp = std::chrono::steady_clock::now();
@@ -786,6 +752,7 @@ void BaseController::controlLoop()
             RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
         }
     }
+    
 
     if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate * 1.2))
     {
@@ -850,7 +817,7 @@ void BaseController::init()
     {
         _arm_command.joints[jnt_idx].c_torque = 0;
         //TODO: change to stop (2)
-        _arm_command.joints[jnt_idx].c_status = 2;
+        _arm_command.joints[jnt_idx].c_status = 3;
     }
     _arm_command.timestamp = std::chrono::steady_clock::now();
     _arm_interface->setArmCommand(_arm_command);
