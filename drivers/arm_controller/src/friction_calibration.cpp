@@ -341,9 +341,9 @@ void FrictionCalibration::init()
 
                 //calculate torques (PID+FF)
 
-                _error = set_vel[jnt_idx] - v_avg[jnt_idx];
+                _error[jnt_idx] = set_vel[jnt_idx] - v_avg[jnt_idx];
                 // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
-                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
+                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
 
                 //TODO: params
                 if ((std::chrono::steady_clock::now() - cycle_time[jnt_idx]) > std::chrono::seconds(60))
@@ -355,7 +355,7 @@ void FrictionCalibration::init()
                     valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
                     cycle_time[jnt_idx] = std::chrono::steady_clock::now();
                 }
-                if (std::abs(_error) < (0.03 + std::abs(set_vel[jnt_idx]) * 0.012))
+                if (std::abs(_error[jnt_idx]) < (0.03 + std::abs(set_vel[jnt_idx]) * 0.012))
                 {
                     if (!vel_achi[jnt_idx])
                         valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
