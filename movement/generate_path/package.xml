@@ -9,11 +9,11 @@
 
   <buildtool_depend>ament_cmake_ros</buildtool_depend>
 
-  <!-- <depend>custom_interfaces</depend> -->
-  <!-- <depend>helpers_commons</depend> -->
-  <!-- <depend>helpers_vision</depend> -->
-  <!-- <depend>kinematics</depend> -->
-  <!-- <depend>physics_client_handler</depend> -->
+  <depend>custom_interfaces</depend>
+  <depend>helpers_commons</depend>
+  <depend>helpers_vision</depend>
+  <depend>kinematics</depend>
+  <depend>physics_client_handler</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
