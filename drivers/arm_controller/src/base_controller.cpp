@@ -312,9 +312,12 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         }
 
         bool in_place = true;
-        for(size_t jnt_idx;jnt_idx<_joints_number;jnt_idx++){
-            _error[jnt_idx] = _saved_trajectory.points[0].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
-            in_place*=_error[jnt_idx]<_error_margin;
+        for (size_t jnt_idx=0; jnt_idx < _joints_number; jnt_idx++)
+        {
+            _error[jnt_idx] = std::abs(_saved_trajectory.points[0].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position));
+            std::cout << _error[jnt_idx] << std::endl;
+            if (_error[jnt_idx] > _error_margin)
+                in_place = false;
         }
 
         if (in_place)
@@ -625,7 +628,8 @@ int BaseController::handleControllerState()
     //stop
     if (_controller_state == 3)
     {
-        _time_factor = double(std::max(0., double(std::chrono::duration_cast<std::chrono::microseconds>(_t_stop - _t_current + _slowdown_duration).count() / double(_slowdown_duration.count())))) * _prev_time_factor;
+        if (_time_factor != 0.)
+            _time_factor = double(std::max(0., double(std::chrono::duration_cast<std::chrono::microseconds>(_t_stop - _t_current + _slowdown_duration).count() / double(_slowdown_duration.count())))) * _prev_time_factor;
     }
     //resume
     if (_controller_state == 2)
@@ -643,7 +647,7 @@ int BaseController::handleControllerState()
         {
             if (_arm_status.joints[jnt_idx].state == 255)
             {
-                RCLCPP_INFO(_node->get_logger(), "Joint %i current error: %f, previous error: %f", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
+                RCLCPP_ERROR(_node->get_logger(), "Joint %i current error: %f, previous error: %f", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
             }
         }
     }
@@ -662,15 +666,15 @@ int BaseController::calculateTorque()
         _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
         _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
 
-        if (_error[jnt_idx] > _error_margin)
+        if (std::abs(_error[jnt_idx]) > _error_margin)
         {
             // _arm_command.joints[jnt_idx].c_torque = 0;
             // _arm_command.joints[jnt_idx].c_status = 3;
 
-            RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin", jnt_idx);
+            RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin by %f", jnt_idx, _error[jnt_idx] - _error_margin);
             // pauseArm();
 
-            // RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin", jnt_idx);
+            // RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin by %f", jnt_idx, _error[jnt_idx] - _error_margin);
             // _controller_state = 3;
             // _t_stop = std::chrono::steady_clock::now();
             // if (_time_factor != 0.)
@@ -687,7 +691,7 @@ int BaseController::calculateTorque()
         _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
 
         _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + _set_torque_ff_val + compensateFriction(_set_vel * _time_factor, _arm_status.joints[jnt_idx].temperature, jnt_idx);
-        _set_torque_val = _tau[jnt_idx];
+        // _set_torque_val = _tau[jnt_idx];
         _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
 
         //limit torque
@@ -787,10 +791,10 @@ void BaseController::controlLoop()
         }
     }
 
-    if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate * 1.2))
-    {
-        RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period.");
-    }
+    // if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate * 1.2))
+    // {
+    //     RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period.");
+    // }
 
     getAverageArmState();
 

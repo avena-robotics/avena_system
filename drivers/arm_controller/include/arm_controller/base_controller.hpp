@@ -105,7 +105,7 @@ protected:
     ArmCommand _arm_command;
 
     //MEASUREMENT
-    const size_t _avg_samples = 100;
+    const size_t _avg_samples = 500;
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;

@@ -1,10 +1,9 @@
 #include "arm_controller/friction_calibration.hpp"
 
 //TODO: init essential functionalities, get ready to start
-// 
+//
 
 FrictionCalibration::FrictionCalibration(int argc, char **argv) : BaseController(argc, argv) {}
-
 
 //initialize movement functionalities, start controller
 void FrictionCalibration::init()
@@ -164,8 +163,6 @@ void FrictionCalibration::init()
     _t_stop = std::chrono::steady_clock::now();
     _slowdown_duration = std::chrono::microseconds(1000000);
 
-    jointInit();
-
     // //MEASUREMENT INIT
     // for (size_t i = 0; i < _joints_number; i++)
     // {
@@ -229,6 +226,7 @@ void FrictionCalibration::init()
         temp_avg_s.resize(_joints_number);
         tau_avg_s.resize(_joints_number);
         _measured_friction_comp.resize(_joints_number);
+        _error.resize(_joints_number);
 
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
@@ -283,11 +281,15 @@ void FrictionCalibration::init()
                 //crimge
                 if (std::abs(_arm_status.joints[jnt_idx].position - prev_pos[jnt_idx]) > 10)
                 {
+                    p_avg_s[jnt_idx] = 0;
                     for (size_t i = 0; i < _avg_samples; i++)
                     {
-                        p_avg[jnt_idx][i] = _arm_status.joints[jnt_idx].position-(i*_avg_vel[jnt_idx]);
+                        p_avg[jnt_idx][(i + loop_it) % _avg_samples] = _arm_status.joints[jnt_idx].position - ((double)(_avg_samples - i) / _trajectory_rate * v_avg[jnt_idx]);
+                        p_avg_s[jnt_idx] += p_avg[jnt_idx][(i + loop_it) % _avg_samples];
                     }
-                    prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
+                    p_avg_s[jnt_idx] /= _avg_samples;
+                    // prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
+                    prev_pos[jnt_idx] = p_avg_s[jnt_idx] + v_avg[jnt_idx] / _trajectory_rate;
                 }
                 // _jitter_counter[jnt_idx] = 0;
                 // for (size_t i = 0; i < _avg_samples - 1; i++)
@@ -361,7 +363,7 @@ void FrictionCalibration::init()
                         valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();
                     else
                     {
-                        if ((std::chrono::steady_clock::now() - valid_vel_time[jnt_idx]) > std::chrono::seconds(50))
+                        if ((std::chrono::steady_clock::now() - valid_vel_time[jnt_idx]) > std::chrono::seconds(5))
                         {
                             // std::string temp_str = std::to_string(set_vel[jnt_idx]) + " " + std::to_string(tq_acc[jnt_idx] / double(tq_inc[jnt_idx])) + "\_avg_samples";
                             // std::cout << set_vel[jnt_idx] << " " << (tq_acc[jnt_idx] / double(tq_inc[jnt_idx])) << std::endl;
@@ -387,9 +389,10 @@ void FrictionCalibration::init()
                             goal_v_avg_acc[jnt_idx] = 0;
                             tq_inc[jnt_idx] = 0;
                             //next loop
-                            if (set_vel[jnt_idx] * direction > max_vel * direction)
+                            if (std::abs(set_vel[jnt_idx]) > std::abs(max_vel))
                             {
                                 cal_done[jnt_idx] = true;
+                                RCLCPP_INFO(_node->get_logger(), "Joint %i done.", jnt_idx);
                             }
                             set_vel[jnt_idx] += vel_increment;
                             valid_vel_time[jnt_idx] = std::chrono::steady_clock::now();

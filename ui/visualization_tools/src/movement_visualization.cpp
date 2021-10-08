@@ -38,10 +38,10 @@ namespace visualization_tools
     {
         RCLCPP_INFO(get_logger(), "Reading parameters from the server");
 
-        nlohmann::json parameters = helpers::commons::getParameter("robot", std::chrono::seconds(1));
-        if (parameters.empty())
-            throw std::runtime_error("Cannot read \"robot\" parameters from server");
-        RCLCPP_DEBUG_STREAM(get_logger(), "Parameters: " << std::setw(4) << parameters);
+        // nlohmann::json parameters = helpers::commons::getParameter("robot", std::chrono::seconds(1));
+        // if (parameters.empty())
+        //     throw std::runtime_error("Cannot read \"robot\" parameters from server");
+        // RCLCPP_DEBUG_STREAM(get_logger(), "Parameters: " << std::setw(4) << parameters);
         if (auto robot_info = helpers::commons::getRobotInfo())
             _robot_info = *robot_info;
         else
