@@ -710,7 +710,7 @@ int BaseController::calculateTorque()
         {
             _arm_command.joints[jnt_idx].c_torque = 0;
             //TODO: change to stop (2)
-            _arm_command.joints[jnt_idx].c_status = 3;
+            _arm_command.joints[jnt_idx].c_status = 2;
         }
     }
     return 0;
