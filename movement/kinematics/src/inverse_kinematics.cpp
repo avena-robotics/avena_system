@@ -115,7 +115,8 @@ namespace kinematics
         Eigen::Vector3d trans_vec = Eigen::Vector3d(end_effector_pose_robot_frame.translation());
         for (long int i = 0; i < trans_vec.size(); i++)
             eetrans[i] = trans_vec(i);
-
+        RCLCPP_DEBUG(_logger, "[IK]: Goal pose translation: x: %f y: %f z: %f",eetrans[0],eetrans[1],eetrans[2]);
+        RCLCPP_DEBUG_STREAM(_logger, "[IK]: Goal pose rotation:\n"<<rot_matrix);
         std::vector<ArmConfiguration> goal_configurations;
         if (_robot_info.robot_name == "avena")
         {

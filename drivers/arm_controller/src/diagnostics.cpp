@@ -21,14 +21,19 @@ int Diagnostics::getAverageArmState()
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
 
-        if (std::abs(_arm_status.joints[jnt_idx].position - _prev_pos[jnt_idx]) > 10)
-        {
-            for (size_t i = 0; i < _avg_samples; i++)
-            {
-                _avg_pos_b[jnt_idx][i] = _arm_status.joints[jnt_idx].position;
-            }
-            _prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
-        }
+                //crimge
+                if (std::abs(_arm_status.joints[jnt_idx].position - _prev_pos[jnt_idx]) > 10)
+                {
+                    _avg_pos[jnt_idx] = 0;
+                    for (size_t i = 0; i < _avg_samples; i++)
+                    {
+                        _avg_pos_b[jnt_idx][(i + _loop_it) % _avg_samples] = _arm_status.joints[jnt_idx].position - ((double)(_avg_samples - i) / _trajectory_rate * _avg_vel[jnt_idx]);
+                        _avg_pos[jnt_idx] += _avg_pos_b[jnt_idx][(i + _loop_it) % _avg_samples];
+                    }
+                    _avg_pos[jnt_idx] /= _avg_samples;
+                    // prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
+                    _prev_pos[jnt_idx] = _avg_pos[jnt_idx] + _avg_vel[jnt_idx] / _trajectory_rate;
+                }
 
         _avg_pos_b[jnt_idx][_loop_it % _avg_samples] = _arm_status.joints[jnt_idx].position;
         _avg_temp_b[jnt_idx][_loop_it % _avg_samples] = _arm_status.joints[jnt_idx].temperature;
@@ -120,17 +125,18 @@ void Diagnostics::controlLoop()
     //GET JOINT STATES
     _arm_status = _arm_interface->getArmState();
 
-    if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
-    {
-        RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period by %i us.", std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count());
-    }
+    // if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
+    // {
+    //     RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period by %i us.", std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count());
+    // }
     getAverageArmState();
-    saveDiagnostics();
+    if ((_t_current - _t_start) > std::chrono::seconds(2))
+        saveDiagnostics();
     handleControllerState();
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        _arm_command.joints[jnt_idx].c_torque = 12;
+        _arm_command.joints[jnt_idx].c_torque = 9;
         _arm_command.joints[jnt_idx].c_status = 3;
     }
     communicate();
