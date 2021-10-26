@@ -57,6 +57,7 @@ namespace helpers
     void _commandCallback(const custom_interfaces::msg::ModuleCommand::SharedPtr command);
 
     void _spinHeartBeat();
+    void _spinStatistics();
 
     rclcpp::Node *_node;
     helpers::WatchdogInterface *_gui_interface;
@@ -86,6 +87,7 @@ namespace helpers
     double _prev_proc_jiffies{0.0};
 
     std::thread _heart_beat_thread;
+    std::thread _statistics_thread;
   };
 
 } // namespace helpers

@@ -38,7 +38,7 @@
       </visual>
       <inertial>
         <origin xyz="0.019 0. 0.0445 " rpy="0. 0. ${pi/2}"/>
-        <mass value="1.9"/>
+        <mass value="1.960"/>
         <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
       </inertial>
       <collision>
@@ -59,7 +59,7 @@
       </visual>
       <inertial>
         <origin xyz="-0.226 0 0.0334" rpy="0. 0. ${pi/2}"/>
-        <mass value="4.6"/>
+        <mass value="4.660"/>
         <inertia ixx="1.941e-01"  ixy="0."  ixz="0." iyy="5.522e-03" iyz="0." izz="1.941e-01" />
       </inertial>
       <collision>
@@ -80,7 +80,7 @@
       </visual>
       <inertial>
         <origin xyz="0.3046 0. 0.0588" rpy="0 0 ${pi/2}"/>
-        <mass value="3.4"/>
+        <mass value="3.375"/>
         <inertia ixx="1.149e-01"  ixy="0"  ixz="0" iyy="4.518e-03" iyz="0" izz="1.148e-01" />
       </inertial>
       <collision>
@@ -101,7 +101,7 @@
       </visual>
       <inertial>
         <origin xyz="0.019 0. 0.059 " rpy="0. 0. ${pi/2}"/>
-        <mass value="1.9"/>
+        <mass value="1.960"/>
         <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
       </inertial>
       <collision>
@@ -122,7 +122,7 @@
       </visual>
       <inertial>
         <origin xyz="0.019 0 0.059" rpy="0. 0. ${pi/2}"/>
-        <mass value="1.9"/>
+        <mass value="1.960"/>
         <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
       </inertial>
       <collision>
@@ -197,7 +197,7 @@
     </joint>
 
     <joint name="${arm_id}_joint_5" type="revolute">
-      <origin xyz="0.0495 0 0.064" rpy="0 ${pi/2} 0" />
+      <origin xyz="0.0495 0 0.064" rpy="0 ${-pi/2} ${pi}" />
       <parent link="${arm_id}_link_4" />
       <child link="${arm_id}_link_5" />
       <axis xyz="0 0 1" />
@@ -213,7 +213,7 @@
     </joint>
 
     <joint name="${arm_id}_joint_7" type="fixed">
-      <origin rpy="0 0 0" xyz="0 0 0.0181"/>
+      <origin xyz="0 0 0.0181" rpy="0 0 0"/>
       <parent link="${arm_id}_link_6"/>
       <child link="${arm_id}_gripper_connection"/>
       <axis xyz="0 0 0" />

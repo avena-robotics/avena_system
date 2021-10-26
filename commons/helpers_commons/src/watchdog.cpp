@@ -27,7 +27,8 @@ namespace helpers
         _heart_beat_thread = std::thread(std::bind(&Watchdog::_spinHeartBeat,this));
         
         // Timer to publish statistics periodically
-        _pub_statistics_timer = _node->create_wall_timer(_pub_statistics_duration, std::bind(&Watchdog::_broadcastStatistics, this));
+        _statistics_thread = std::thread(std::bind(&Watchdog::_spinStatistics, this));
+        // _pub_statistics_timer = _node->create_wall_timer(_pub_statistics_duration, std::bind(&Watchdog::_broadcastStatistics, this));
 
         // System check
         _system_check_timer = _node->create_wall_timer(_system_check_duration, std::bind(&Watchdog::_systemCheckTimerCallback, this));
@@ -39,6 +40,11 @@ namespace helpers
         {
             _heart_beat_thread.join();
         }
+
+        if(_statistics_thread.joinable())
+        {
+            _statistics_thread.join();
+        }
     }
 
     void Watchdog::_spinHeartBeat()
@@ -47,6 +53,17 @@ namespace helpers
         while(rclcpp::ok())
         {
             _broadcastHeartbeat();
+            rate.sleep();
+        }
+    }
+
+        void Watchdog::_spinStatistics()
+    {
+        
+        rclcpp::Rate rate(1000/std::chrono::duration_cast<std::chrono::milliseconds>(_pub_statistics_duration).count());
+        while(rclcpp::ok())
+        {
+            _broadcastStatistics();
             rate.sleep();
         }
     }

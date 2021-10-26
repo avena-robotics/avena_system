@@ -32,10 +32,10 @@ def launch_setup(context, *args, **kwargs):
         #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
         #         'camera_extrinsics_calibration'), 'launch', 'calibrate.launch.py')),
         # ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
-                'avena_bringup'), 'launch', 'load_table.launch.py'))
-        ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(os.path.join(get_package_share_directory(
+        #         'avena_bringup'), 'launch', 'load_table.launch.py'))
+        # ),
     ]
 
 
