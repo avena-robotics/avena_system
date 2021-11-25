@@ -18,7 +18,7 @@ public:
 
 private:
     std::vector<DiagnosticData> _diag_data;
-    size_t _diag_samples=3600;
+    size_t _diag_samples=314;
     int saveDiagnostics();
     int writeDiagnostics();
 

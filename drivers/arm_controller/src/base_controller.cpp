@@ -418,18 +418,27 @@ int BaseController::jointPositionInit()
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        while (_arm_status.joints[jnt_idx].state == 0)
+        while (_arm_status.joints[jnt_idx].state == 1)
         {
             _arm_status = _arm_interface->getArmState();
             RCLCPP_INFO(_node->get_logger(), "Joint number: %i", jnt_idx);
-            // std::cout << "Initializing joint " << jnt_idx << std::endl;
+            std::cout << "Initializing joint " << jnt_idx << std::endl;
 
             //send init command to a single joint
-            _arm_command.joints[jnt_idx].c_status = 1;
+            _arm_command.joints[jnt_idx].c_status = 2;
             _arm_command.timestamp = std::chrono::steady_clock::now();
             _arm_interface->setArmCommand(_arm_command);
             std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
         }
+            _arm_command.joints[jnt_idx].c_status = 3;
+            _arm_command.timestamp = std::chrono::steady_clock::now();
+            _arm_interface->setArmCommand(_arm_command);
+            std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
+            
+            _arm_command.joints[jnt_idx].c_status = 2;
+            _arm_command.timestamp = std::chrono::steady_clock::now();
+            _arm_interface->setArmCommand(_arm_command);
+            std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
     }
     RCLCPP_INFO(_node->get_logger(), "Done initializing robot position.");
     return 0;

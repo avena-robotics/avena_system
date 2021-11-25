@@ -52,6 +52,8 @@ public:
         _arm_status.joints.resize(_last_msg.rx_msgs.size());
         _arm_command.joints.resize(_last_msg.rx_msgs.size());
 
+
+
         _get_timestamp = std::chrono::steady_clock::now();
         _command_timestamp = std::chrono::steady_clock::now();
         _status_timestamp = std::chrono::steady_clock::now();
@@ -99,13 +101,16 @@ private:
     std::chrono::microseconds _max_delay, _get_delay;
 
     //PHYSICAL PARAMS
-    double _gear_ratio = 120.;
+    double _gear_ratio = 121.;
     double _gear_const = 84;
     double _torque_const = 0.1118;
     double _motor_max_current = 31.853;
 
-    double _torque_multiplier = _torque_const * _gear_ratio * _motor_max_current / INT16_MAX;
-    double _position_multiplier = 2 * M_PI / _gear_const / _gear_ratio;
+    // double _torque_multiplier = _torque_const * _gear_ratio * _motor_max_current / (double)INT16_MAX;
+    double _torque_multiplier = 256. / (double)INT16_MAX;
+    // double _position_multiplier = 2 * M_PI / _gear_const / _gear_ratio;
+    double _position_multiplier = M_PI / (double)INT16_MAX;
+
 
     void startCommsLoop(int fq)
     {
@@ -181,6 +186,7 @@ private:
     {
         std::scoped_lock lock(_arm_status_mutex);
         int arm_id;
+        
 
         for (size_t i = 0; i < _last_msg.rx_msgs.size(); i++)
 
@@ -199,4 +205,6 @@ private:
 
         return 1;
     }
+
+
 };

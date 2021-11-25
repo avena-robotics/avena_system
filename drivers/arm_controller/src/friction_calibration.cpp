@@ -135,6 +135,43 @@ void FrictionCalibration::init()
         }
     }
 
+    RCLCPP_INFO(_node->get_logger(), "Initializing joint position.");
+    //JOINT POSITION INIT
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
+        _arm_command.joints[jnt_idx].c_status = 0;
+        _arm_command.joints[jnt_idx].c_torque = 0;
+    }
+
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
+        while (_arm_status.joints[jnt_idx].state == 1)
+        {
+            _arm_status = _arm_interface->getArmState();
+            RCLCPP_INFO(_node->get_logger(), "Joint number: %i", jnt_idx);
+            std::cout << "Initializing joint " << jnt_idx << std::endl;
+
+            //send init command to a single joint
+            _arm_command.joints[jnt_idx].c_status = 2;
+            _arm_command.timestamp = std::chrono::steady_clock::now();
+            _arm_interface->setArmCommand(_arm_command);
+            std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
+        }
+            _arm_command.joints[jnt_idx].c_status = 3;
+            _arm_command.timestamp = std::chrono::steady_clock::now();
+            _arm_interface->setArmCommand(_arm_command);
+            std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
+            
+            _arm_command.joints[jnt_idx].c_status = 2;
+            _arm_command.timestamp = std::chrono::steady_clock::now();
+            _arm_interface->setArmCommand(_arm_command);
+            std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
+
+    }
+
+    
+    RCLCPP_INFO(_node->get_logger(), "Done initializing robot position.");
+
     //GET STARTING POSITION - HOLD TRAJECTORY
     _arm_status = _arm_interface->getArmState();
     _trajectory.points.resize(1);
@@ -279,44 +316,44 @@ void FrictionCalibration::init()
             for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
             {
                 //crimge
-                if (std::abs(_arm_status.joints[jnt_idx].position - prev_pos[jnt_idx]) > 10)
-                {
-                    p_avg_s[jnt_idx] = 0;
-                    for (size_t i = 0; i < _avg_samples; i++)
-                    {
-                        p_avg[jnt_idx][(i + loop_it) % _avg_samples] = _arm_status.joints[jnt_idx].position - ((double)(_avg_samples - i) / _trajectory_rate * v_avg[jnt_idx]);
-                        p_avg_s[jnt_idx] += p_avg[jnt_idx][(i + loop_it) % _avg_samples];
-                    }
-                    p_avg_s[jnt_idx] /= _avg_samples;
-                    // prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
-                    prev_pos[jnt_idx] = p_avg_s[jnt_idx] + v_avg[jnt_idx] / _trajectory_rate;
-                }
+                // if (std::abs(_arm_status.joints[jnt_idx].position - prev_pos[jnt_idx]) > 3)
+                // {
+                //     p_avg_s[jnt_idx] = 0;
+                //     for (size_t i = 0; i < _avg_samples; i++)
+                //     {
+                //         p_avg[jnt_idx][(i + loop_it) % _avg_samples] = _arm_status.joints[jnt_idx].position - ((double)(_avg_samples - i) / _trajectory_rate * v_avg[jnt_idx]);
+                //         p_avg_s[jnt_idx] += p_avg[jnt_idx][(i + loop_it) % _avg_samples];
+                //     }
+                //     p_avg_s[jnt_idx] /= _avg_samples;
+                //     // prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
+                //     prev_pos[jnt_idx] = p_avg_s[jnt_idx] + v_avg[jnt_idx] / _trajectory_rate;
+                // }
                 // _jitter_counter[jnt_idx] = 0;
                 // for (size_t i = 0; i < _avg_samples - 1; i++)
                 // {
                 //     if (p_avg[jnt_idx][i] != p_avg[jnt_idx][i + 1])
                 //         _jitter_counter[jnt_idx]++;
                 // }
-                p_avg[jnt_idx][loop_it % _avg_samples] = _arm_status.joints[jnt_idx].position;
+                // p_avg[jnt_idx][loop_it % _avg_samples] = _arm_status.joints[jnt_idx].position;
 
                 temp_avg[jnt_idx][loop_it % _avg_samples] = _arm_status.joints[jnt_idx].temperature;
-                tau_avg[jnt_idx][loop_it % _avg_samples] = _arm_status.joints[jnt_idx].torque;
+                // tau_avg[jnt_idx][loop_it % _avg_samples] = _arm_status.joints[jnt_idx].torque;
 
-                p_avg_s[jnt_idx] = 0;
+                // p_avg_s[jnt_idx] = 0;
                 temp_avg_s[jnt_idx] = 0;
-                tau_avg_s[jnt_idx] = 0;
+                // tau_avg_s[jnt_idx] = 0;
                 for (size_t i = 0; i < _avg_samples; i++)
                 {
-                    p_avg_s[jnt_idx] += p_avg[jnt_idx][i];
+                    // p_avg_s[jnt_idx] += p_avg[jnt_idx][i];
                     temp_avg_s[jnt_idx] += temp_avg[jnt_idx][i];
-                    tau_avg_s[jnt_idx] += tau_avg[jnt_idx][i];
+                    // tau_avg_s[jnt_idx] += tau_avg[jnt_idx][i];
                 }
-                p_avg_s[jnt_idx] /= _avg_samples;
+                // p_avg_s[jnt_idx] /= _avg_samples;
                 temp_avg_s[jnt_idx] /= _avg_samples;
-                tau_avg_s[jnt_idx] /= _avg_samples;
+                // tau_avg_s[jnt_idx] /= _avg_samples;
 
-                v_avg[jnt_idx] = ((p_avg_s[jnt_idx] - prev_pos[jnt_idx]) * _trajectory_rate);
-                prev_pos[jnt_idx] = p_avg_s[jnt_idx];
+                // v_avg[jnt_idx] = ((p_avg_s[jnt_idx] - prev_pos[jnt_idx]) * _trajectory_rate);
+                // prev_pos[jnt_idx] = p_avg_s[jnt_idx];
                 // if ((_jitter_counter[jnt_idx] > _jitter_threshold[jnt_idx]) && std::abs(v_avg[jnt_idx])<=0.01)
                 // {
                 //     _jitter_present[jnt_idx] = true;
@@ -343,7 +380,7 @@ void FrictionCalibration::init()
 
                 //calculate torques (PID+FF)
 
-                _error[jnt_idx] = set_vel[jnt_idx] - v_avg[jnt_idx];
+                _error[jnt_idx] = set_vel[jnt_idx] - _arm_status.joints[jnt_idx].velocity;
                 // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
                 _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
 
@@ -409,8 +446,8 @@ void FrictionCalibration::init()
                 _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
                 //limit torque
                 {
-                    if (_set_torque_val * _torque_sign > 33)
-                        _set_torque_val = 33 * _torque_sign;
+                    if (_set_torque_val * _torque_sign > 28)
+                        _set_torque_val = 28 * _torque_sign;
                 }
 
                 // _set_torque_val = -14;
@@ -436,7 +473,7 @@ void FrictionCalibration::init()
                     // *chart[jnt_idx] << p_avg_s[jnt_idx] << '\t' << v_avg[jnt_idx] << '\t' << temp_avg_s[jnt_idx] << '\t' << tau_avg_s[jnt_idx] << '\t' << set_vel << std::endl;
                     tq_acc[jnt_idx] += _set_torque_val;
                     tq_inc[jnt_idx]++;
-                    goal_v_avg_acc[jnt_idx] += v_avg[jnt_idx];
+                    goal_v_avg_acc[jnt_idx] += _arm_status.joints[jnt_idx].velocity;
                 }
                 //monitor data
                 _set_joint_state_msg.position[jnt_idx] = temp_avg_s[jnt_idx];
@@ -446,7 +483,7 @@ void FrictionCalibration::init()
                 _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
                 _arm_joint_state_msg.position[jnt_idx] = _arm_status.joints[jnt_idx].position;
-                _arm_joint_state_msg.velocity[jnt_idx] = v_avg[jnt_idx];
+                _arm_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
                 _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
                 _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
                 if (std::isnan(_set_torque_val))

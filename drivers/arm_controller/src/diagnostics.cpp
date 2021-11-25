@@ -6,13 +6,18 @@ int Diagnostics::saveDiagnostics()
 {
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        if (_avg_vel[jnt_idx] < 0)
+        if (_arm_status.joints[jnt_idx].velocity < 0)
             continue;
-        int index = std::floor(std::fmod(std::fmod(_avg_pos[jnt_idx], (2. * M_PI)) + (2. * M_PI), (2. * M_PI)) / (2. * M_PI) * (double)_diag_samples);
-        _diag_data[jnt_idx].velocity[index] += _avg_vel[jnt_idx];
+        // int index = std::floor(std::fmod(std::fmod(_avg_pos[jnt_idx], (2. * M_PI)) + (2. * M_PI), (2. * M_PI)) / (2. * M_PI) * (double)_diag_samples);
+        int index = std::floor((_arm_status.joints[jnt_idx].position+M_PI)  * ((double)_diag_samples)/ (2 * M_PI));
+        // int index = std::floor((_arm_status.joints[jnt_idx].position + 0.5 * M_PI)  * ((double)_diag_samples)/ M_PI);
+
+
+        _diag_data[jnt_idx].velocity[index] += _arm_status.joints[jnt_idx].velocity;
         _diag_data[jnt_idx].position[index] += 1;
         _diag_data[jnt_idx].temperature[index] += _avg_temp[jnt_idx];
     }
+
     return 0;
 }
 
@@ -110,7 +115,7 @@ void Diagnostics::controlLoop()
     //GET TIME
     _time_accumulator += std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _t_current) * _time_factor);
     _t_current = std::chrono::steady_clock::now();
-    if ((_t_current - _t_start) > std::chrono::minutes(1))
+    if ((_t_current - _t_start) > std::chrono::minutes(2))
     {
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {

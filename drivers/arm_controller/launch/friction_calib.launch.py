@@ -23,7 +23,7 @@ def launch_setup(context, *args, **kwargs):
             executable='friction_calibration',
             output='both',
             parameters=[params, {'config_path':config}],
-            remappings=[('arm_joint_states','asdf')]
+            # remappings=[('arm_joint_states','asdf')]
         )
     ]
 
