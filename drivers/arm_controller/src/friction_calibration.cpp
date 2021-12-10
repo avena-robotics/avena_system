@@ -382,7 +382,7 @@ void FrictionCalibration::init()
 
                 _error[jnt_idx] = set_vel[jnt_idx] - _arm_status.joints[jnt_idx].velocity;
                 // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
-                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, jnt_idx);
+                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction(set_vel[jnt_idx], 25., jnt_idx);
 
                 //TODO: params
                 if ((std::chrono::steady_clock::now() - cycle_time[jnt_idx]) > std::chrono::seconds(60))
