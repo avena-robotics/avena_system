@@ -52,6 +52,10 @@ public:
         _arm_status.joints.resize(_last_msg.rx_msgs.size());
         _arm_command.joints.resize(_last_msg.rx_msgs.size());
 
+        for (size_t i = 0; i < _arm_command.joints.size(); i++){
+            _arm_command.joints[i].c_torque=0;
+            _arm_command.joints[i].c_status=0;
+        }
 
 
         _get_timestamp = std::chrono::steady_clock::now();

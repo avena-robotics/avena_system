@@ -103,12 +103,6 @@
       visual="false"
     />
     <xacro:collision_box 
-      name="left_bar" 
-      xyz="${x_dim / 2} ${column_pos_offset} ${bar_height}" 
-      size="${x_dim} ${2 * column_size} ${column_size}"
-      visual="false"
-    />
-    <xacro:collision_box 
       name="middle_front_column" 
       xyz="${x_dim - column_size / 2} 0 ${column_height / 2}" 
       size="${column_size} ${2 * column_size} ${column_height}"
@@ -132,6 +126,17 @@
       size="${column_size} ${2 * column_size} ${column_height}"
       visual="false" 
     />
+
+    <!-- ********************************************* -->
+    <!-- CAMERA SETUP BARS -->
+    
+    <xacro:collision_box 
+      name="left_bar" 
+      xyz="${x_dim / 2} ${column_pos_offset} ${bar_height}" 
+      size="${x_dim} ${2 * column_size} ${column_size}"
+      visual="false"
+    />
+
 
     <!-- ********************************************* -->
     <!-- CAMERAS -->

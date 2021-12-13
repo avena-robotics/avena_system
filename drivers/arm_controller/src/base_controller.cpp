@@ -242,12 +242,14 @@ void BaseController::setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg)
     if (_controller_state != 4)
     {
         _prev_time_factor = msg->data / 100.;
+        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f " , _prev_time_factor);
     }
     else
     {
         _time_factor = msg->data / 100.;
+        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f " , _time_factor);
     }
-    RCLCPP_INFO_STREAM(_node->get_logger(), "Time factor set to: " << _time_factor);
+    
     return;
 }
 
@@ -656,7 +658,8 @@ int BaseController::handleControllerState()
         {
             if (_arm_status.joints[jnt_idx].state == 255)
             {
-                RCLCPP_ERROR(_node->get_logger(), "Joint %i current error: %f, previous error: %f", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
+                RCLCPP_ERROR(_node->get_logger(), "Joint %i current error status: %i, previous error status: %i", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
+                stopArm();
             }
         }
     }
@@ -747,6 +750,7 @@ int BaseController::calculateID()
     return 0;
 }
 
+
 int BaseController::communicate()
 {
     // helpers::Timer asdf(__func__,_node->get_logger());
@@ -792,13 +796,13 @@ void BaseController::controlLoop()
     //GET JOINT STATES
     _arm_status = _arm_interface->getArmState();
 
-    for (size_t i = 0; i < _joints_number; i++)
-    {
-        if (_arm_status.joints[i].state == 255)
-        {
-            RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
-        }
-    }
+    // for (size_t i = 0; i < _joints_number; i++)
+    // {
+    //     if (_arm_status.joints[i].state == 255)
+    //     {
+    //         RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error status: " << _arm_status.joints[i].current_error << ", previous joint error status: " << _arm_status.joints[i].prev_error << " on joint " << i);
+    //     }
+    // }
 
     // if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate * 1.2))
     // {
