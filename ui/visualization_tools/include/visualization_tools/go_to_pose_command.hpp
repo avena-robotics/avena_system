@@ -26,6 +26,7 @@ namespace visualization_tools
   {
     PATH,
     LINEAR_PATH,
+    ORIENTATION_PATH,
     CLEAR_SEQUENCE,
     START_PLANNING,
   };

@@ -5,6 +5,7 @@
 #include "generate_path/planners/base_planner.hpp"
 #include "generate_path/planners/simple_planner.hpp"
 #include "generate_path/planners/linear_planner.hpp"
+#include "generate_path/planners/orientation_planner.hpp"
 
 namespace generate_path
 {
@@ -19,6 +20,8 @@ namespace generate_path
         return std::make_shared<SimplePlanner>(logger);
       else if (type == EndEffectorPose::LINEAR)
         return std::make_shared<LinearPlanner>(logger);
+      else if (type == EndEffectorPose::ORIENTATION)
+        return std::make_shared<OrientationPlanner>(logger);
       else
         return nullptr;
     }

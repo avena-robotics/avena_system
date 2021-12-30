@@ -1,13 +1,13 @@
-#include "generate_path/planners/linear_planner.hpp"
+#include "generate_path/planners/orientation_planner.hpp"
 
 namespace generate_path
 {
-    LinearPlanner::LinearPlanner(const rclcpp::Logger &logger)
+    OrientationPlanner::OrientationPlanner(const rclcpp::Logger &logger)
         : IPlanner(logger)
     {
     }
 
-    std::vector<ArmConfiguration> LinearPlanner::_convertOmplStatesToArmConfigurations(ompl::geometric::PathGeometric &ompl_path, size_t num_dof)
+    std::vector<ArmConfiguration> OrientationPlanner::_convertOmplStatesToArmConfigurations(ompl::geometric::PathGeometric &ompl_path, size_t num_dof)
     {
         std::vector<ompl::base::State *> &states = ompl_path.getStates();
         std::vector<ArmConfiguration> out_path(states.size());
@@ -25,9 +25,9 @@ namespace generate_path
         return out_path;
     }
 
-    ReturnCode LinearPlanner::solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path)
+    ReturnCode OrientationPlanner::solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path)
     {
-        helpers::Timer timer("[LinearPlanner]: " + std::string(__func__), _logger);
+        helpers::Timer timer("[OrientationPlanner]: " + std::string(__func__), _logger);
 
         // Ambient state space
         auto real_vector_state_space = std::make_shared<ompl::base::RealVectorStateSpace>(path_planning_input.limits.size());
@@ -42,7 +42,7 @@ namespace generate_path
         real_vector_state_space->setBounds(bounds);
 
         // Constraint
-        auto constraint = std::make_shared<LinearPathConstraint>(path_planning_input, _logger);
+        auto constraint = std::make_shared<OrientationConstraint>(path_planning_input, _logger);
         constraint->setMaxIterations(ompl::magic::CONSTRAINT_PROJECTION_MAX_ITERATIONS);
 
         // Combine the ambient space and the constraint into a constrained state space.
@@ -117,7 +117,7 @@ namespace generate_path
         auto ptc_timeout = ompl::base::timedPlannerTerminationCondition(path_planning_input.timeout.count());
         auto ptc = ompl::base::plannerOrTerminationCondition(ptc_exact_solution, ptc_timeout);
 
-        RCLCPP_INFO_STREAM(_logger, "[Linear planner]: Solving for " << path_planning_input.timeout.count() << " seconds");
+        RCLCPP_INFO_STREAM(_logger, "[Orientation planner]: Solving for " << path_planning_input.timeout.count() << " seconds");
         ompl::base::PlannerStatus status = simple_setup->solve(ptc);
         if (status == ompl::base::PlannerStatus::StatusType::EXACT_SOLUTION)
         {
@@ -135,7 +135,7 @@ namespace generate_path
         }
         else
         {
-            RCLCPP_ERROR(_logger, "[Linear planner]: Cannot solve for linear path planning");
+            RCLCPP_ERROR(_logger, "[Orientation planner]: Cannot solve for Orientation path planning");
             return ReturnCode::FAILURE;
         }
 
@@ -143,144 +143,149 @@ namespace generate_path
     }
 
     /************************
-     * LinearPathConstraint
+     * OrientationConstraint
      * *********************/
-    LinearPathConstraint::LinearPathConstraint(const PathPlanningInput &path_planning_input, const rclcpp::Logger &logger)
+    OrientationConstraint::OrientationConstraint(const PathPlanningInput &path_planning_input, const rclcpp::Logger &logger)
         : ompl::base::Constraint(path_planning_input.num_dof, 3),
           _path_planning_input(path_planning_input),
           _logger(logger)
     {
-        Eigen::Vector3d start_end_effector_position = Eigen::Vector3d(path_planning_input.start_end_effector_pose.translation());
-        Eigen::Vector3d goal_end_effector_position = Eigen::Vector3d(path_planning_input.goal_end_effector_pose.translation());
+        Eigen::Vector3d start_end_effector_orientation = path_planning_input.start_end_effector_pose.rotation().eulerAngles(0, 1, 2);
+        Eigen::Vector3d goal_end_effector_orientation = path_planning_input.goal_end_effector_pose.rotation().eulerAngles(0, 1, 2);
 
         // Setup box constraint dimensions and pose
-        double dist = (goal_end_effector_position - start_end_effector_position).norm();
-        std::vector<double> dims = {0.001, 0.001, dist};
-        _target_position = (goal_end_effector_position + start_end_effector_position) / 2.0;
-        Eigen::Vector3d direction_axis = (goal_end_effector_position - start_end_effector_position).normalized();
-        _target_orientation.setFromTwoVectors(Eigen::Vector3d::UnitZ(), direction_axis);
+        Eigen::Vector3d dist = goal_end_effector_orientation - start_end_effector_orientation;
+        std::vector<double> dims = {0.01, 0.01, M_PI};
+        _target_position = (goal_end_effector_orientation + start_end_effector_orientation) / 2.0;
+        // Eigen::Vector3d direction_axis = goal_end_effector_orientation;
+        // _target_orientation.setFromTwoVectors(Eigen::Vector3d::UnitZ(), direction_axis);
+        _locked_orientation = start_end_effector_orientation;
         _bounds = Bounds({-dims[0] / 2.0, -dims[1] / 2.0, -dims[2] / 2.0}, {dims[0] / 2.0, dims[1] / 2.0, dims[2] / 2.0});
     }
 
-    void LinearPathConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const
+    void OrientationConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const
     {
         const Eigen::VectorXd current_values = _calcError(x);
+        // std::cout << "target: " << _target_position.transpose()
+        //           << "\tasdf: " << current_values.transpose() << std::endl;
         out = _bounds.penalty(current_values);
     }
 
-    void LinearPathConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const
+    void OrientationConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const
     {
         const Eigen::VectorXd constraint_error = _calcError(x);
         const Eigen::VectorXd constraint_derivative = _bounds.derivative(constraint_error);
-        const Eigen::MatrixXd robot_jacobian = _calcErrorJacobian(x);
+        const Eigen::MatrixXd robot_jacobian = _robotGeometricJacobian(x).bottomRows(3);
         for (std::size_t i = 0; i < _bounds.size(); i++)
+        {
             out.row(i) = constraint_derivative[i] * robot_jacobian.row(i);
+        }
     }
 
-    Eigen::VectorXd LinearPathConstraint::_calcError(const Eigen::Ref<const Eigen::VectorXd> &x) const
+    Eigen::VectorXd OrientationConstraint::_calcError(const Eigen::Ref<const Eigen::VectorXd> &x) const
     {
-        return _target_orientation.matrix().transpose() * (_forwardKinematics(x).translation() - _target_position);
+        return _forwardKinematics(x) - _target_position;
     }
 
-    Eigen::MatrixXd LinearPathConstraint::_calcErrorJacobian(const Eigen::Ref<const Eigen::VectorXd> &x) const
-    {
-        return _target_orientation.matrix().transpose() * _robotGeometricJacobian(x).topRows(3);
-    }
+    // Eigen::MatrixXd OrientationConstraint::_calcErrorJacobian(const Eigen::Ref<const Eigen::VectorXd> &x) const
+    // {
+    //     return _target_orientation.matrix().transpose() * _robotGeometricJacobian(x).bottomRows(3);
+    // }
 
-    Eigen::Affine3d LinearPathConstraint::_forwardKinematics(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const
+    Eigen::Vector3d OrientationConstraint::_forwardKinematics(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const
     {
         // helpers::Timer timer(__func__, _logger);
         std::vector<double> current_configuration(joint_values.data(), joint_values.data() + joint_values.size());
-        return _path_planning_input.kinematics_engine->fk->computeFk(current_configuration).trans;
+        return _path_planning_input.kinematics_engine->fk->computeFk(current_configuration).rot.eulerAngles(0, 1, 2);
         // _path_planning_input.physics_client_handler->setJointStates(current_configuration);
         // if (auto ee_eff_opt = _path_planning_input.physics_client_handler->getEndEffectorPose())
         // {
         //     return *ee_eff_opt;
         // }
-        // throw std::runtime_error("[Linear planner]: Cannot get end effector pose");
+        // throw std::runtime_error("[Orientation planner]: Cannot get end effector pose");
     }
 
-    Eigen::MatrixXd LinearPathConstraint::_robotGeometricJacobian(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const
+    Eigen::MatrixXd OrientationConstraint::_robotGeometricJacobian(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const
     {
         std::vector<double> current_configuration(joint_values.data(), joint_values.data() + joint_values.size());
         if (auto jacobian_opt = _path_planning_input.physics_client_handler->getJacobian(current_configuration))
             return *jacobian_opt;
-        throw std::runtime_error("[Linear planner]: Cannot get Jacobian");
+        throw std::runtime_error("[Orientation planner]: Cannot get Jacobian");
     }
 
     /************************
      * Bounds
-     * *********************/
-    Bounds::Bounds() : size_(0)
-    {
-    }
+    //  * *********************/
+    // Bounds::Bounds() : size_(0)
+    // {
+    // }
 
-    Bounds::Bounds(const std::vector<double> &lower, const std::vector<double> &upper)
-        : lower_(lower), upper_(upper), size_(lower.size())
-    {
-        // how to report this in release mode??
-        assert(lower_.size() == upper_.size());
-    }
+    // Bounds::Bounds(const std::vector<double> &lower, const std::vector<double> &upper)
+    //     : lower_(lower), upper_(upper), size_(lower.size())
+    // {
+    //     // how to report this in release mode??
+    //     assert(lower_.size() == upper_.size());
+    // }
 
-    Eigen::VectorXd Bounds::penalty(const Eigen::Ref<const Eigen::VectorXd> &x) const
-    {
-        assert((long)lower_.size() == x.size());
-        Eigen::VectorXd penalty(x.size());
+    // Eigen::VectorXd Bounds::penalty(const Eigen::Ref<const Eigen::VectorXd> &x) const
+    // {
+    //     assert((long)lower_.size() == x.size());
+    //     Eigen::VectorXd penalty(x.size());
 
-        for (unsigned int i = 0; i < x.size(); i++)
-        {
-            if (x[i] < lower_.at(i))
-            {
-                penalty[i] = lower_.at(i) - x[i];
-            }
-            else if (x[i] > upper_.at(i))
-            {
-                penalty[i] = x[i] - upper_.at(i);
-            }
-            else
-            {
-                penalty[i] = 0.0;
-            }
-        }
-        return penalty;
-    }
+    //     for (unsigned int i = 0; i < x.size(); i++)
+    //     {
+    //         if (x[i] < lower_.at(i))
+    //         {
+    //             penalty[i] = lower_.at(i) - x[i];
+    //         }
+    //         else if (x[i] > upper_.at(i))
+    //         {
+    //             penalty[i] = x[i] - upper_.at(i);
+    //         }
+    //         else
+    //         {
+    //             penalty[i] = 0.0;
+    //         }
+    //     }
+    //     return penalty;
+    // }
 
-    Eigen::VectorXd Bounds::derivative(const Eigen::Ref<const Eigen::VectorXd> &x) const
-    {
-        assert((long)lower_.size() == x.size());
-        Eigen::VectorXd derivative(x.size());
+    // Eigen::VectorXd Bounds::derivative(const Eigen::Ref<const Eigen::VectorXd> &x) const
+    // {
+    //     assert((long)lower_.size() == x.size());
+    //     Eigen::VectorXd derivative(x.size());
 
-        for (unsigned int i = 0; i < x.size(); i++)
-        {
-            if (x[i] < lower_.at(i))
-            {
-                derivative[i] = -1.0;
-            }
-            else if (x[i] > upper_.at(i))
-            {
-                derivative[i] = 1.0;
-            }
-            else
-            {
-                derivative[i] = 0.0;
-            }
-        }
-        return derivative;
-    }
+    //     for (unsigned int i = 0; i < x.size(); i++)
+    //     {
+    //         if (x[i] < lower_.at(i))
+    //         {
+    //             derivative[i] = -1.0;
+    //         }
+    //         else if (x[i] > upper_.at(i))
+    //         {
+    //             derivative[i] = 1.0;
+    //         }
+    //         else
+    //         {
+    //             derivative[i] = 0.0;
+    //         }
+    //     }
+    //     return derivative;
+    // }
 
-    std::size_t Bounds::size() const
-    {
-        return size_;
-    }
+    // std::size_t Bounds::size() const
+    // {
+    //     return size_;
+    // }
 
-    std::ostream &operator<<(std::ostream &os, const Bounds &bounds)
-    {
-        os << "Bounds:\n";
-        for (std::size_t i{0}; i < bounds.size(); ++i)
-        {
-            os << "( " << bounds.lower_[i] << ", " << bounds.upper_[i] << " )\n";
-        }
-        return os;
-    }
+    // std::ostream &operator<<(std::ostream &os, const Bounds &bounds)
+    // {
+    //     os << "Bounds:\n";
+    //     for (std::size_t i{0}; i < bounds.size(); ++i)
+    //     {
+    //         os << "( " << bounds.lower_[i] << ", " << bounds.upper_[i] << " )\n";
+    //     }
+    //     return os;
+    // }
 
 } // namespace generate_path

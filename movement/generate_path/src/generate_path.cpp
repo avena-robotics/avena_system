@@ -57,7 +57,7 @@ namespace generate_path
         path_planning_input.limits = _robot_info.soft_limits;
         path_planning_input.start_state = current_joint_values;
         path_planning_input.obstacles = _physics_client_handler->getCollisionObjectsHandles();
-        path_planning_input.timeout = std::chrono::seconds(10);
+        path_planning_input.timeout = std::chrono::seconds(5);
 
         // Check initial state validity
         RCLCPP_DEBUG(_node->get_logger(), "[Generate path] Validating initial state.");
@@ -84,7 +84,7 @@ namespace generate_path
             RCLCPP_DEBUG_STREAM(_node->get_logger(), "[Generate path]: Passing " << path_planning_input.goal_states.size() << " goal configurations");
 
             // Set joint states back to initial state before planning
-            path_planning_input.start_end_effector_pose = _kinematics_engine->fk->computeFk(path_planning_input.start_state);
+            path_planning_input.start_end_effector_pose = _kinematics_engine->fk->computeFk(path_planning_input.start_state).trans;
 
             // Path planning
             IPlanner::SharedPtr path_planner = FactoryPlanner::createPlanner(_node->get_logger(), req_end_effector_pose.path_type);

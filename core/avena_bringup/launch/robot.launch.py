@@ -2,12 +2,14 @@ import os
 import subprocess
 
 import launch
+import launch_ros
 from launch.substitutions import LaunchConfiguration
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
+from launch.substitutions import Command, LaunchConfiguration
 
 def launch_setup(context, *args, **kwargs):
     robot_xacro_file = LaunchConfiguration('robot_xacro_file').perform(context)
@@ -23,13 +25,14 @@ def launch_setup(context, *args, **kwargs):
     robot_desc, error_msg = p.communicate()
     print(error_msg.decode())
 
+
     return [
         Node(
             package='joint_state_publisher',
             executable='joint_state_publisher',
             output='both',
             parameters=[{'source_list': ['arm_joint_states', 'gripper_joint_states'],
-                         'rate': 1000,
+                         'rate': 10.,
                          'publish_default_positions': False}]
         ),
         Node(
@@ -38,9 +41,14 @@ def launch_setup(context, *args, **kwargs):
             output='both',
             parameters=[{
                 'robot_description': robot_desc.decode('utf-8'),
-                'publish_frequency': 1000.0,
+                'publish_frequency': 10.,
             }]
         ),
+        Node(
+            package='joint_state_publisher_gui',
+            executable='joint_state_publisher_gui',
+            name='joint_state_publisher_gui',
+        )
     ]
 
 

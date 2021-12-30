@@ -49,7 +49,7 @@ namespace visualization_tools
         if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::MENU_SELECT)
         {
             const MenuEntries_e &menu_entry = _menu_entries[feedback->menu_entry_id];
-            if (menu_entry == MenuEntries_e::PATH || menu_entry == MenuEntries_e::LINEAR_PATH)
+            if (menu_entry == MenuEntries_e::PATH || menu_entry == MenuEntries_e::LINEAR_PATH || menu_entry == MenuEntries_e::ORIENTATION_PATH)
             {
                 _saveSequenceSegmentToBuffer(menu_entry);
             }
@@ -176,6 +176,10 @@ namespace visualization_tools
         {
             // _drawConstraintLine(*_getEndEffectorPose(), _request_go_to_pose);
             ee_pose.path_type = EndEffectorPose::LINEAR;
+        }
+        else if (path_type == MenuEntries_e::ORIENTATION_PATH)
+        {
+            ee_pose.path_type = EndEffectorPose::ORIENTATION;
         }
         else if (path_type == MenuEntries_e::PATH)
         {
@@ -364,6 +368,10 @@ namespace visualization_tools
         // Generate trajectory action (linear path)
         handle = menu_handler.insert("Add waypoint (LINEAR)", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
         _menu_entries[handle] = MenuEntries_e::LINEAR_PATH;
+
+        // Generate trajectory action (orientation path)
+        handle = menu_handler.insert("Add waypoint (ORIENTATION)", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
+        _menu_entries[handle] = MenuEntries_e::ORIENTATION_PATH;
 
         // Clear buffer
         handle = menu_handler.insert("Clear sequence", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));

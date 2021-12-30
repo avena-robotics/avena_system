@@ -56,7 +56,7 @@ namespace generate_path
         simple_setup->setGoal(goal_states);
 
         // Planner
-        auto planner = std::make_shared<ompl::geometric::RRT>(space_information);
+        auto planner = std::make_shared<ompl::geometric::RRTstar>(space_information);
         simple_setup->setPlanner(planner);
 
         // Solving a problem
@@ -75,7 +75,7 @@ namespace generate_path
         auto ptc_timeout = ompl::base::timedPlannerTerminationCondition(path_planning_input.timeout.count());
         auto ptc = ompl::base::plannerOrTerminationCondition(ptc_exact_solution, ptc_timeout);
 
-        RCLCPP_INFO_STREAM(_logger, "[Linear planner]: Solving for " << path_planning_input.timeout.count() << " seconds");
+        RCLCPP_INFO_STREAM(_logger, "[Simple planner]: Solving for " << path_planning_input.timeout.count() << " seconds");
         ompl::base::PlannerStatus status = simple_setup->solve(ptc);
         if (status == ompl::base::PlannerStatus::StatusType::EXACT_SOLUTION)
         {

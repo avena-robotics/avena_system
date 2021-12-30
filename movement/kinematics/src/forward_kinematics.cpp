@@ -22,7 +22,7 @@ namespace kinematics
             throw IkError("Cannot read transform for robot base");
     }
 
-    Eigen::Affine3d ForwardKinematics::computeFk(const ArmConfiguration &joint_states,
+    EEConfiguration ForwardKinematics::computeFk(const ArmConfiguration &joint_states,
                                                  bool in_robot_base_frame)
     {
         std::function<void(const IkReal *, IkReal *, IkReal *)> fk_func;
@@ -39,6 +39,7 @@ namespace kinematics
             throw IkError("Unsupported robot to calculate IK");
         }
 
+        EEConfiguration out;
         std::vector<IkReal> ee_trans(3);
         std::vector<IkReal> ee_rot(9);
         fk_func(joint_states.data(), ee_trans.data(), ee_rot.data());
@@ -56,7 +57,9 @@ namespace kinematics
         else
             end_effector_pose = end_effector_pose_robot_frame;
 
-        return end_effector_pose;
+        out.trans = end_effector_pose;
+        out.rot = rotation_matrix;
+        return out;
     }
 
     void ForwardKinematics::setReferenceFrame(const Eigen::Affine3d &reference_frame)

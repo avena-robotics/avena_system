@@ -241,14 +241,14 @@ void BaseController::setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg)
     if (_controller_state != 4)
     {
         _prev_time_factor = msg->data / 100.;
-        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f " , _prev_time_factor);
+        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f ", _prev_time_factor);
     }
     else
     {
         _time_factor = msg->data / 100.;
-        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f " , _time_factor);
+        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f ", _time_factor);
     }
-    
+
     return;
 }
 
@@ -313,7 +313,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         }
 
         bool in_place = true;
-        for (size_t jnt_idx=0; jnt_idx < _joints_number; jnt_idx++)
+        for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
             _error[jnt_idx] = std::abs(_saved_trajectory.points[0].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position));
             std::cout << _error[jnt_idx] << std::endl;
@@ -384,7 +384,7 @@ int BaseController::jointInit()
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
     _arm_status = _arm_interface->getArmState();
 
-    while (_arm_status.joints.size() < 6)
+    while (_arm_status.joints.size() != 1)
     {
         RCLCPP_ERROR(_node->get_logger(), "Received invalid arm state. Waiting ...");
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -411,13 +411,13 @@ int BaseController::jointPositionInit()
 {
     RCLCPP_INFO(_node->get_logger(), "Initializing joint position.");
     //JOINT POSITION INIT
-    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    for (size_t jnt_idx = 0; jnt_idx < 6; jnt_idx++)
     {
         _arm_command.joints[jnt_idx].c_status = 0;
         _arm_command.joints[jnt_idx].c_torque = 0;
     }
 
-    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    for (size_t jnt_idx = 0; jnt_idx < 6; jnt_idx++)
     {
         while (_arm_status.joints[jnt_idx].state == 1)
         {
@@ -431,15 +431,15 @@ int BaseController::jointPositionInit()
             _arm_interface->setArmCommand(_arm_command);
             std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
         }
-            _arm_command.joints[jnt_idx].c_status = 3;
-            _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
-            std::this_thread::sleep_for(std::chrono::microseconds((int)(2000000)));
-            
-            _arm_command.joints[jnt_idx].c_status = 2;
-            _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
-            std::this_thread::sleep_for(std::chrono::microseconds((int)(100000)));
+        _arm_command.joints[jnt_idx].c_status = 3;
+        _arm_command.timestamp = std::chrono::steady_clock::now();
+        _arm_interface->setArmCommand(_arm_command);
+        std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
+
+        _arm_command.joints[jnt_idx].c_status = 2;
+        _arm_command.timestamp = std::chrono::steady_clock::now();
+        _arm_interface->setArmCommand(_arm_command);
+        std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
     }
     RCLCPP_INFO(_node->get_logger(), "Done initializing robot position.");
     return 0;
@@ -508,7 +508,7 @@ int BaseController::paramInit()
 int BaseController::varInit()
 {
     RCLCPP_INFO(_node->get_logger(), "Initializing controller variables.");
-    _arm_command.joints.resize(_joints_number);
+    _arm_command.joints.resize(6);
     _friction_chart.resize(_joints_number);
     _Kp.resize(_joints_number);
     _Ki.resize(_joints_number);
@@ -593,8 +593,8 @@ int BaseController::varInit()
     _t_start = std::chrono::steady_clock::now();
     _time_accumulator = std::chrono::microseconds(0);
     _controller_state = 4;
-    _time_factor = 0.;
-    _prev_time_factor = 1.;
+    _time_factor = 1.;
+    _prev_time_factor = 0.;
     _t_current = std::chrono::steady_clock::now();
     _t_stop = std::chrono::steady_clock::now();
     _slowdown_duration = std::chrono::microseconds(1000000);
@@ -671,57 +671,80 @@ int BaseController::calculateTorque()
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         //dynamic PID reconfigure
-        updateParams(_pid_ctrl[jnt_idx], jnt_idx);
+        // updateParams(_pid_ctrl[jnt_idx], jnt_idx);
 
         //calculate torques (PID+FF)
-        _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
-        _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
+        // _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
+        // _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
 
-        if (std::abs(_error[jnt_idx]) > _error_margin)
-        {
-            // _arm_command.joints[jnt_idx].c_torque = 0;
-            // _arm_command.joints[jnt_idx].c_status = 3;
+        // if (std::abs(_error[jnt_idx]) > _error_margin)
+        // {
+        //     // _arm_command.joints[jnt_idx].c_torque = 0;
+        //     // _arm_command.joints[jnt_idx].c_status = 3;
 
-            RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin by %f", jnt_idx, _error[jnt_idx] - _error_margin);
-            // pauseArm();
+        //     RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin by %f", jnt_idx, _error[jnt_idx] - _error_margin);
+        //     // pauseArm();
 
-            // RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin by %f", jnt_idx, _error[jnt_idx] - _error_margin);
-            // _controller_state = 3;
-            // _t_stop = std::chrono::steady_clock::now();
-            // if (_time_factor != 0.)
-            //     _prev_time_factor = _time_factor;
+        //     // RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin by %f", jnt_idx, _error[jnt_idx] - _error_margin);
+        //     // _controller_state = 3;
+        //     // _t_stop = std::chrono::steady_clock::now();
+        //     // if (_time_factor != 0.)
+        //     //     _prev_time_factor = _time_factor;
 
-            // return 1;
-        }
+        //     // return 1;
+        // }
 
-        _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
+        // _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
         // _set_torque_ff_val = _set_vel * _time_factor * _FFv[jnt_idx];
         // _set_torque_ff_val += _trajectory.points[_trajectory_index].accelerations[jnt_idx] * pow(_time_factor, 2) * _FFa[jnt_idx];
 
-        _vel_sign = ((_set_vel > 0) - (_set_vel < 0));
-        _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
+        // _vel_sign = ((_set_vel > 0) - (_set_vel < 0));
+        // _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
 
-        _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
-        // _set_torque_val = _tau[jnt_idx];
+        // _set_torque_val = _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
+        //DEBUG TRAJECTORY
+
+        double arm_length = 0.55;
+        double weight = 15.5;
+        double gravity = std::sin(_arm_status.joints[jnt_idx].position)*arm_length*weight*9.81;
+        double start_tq = 15.;
+        double finish_tq = 90.;
+        double debug_duration = 12.; //seconds
+        double d_tq = (finish_tq - start_tq) / debug_duration * ((double)_time_accumulator.count() / 1000000.);
+
         _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
 
-        //limit torque
-        if (_model.effortLimit[jnt_idx] != 0)
-        {
-            if (_set_torque_val * _torque_sign > _model.effortLimit[jnt_idx])
-                _set_torque_val = _model.effortLimit[jnt_idx] * _torque_sign;
+
+        if (_time_accumulator.count()/1000000>=debug_duration){
+            _time_accumulator = std::chrono::microseconds(0);
         }
+        //
+        _set_vel=std::max(0.05,std::abs(_arm_status.joints[jnt_idx].velocity))*_torque_sign*0.9;
+        _set_torque_val = start_tq + d_tq + gravity + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
+        // _set_torque_val = gravity;
+        
+
+        //limit torque
+
+        if (_set_torque_val * _torque_sign > 200)
+            _set_torque_val = 200 * _torque_sign;
 
         if (_controller_state != 1)
         {
-            _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
-            _arm_command.joints[jnt_idx].c_status = 3;
+            for (size_t i = 0; i < 6; i++)
+            {
+                _arm_command.joints[i].c_torque = _set_torque_val;
+                _arm_command.joints[i].c_status = 3;
+            }
         }
         else
         {
-            _arm_command.joints[jnt_idx].c_torque = 0;
-            //TODO: change to stop (2)
-            _arm_command.joints[jnt_idx].c_status = 2;
+            for (size_t i = 0; i < 6; i++)
+            {
+                _arm_command.joints[i].c_torque = 0;
+                //TODO: change to stop (2)
+                _arm_command.joints[i].c_status = 2;
+            }
         }
     }
     return 0;
@@ -749,37 +772,37 @@ int BaseController::calculateID()
     return 0;
 }
 
-
 int BaseController::communicate()
 {
     // helpers::Timer asdf(__func__,_node->get_logger());
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         //monitor data
-        _set_joint_state_msg.position[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx];
-        _set_joint_state_msg.velocity[jnt_idx] = _trajectory.points[_trajectory_index].velocities[jnt_idx];
+        _set_joint_state_msg.position[jnt_idx] = 0.;
+        _set_joint_state_msg.velocity[jnt_idx] = 0.;
         _set_joint_state_msg.effort[jnt_idx] = _arm_command.joints[jnt_idx].c_torque;
         _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
-        _arm_joint_state_msg.name[jnt_idx] = _model.names[jnt_idx + 1]; //first object is 'universe', hence the +1
+        // _arm_joint_state_msg.name[jnt_idx] = _model.names[jnt_idx + 1]; //first object is 'universe', hence the +1
         _arm_joint_state_msg.position[jnt_idx] = _arm_status.joints[jnt_idx].position;
         _arm_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
         _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
         _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
-        _arm_joint_errors_msg.position[jnt_idx] = _error[jnt_idx];
-        _arm_joint_errors_msg.header.stamp = rclcpp::Clock().now();
+        // _arm_joint_errors_msg.position[jnt_idx] = _error[jnt_idx];
+        // _arm_joint_errors_msg.header.stamp = rclcpp::Clock().now();
     }
 
     //comms
+
     std_msgs::msg::Int32 state_msg;
     std_msgs::msg::Float64 error_msg;
     state_msg.set__data(_controller_state);
-    error_msg.set__data(_cartesian_error_norm);
+    // error_msg.set__data(_cartesian_error_norm);
     _set_joint_states_pub->publish(_set_joint_state_msg);
     _arm_joint_states_pub->publish(_arm_joint_state_msg);
-    _arm_joint_errors_pub->publish(_arm_joint_errors_msg);
-    _cartesian_error_norm_pub->publish(error_msg);
+    // _arm_joint_errors_pub->publish(_arm_joint_errors_msg);
+    // _cartesian_error_norm_pub->publish(error_msg);
     _controller_state_pub->publish(state_msg);
     _arm_command.timestamp = std::chrono::steady_clock::now();
     _arm_interface->setArmCommand(_arm_command);
@@ -810,23 +833,22 @@ void BaseController::controlLoop()
 
     //is this still needed?
     // getAverageArmState();
-
     handleControllerState();
 
     //get trajectory time index
-    _trajectory_index = int(std::min(double(_trajectory.points.size() - 1), std::floor(float(std::chrono::duration_cast<std::chrono::microseconds>(_time_accumulator).count()) / 1000000 * _trajectory_rate)));
+    // _trajectory_index = int(std::min(double(_trajectory.points.size() - 1), std::floor(float(std::chrono::duration_cast<std::chrono::microseconds>(_time_accumulator).count()) / 1000000 * _trajectory_rate)));
 
-    //GO INTO HOLD IF TRAJECTORY FINISHED
-    if (_trajectory_index == _trajectory.points.size() - 1)
-    {
-        if (_time_factor != 0.0)
-        {
-            RCLCPP_INFO(_node->get_logger(), "Finished trajectory");
-            pauseArm();
-            _time_factor = 0.;
-        }
-    }
-    calculateID();
+    // //GO INTO HOLD IF TRAJECTORY FINISHED
+    // if (_trajectory_index == _trajectory.points.size() - 1)
+    // {
+    //     if (_time_factor != 0.0)
+    //     {
+    //         RCLCPP_INFO(_node->get_logger(), "Finished trajectory");
+    //         pauseArm();
+    //         _time_factor = 0.;
+    //     }
+    // }
+    // calculateID();
     calculateTorque();
     communicate();
 
@@ -849,10 +871,10 @@ void BaseController::init()
 {
 
     jointInit();
-    idInit();
+    // idInit();
     varInit();
     paramInit();
-    jointPositionInit();
+    // jointPositionInit();
 
     //CONTROL LOOP
     std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -863,7 +885,7 @@ void BaseController::init()
         controlLoop();
     }
 
-    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    for (size_t jnt_idx = 0; jnt_idx < 6; jnt_idx++)
     {
         _arm_command.joints[jnt_idx].c_torque = 0;
         //TODO: change to stop (2)

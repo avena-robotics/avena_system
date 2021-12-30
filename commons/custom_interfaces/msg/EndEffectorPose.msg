@@ -3,6 +3,7 @@
 # arm pose to desired end effector pose
 uint8 PATH = 0  # end effector can move in any arbitrary orientation
 uint8 LINEAR = 1  # end effector moves in straight line
+uint8 ORIENTATION = 2 # end effector maintains it's orientation
 
 uint8 path_type
 ###############################################################################

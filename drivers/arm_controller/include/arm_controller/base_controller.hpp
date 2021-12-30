@@ -34,6 +34,7 @@
 #include "pinocchio/parsers/urdf.hpp"
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
+#include "pinocchio/algorithm/parallel/rnea.hpp"
 #include "pinocchio/algorithm/kinematics.hpp"
 
 struct friction_comp

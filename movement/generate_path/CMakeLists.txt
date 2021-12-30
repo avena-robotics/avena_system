@@ -32,6 +32,7 @@ add_library(${PROJECT_NAME} SHARED
   src/planners/base_planner.cpp
   src/planners/simple_planner.cpp
   src/planners/linear_planner.cpp
+  src/planners/orientation_planner.cpp
 )
 target_include_directories(${PROJECT_NAME} 
   PUBLIC

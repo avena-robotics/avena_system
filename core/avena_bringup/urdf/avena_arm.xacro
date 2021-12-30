@@ -177,7 +177,7 @@
       <parent link="${arm_id}_link_1" />
       <child link="${arm_id}_link_2" />
       <axis xyz="0 0 1" />
-      <limit lower="-1.57" upper="1.57" effort="160" velocity="0" />
+      <limit lower="-1.57" upper="1.57" effort="180" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_3" type="revolute">
@@ -185,7 +185,7 @@
       <parent link="${arm_id}_link_2" />
       <child link="${arm_id}_link_3" />
       <axis xyz="0 0 1" />
-      <limit lower="-2.9" upper="2.9" effort="80" velocity="0" />
+      <limit lower="-2.9" upper="2.9" effort="120" velocity="0" />
     </joint>
 
     <joint name="${arm_id}_joint_4" type="revolute">
