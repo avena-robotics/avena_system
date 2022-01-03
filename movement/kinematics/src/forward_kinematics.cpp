@@ -22,7 +22,7 @@ namespace kinematics
             throw IkError("Cannot read transform for robot base");
     }
 
-    EEConfiguration ForwardKinematics::computeFk(const ArmConfiguration &joint_states,
+    Eigen::Affine3d ForwardKinematics::computeFk(const ArmConfiguration &joint_states,
                                                  bool in_robot_base_frame)
     {
         std::function<void(const IkReal *, IkReal *, IkReal *)> fk_func;
@@ -39,13 +39,14 @@ namespace kinematics
             throw IkError("Unsupported robot to calculate IK");
         }
 
-        EEConfiguration out;
+        Eigen::Transform<double,3,Eigen::Affine> out_t;
         std::vector<IkReal> ee_trans(3);
         std::vector<IkReal> ee_rot(9);
         fk_func(joint_states.data(), ee_trans.data(), ee_rot.data());
         Eigen::Translation3d position(ee_trans[0], ee_trans[1], ee_trans[2]);
         Eigen::Matrix3d rotation_matrix = Eigen::Matrix3d::Map(ee_rot.data());
         rotation_matrix.transposeInPlace();
+        out_t = position*Eigen::Quaterniond(rotation_matrix);
         Eigen::Affine3d end_effector_pose_robot_frame = position * Eigen::Quaterniond(rotation_matrix);
 
         Eigen::Affine3d end_effector_pose;
@@ -53,13 +54,9 @@ namespace kinematics
         // Convert end effector pose to "world" frame because IK Fast
         // returns pose in robot base frame of reference
         if (!in_robot_base_frame)
-            end_effector_pose = _reference_frame * end_effector_pose_robot_frame;
-        else
-            end_effector_pose = end_effector_pose_robot_frame;
+            out_t = _reference_frame * out_t;
 
-        out.trans = end_effector_pose;
-        out.rot = rotation_matrix;
-        return out;
+        return out_t;
     }
 
     void ForwardKinematics::setReferenceFrame(const Eigen::Affine3d &reference_frame)

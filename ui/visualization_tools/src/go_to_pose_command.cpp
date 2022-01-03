@@ -49,7 +49,7 @@ namespace visualization_tools
         if (feedback->event_type == visualization_msgs::msg::InteractiveMarkerFeedback::MENU_SELECT)
         {
             const MenuEntries_e &menu_entry = _menu_entries[feedback->menu_entry_id];
-            if (menu_entry == MenuEntries_e::PATH || menu_entry == MenuEntries_e::LINEAR_PATH || menu_entry == MenuEntries_e::ORIENTATION_PATH)
+            if (menu_entry == MenuEntries_e::PATH || menu_entry == MenuEntries_e::LINEAR_PATH || menu_entry == MenuEntries_e::ORIENTATION_PATH || menu_entry == MenuEntries_e::LO_PATH)
             {
                 _saveSequenceSegmentToBuffer(menu_entry);
             }
@@ -120,7 +120,7 @@ namespace visualization_tools
         marker_array.markers.push_back(marker);
         _motion_planning_info_markers_pub->publish(marker_array);
         _marker_count = 0;
-        
+
         // Clear path
         geometry_msgs::msg::PoseArray pose_array;
         pose_array.header.frame_id = "world";
@@ -181,10 +181,15 @@ namespace visualization_tools
         {
             ee_pose.path_type = EndEffectorPose::ORIENTATION;
         }
+        else if (path_type == MenuEntries_e::LO_PATH)
+        {
+            ee_pose.path_type = EndEffectorPose::LO;
+        }
         else if (path_type == MenuEntries_e::PATH)
         {
             ee_pose.path_type = EndEffectorPose::PATH;
         }
+
         else
         {
             throw std::runtime_error("Invalid path type");
@@ -224,7 +229,7 @@ namespace visualization_tools
                 marker_array.markers.push_back(_getConstraintLine(start_ee_pose, ee_requested_pose.pose));
             }
             pose_array.poses.push_back(ee_requested_pose.pose);
-            
+
             start_ee_pose = ee_requested_pose.pose;
         }
         _sequence_poses_pub->publish(pose_array);
@@ -372,6 +377,10 @@ namespace visualization_tools
         // Generate trajectory action (orientation path)
         handle = menu_handler.insert("Add waypoint (ORIENTATION)", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
         _menu_entries[handle] = MenuEntries_e::ORIENTATION_PATH;
+
+        // Generate trajectory action (ol path)
+        handle = menu_handler.insert("Add waypoint (L+O)", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));
+        _menu_entries[handle] = MenuEntries_e::LO_PATH;
 
         // Clear buffer
         handle = menu_handler.insert("Clear sequence", std::bind(&GoToPoseCommand::_movementFeedback, this, std::placeholders::_1));

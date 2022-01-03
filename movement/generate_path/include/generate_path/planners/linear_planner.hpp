@@ -70,7 +70,7 @@ namespace generate_path
   private:
     Eigen::VectorXd _calcError(const Eigen::Ref<const Eigen::VectorXd> &x) const;
     Eigen::MatrixXd _calcErrorJacobian(const Eigen::Ref<const Eigen::VectorXd> &x) const;
-    Eigen::Affine3d _forwardKinematics(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const;
+    Eigen::Vector3d _forwardKinematics(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const;
     Eigen::MatrixXd _robotGeometricJacobian(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const;
 
     PathPlanningInput _path_planning_input;

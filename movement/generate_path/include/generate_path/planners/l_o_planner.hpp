@@ -1,7 +1,6 @@
-#ifndef GENERATE_PATH__ORIENTATION_PLANNER_HPP_
-#define GENERATE_PATH__ORIENTATION_PLANNER_HPP_
+#ifndef GENERATE_PATH__L_O_PLANNER_HPP_
+#define GENERATE_PATH__L_O_PLANNER_HPP_
 
-// #include <math.h>
 // ___Eigen___
 #include <Eigen/Geometry>
 
@@ -14,6 +13,7 @@
 // ___Package___
 #include "generate_path/planners/base_planner.hpp"
 #include "generate_path/planners/linear_planner.hpp"
+#include "generate_path/planners/orientation_planner.hpp"
 
 
 namespace generate_path
@@ -60,15 +60,15 @@ namespace generate_path
   // std::ostream &operator<<(std::ostream &os, const Bounds &bounds);
 
   /***************************
-   * OrientationConstraint
+   * LOConstraint
    * ************************/
-  class OrientationConstraint : public ob::Constraint
+  class LOConstraint : public ob::Constraint
   {
   public:
-    OrientationConstraint(const PathPlanningInput &path_planning_input, const rclcpp::Logger &logger);
-    virtual ~OrientationConstraint() = default;
+    LOConstraint(const PathPlanningInput &path_planning_input, const rclcpp::Logger &logger);
+    virtual ~LOConstraint() = default;
     void function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const override;
-    // void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
+    void jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const override;
 
   private:
     Eigen::VectorXd _calcError(const Eigen::Ref<const Eigen::VectorXd> &x) const;
@@ -78,22 +78,21 @@ namespace generate_path
 
     PathPlanningInput _path_planning_input;
     rclcpp::Logger _logger;
-    Eigen::Vector3d _target_position;
-    Eigen::Matrix3d _locked_orientation;
-    Eigen::Quaterniond _target_orientation;
-    // Bounds _bounds;
+    Eigen::Vector3d _target_position, _target_orientation;
+    Eigen::Quaterniond _target_position_orientation;
+    Bounds _bounds;
 
   };
 
 
   /***************************
-   * OrientationPlanner
+   * LOPlanner
    * ************************/
-  class OrientationPlanner : public IPlanner
+  class LOPlanner : public IPlanner
   {
   public:
-    OrientationPlanner(const rclcpp::Logger &logger);
-    virtual ~OrientationPlanner() = default;
+    LOPlanner(const rclcpp::Logger &logger);
+    virtual ~LOPlanner() = default;
     virtual ReturnCode solve(const PathPlanningInput &path_planning_input, std::vector<ArmConfiguration> &out_path) override;
 
   protected:
@@ -110,4 +109,4 @@ namespace generate_path
 
 } // namespace generate_path
 
-#endif // GENERATE_PATH__ORIENTATION_PLANNER_HPP_
+#endif // GENERATE_PATH__L_O_PLANNER_HPP_

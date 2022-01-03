@@ -84,7 +84,7 @@ namespace generate_path
             RCLCPP_DEBUG_STREAM(_node->get_logger(), "[Generate path]: Passing " << path_planning_input.goal_states.size() << " goal configurations");
 
             // Set joint states back to initial state before planning
-            path_planning_input.start_end_effector_pose = _kinematics_engine->fk->computeFk(path_planning_input.start_state).trans;
+            path_planning_input.start_end_effector_pose = _kinematics_engine->fk->computeFk(path_planning_input.start_state);
 
             // Path planning
             IPlanner::SharedPtr path_planner = FactoryPlanner::createPlanner(_node->get_logger(), req_end_effector_pose.path_type);

@@ -146,45 +146,60 @@ namespace generate_path
      * OrientationConstraint
      * *********************/
     OrientationConstraint::OrientationConstraint(const PathPlanningInput &path_planning_input, const rclcpp::Logger &logger)
-        : ompl::base::Constraint(path_planning_input.num_dof, 3),
+        : ompl::base::Constraint(path_planning_input.num_dof, 1, 1e-3),
           _path_planning_input(path_planning_input),
           _logger(logger)
     {
-        Eigen::Vector3d start_end_effector_orientation = path_planning_input.start_end_effector_pose.rotation().eulerAngles(0, 1, 2);
-        Eigen::Vector3d goal_end_effector_orientation = path_planning_input.goal_end_effector_pose.rotation().eulerAngles(0, 1, 2);
+        // Eigen::Vector3d start_end_effector_orientation = path_planning_input.start_end_effector_pose.rotation().eulerAngles(0, 1, 2);
+        // Eigen::Vector3d goal_end_effector_orientation = path_planning_input.goal_end_effector_pose.rotation().eulerAngles(0, 1, 2);
 
+        _locked_orientation = path_planning_input.start_end_effector_pose.rotation().inverse();
+
+        double a_norm = (Eigen::Vector3d(0, 0, 1)).norm();
+        double b_norm = (Eigen::Vector3d(0, 0, 1)).norm();
+        std::cout << (path_planning_input.goal_end_effector_pose.rotation() * _locked_orientation * Eigen::Vector3d(0, 0, 1)).transpose() << std::endl;
+        std::cout << std::acos(((path_planning_input.goal_end_effector_pose.rotation() * _locked_orientation * Eigen::Vector3d(0, 0, 1)).dot(Eigen::Vector3d(0, 0, 1)) / (a_norm * b_norm))) << std::endl;
         // Setup box constraint dimensions and pose
-        Eigen::Vector3d dist = goal_end_effector_orientation - start_end_effector_orientation;
-        std::vector<double> dims = {0.01, 0.01, M_PI};
-        _target_position = (goal_end_effector_orientation + start_end_effector_orientation) / 2.0;
+        // Eigen::Vector3d dist = goal_end_effector_orientation - start_end_effector_orientation;
+        // std::vector<double> dims = {3.1};
+        // _target_position = (goal_end_effector_orientation + start_end_effector_orientation) / 2.0;
         // Eigen::Vector3d direction_axis = goal_end_effector_orientation;
         // _target_orientation.setFromTwoVectors(Eigen::Vector3d::UnitZ(), direction_axis);
-        _locked_orientation = start_end_effector_orientation;
-        _bounds = Bounds({-dims[0] / 2.0, -dims[1] / 2.0, -dims[2] / 2.0}, {dims[0] / 2.0, dims[1] / 2.0, dims[2] / 2.0});
+
+        // _bounds = Bounds({-dims[0] / 2.0}, {dims[0] / 2.0});
     }
 
     void OrientationConstraint::function(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::VectorXd> out) const
     {
-        const Eigen::VectorXd current_values = _calcError(x);
+        // const Eigen::VectorXd current_values = _calcError(x);
         // std::cout << "target: " << _target_position.transpose()
         //           << "\tasdf: " << current_values.transpose() << std::endl;
-        out = _bounds.penalty(current_values);
+        // out = _bounds.penalty(current_values);
+        Eigen::VectorXd error = _calcError(x);
+        if (error.norm() < 0.2)
+            out = Eigen::Matrix<double, 1, 1>(0.);
+        else
+            out = _calcError(x);
+        // std::cout<<out<<std::endl;
     }
 
-    void OrientationConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const
-    {
-        const Eigen::VectorXd constraint_error = _calcError(x);
-        const Eigen::VectorXd constraint_derivative = _bounds.derivative(constraint_error);
-        const Eigen::MatrixXd robot_jacobian = _robotGeometricJacobian(x).bottomRows(3);
-        for (std::size_t i = 0; i < _bounds.size(); i++)
-        {
-            out.row(i) = constraint_derivative[i] * robot_jacobian.row(i);
-        }
-    }
+    // void OrientationConstraint::jacobian(const Eigen::Ref<const Eigen::VectorXd> &x, Eigen::Ref<Eigen::MatrixXd> out) const
+    // {
+    //     const Eigen::VectorXd constraint_error = _calcError(x);
+    //     const Eigen::VectorXd constraint_derivative = _bounds.derivative(constraint_error);
+    //     const Eigen::MatrixXd robot_jacobian = _robotGeometricJacobian(x).bottomRows(3);
+    //     for (std::size_t i = 0; i < _bounds.size(); i++)
+    //     {
+    //         out.row(i) = constraint_derivative[i] * robot_jacobian.row(i);
+    //     }
+    // }
 
     Eigen::VectorXd OrientationConstraint::_calcError(const Eigen::Ref<const Eigen::VectorXd> &x) const
     {
-        return _forwardKinematics(x) - _target_position;
+
+        double a_norm = (Eigen::Vector3d(0, 0, 1)).norm();
+        double b_norm = (Eigen::Vector3d(0, 0, 1)).norm();
+        return Eigen::Matrix<double, 1, 1>(std::acos(((_forwardKinematics(x).rotation() * _locked_orientation * Eigen::Vector3d(0, 0, 1)).dot(Eigen::Vector3d(0, 0, 1)) / (a_norm * b_norm))));
     }
 
     // Eigen::MatrixXd OrientationConstraint::_calcErrorJacobian(const Eigen::Ref<const Eigen::VectorXd> &x) const
@@ -192,11 +207,11 @@ namespace generate_path
     //     return _target_orientation.matrix().transpose() * _robotGeometricJacobian(x).bottomRows(3);
     // }
 
-    Eigen::Vector3d OrientationConstraint::_forwardKinematics(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const
+    Eigen::Affine3d OrientationConstraint::_forwardKinematics(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const
     {
         // helpers::Timer timer(__func__, _logger);
         std::vector<double> current_configuration(joint_values.data(), joint_values.data() + joint_values.size());
-        return _path_planning_input.kinematics_engine->fk->computeFk(current_configuration).rot.eulerAngles(0, 1, 2);
+        return _path_planning_input.kinematics_engine->fk->computeFk(current_configuration);
         // _path_planning_input.physics_client_handler->setJointStates(current_configuration);
         // if (auto ee_eff_opt = _path_planning_input.physics_client_handler->getEndEffectorPose())
         // {

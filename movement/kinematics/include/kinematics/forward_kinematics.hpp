@@ -19,11 +19,6 @@
 namespace kinematics
 {
 
-  struct EEConfiguration{
-    Eigen::Affine3d trans;
-    Eigen::Matrix3d rot;
-  };
-
   class ForwardKinematics
   {
   public:
@@ -39,7 +34,7 @@ namespace kinematics
      * @param in_robot_base_frame 
      * @return EEConfiguration
      */
-    EEConfiguration computeFk(const ArmConfiguration &joint_states,
+    Eigen::Affine3d computeFk(const ArmConfiguration &joint_states,
                                bool in_robot_base_frame = false);
 
     /**

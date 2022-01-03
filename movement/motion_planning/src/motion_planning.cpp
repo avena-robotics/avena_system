@@ -243,7 +243,7 @@ namespace motion_planning
         for (size_t i = 0; i < read_data->movement_sequence.size(); i++)
         {
             auto &el = read_data->movement_sequence[i];
-            if (el.path_type != EndEffectorPose::PATH && el.path_type != EndEffectorPose::LINEAR && el.path_type != EndEffectorPose::ORIENTATION)
+            if (el.path_type != EndEffectorPose::PATH && el.path_type != EndEffectorPose::LINEAR && el.path_type != EndEffectorPose::ORIENTATION && el.path_type != EndEffectorPose::LO)
                 throw std::runtime_error("Invalid path type specified for " + std::to_string(i + 1) + " end effector pose");
         }
 

@@ -4,6 +4,7 @@
 uint8 PATH = 0  # end effector can move in any arbitrary orientation
 uint8 LINEAR = 1  # end effector moves in straight line
 uint8 ORIENTATION = 2 # end effector maintains it's orientation
+uint8 LO = 3 # end effector maintains it's orientation and moves in a straight line
 
 uint8 path_type
 ###############################################################################

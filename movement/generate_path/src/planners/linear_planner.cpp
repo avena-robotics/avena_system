@@ -179,7 +179,7 @@ namespace generate_path
 
     Eigen::VectorXd LinearPathConstraint::_calcError(const Eigen::Ref<const Eigen::VectorXd> &x) const
     {
-        return _target_orientation.matrix().transpose() * (_forwardKinematics(x).translation() - _target_position);
+        return _target_orientation.matrix().transpose() * (_forwardKinematics(x) - _target_position);
     }
 
     Eigen::MatrixXd LinearPathConstraint::_calcErrorJacobian(const Eigen::Ref<const Eigen::VectorXd> &x) const
@@ -187,11 +187,11 @@ namespace generate_path
         return _target_orientation.matrix().transpose() * _robotGeometricJacobian(x).topRows(3);
     }
 
-    Eigen::Affine3d LinearPathConstraint::_forwardKinematics(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const
+    Eigen::Vector3d LinearPathConstraint::_forwardKinematics(const Eigen::Ref<const Eigen::VectorXd> &joint_values) const
     {
         // helpers::Timer timer(__func__, _logger);
         std::vector<double> current_configuration(joint_values.data(), joint_values.data() + joint_values.size());
-        return _path_planning_input.kinematics_engine->fk->computeFk(current_configuration).trans;
+        return _path_planning_input.kinematics_engine->fk->computeFk(current_configuration).translation();
         // _path_planning_input.physics_client_handler->setJointStates(current_configuration);
         // if (auto ee_eff_opt = _path_planning_input.physics_client_handler->getEndEffectorPose())
         // {
