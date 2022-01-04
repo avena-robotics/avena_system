@@ -47,7 +47,6 @@ struct friction_comp
 class BaseController : public helpers::WatchdogInterface
 {
 public:
-    std::shared_ptr<rclcpp::Node> _node;
     // BaseController();
     BaseController(int argc, char **argv);
     ~BaseController();
@@ -65,16 +64,51 @@ public:
         rclcpp::shutdown();
     };
 
+    std::shared_ptr<rclcpp::Node> _node;
+
 protected:
+    bool getArmState();
+    bool setArmCommand();
+
+    //loads friction chart
+    void loadFrictionChart(std::string path);
+    //updates PID parameters
+    void updateParams(PID &pid, int joint_index);
+    //reads friction value from loaded friction chart, corresponding to current join velocity and temperature
+    double compensateFriction(double vel, double temp, int jnt_idx);
+
+    virtual int idInit();
+    virtual int paramInit();
+    virtual int varInit();
+    virtual int jointInit();
+    virtual int jointPositionInit();
+    virtual int getAverageArmState();
+    virtual int handleControllerState();
+    virtual int calculateTorque();
+    virtual int calculateID();
+    virtual int communicate();
+
+    virtual void controlLoop();
+
+    int stopArm();
+    int pauseArm();
+    int resumeArm();
+
+    void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
+                    std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
+    void setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg);
+    void setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg);
+    void securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr);
+
     helpers::Watchdog::SharedPtr _watchdog;
 
-    std::shared_ptr<ArmInterface> _arm_interface;
+    // std::shared_ptr<ArmInterface> _arm_interface;
 
     //TODO:
     const double _trajectory_rate = 500;
 
     //PARAMETERS
-    size_t _joints_number;
+    size_t _joints_number = 6;
     double _error_margin, _cartesian_error_margin;
     std::string _config_path;
     std::string _urdf;
@@ -101,6 +135,10 @@ protected:
     std::vector<double> _jitter_multiplier;
     std::vector<bool> _jitter_present;
 
+    std::shared_ptr<boost::interprocess::managed_shared_memory> _shared_memory_segment;
+
+    std::shared_ptr<ArmStatus> _shm_arm_status;
+    std::shared_ptr<ArmCommand> _shm_arm_command;
 
     ArmStatus _arm_status;
     ArmCommand _arm_command;
@@ -153,38 +191,6 @@ protected:
     rclcpp::Service<custom_interfaces::srv::ControlCommand>::SharedPtr _command_service;
 
     sensor_msgs::msg::JointState _set_joint_state_msg, _arm_joint_state_msg, _arm_joint_errors_msg;
-
-    //loads friction chart
-    void loadFrictionChart(std::string path);
-    //updates PID parameters
-    void updateParams(PID &pid, int joint_index);
-    //[DEBUG] loads trajectory from file
-    void loadTrajTxt(std::string path);
-    //reads friction value from loaded friction chart, corresponding to current join velocity and temperature
-    double compensateFriction(double vel, double temp, int jnt_idx);
-
-    virtual int idInit();
-    virtual int paramInit();
-    virtual int varInit();
-    virtual int jointInit();
-    virtual int jointPositionInit();
-    virtual int getAverageArmState();
-    virtual int handleControllerState();
-    virtual int calculateTorque();
-    virtual int calculateID();
-    virtual int communicate();
-
-    virtual void controlLoop();
-
-    int stopArm();
-    int pauseArm();
-    int resumeArm();
-
-    void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
-                    std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
-    void setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg);
-    void setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg);
-    void securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr);
 };
 
 #endif // BASE_CONTROLLER_HPP_

@@ -12,7 +12,7 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Wpedantic -lrt)
 endif()
 
 # find dependencies
@@ -26,6 +26,8 @@ find_package(pluginlib REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(pinocchio REQUIRED)
+find_package(Boost REQUIRED)
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -38,7 +40,7 @@ target_include_directories(base_controller  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(base_controller  Eigen3::Eigen)
+target_link_libraries(base_controller  Eigen3::Eigen rt)
 
 
 ament_target_dependencies(base_controller 
@@ -50,7 +52,33 @@ ament_target_dependencies(base_controller
   helpers_commons
   candriver
   pinocchio
+  Boost
 )
+
+
+add_executable(hw_interface
+    src/hw_interface.cpp
+    )
+
+target_include_directories(hw_interface  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+target_link_libraries(hw_interface rt)
+
+
+ament_target_dependencies(hw_interface 
+  pluginlib
+  rclcpp
+  std_msgs 
+  sensor_msgs
+  custom_interfaces
+  helpers_commons
+  candriver
+  pinocchio
+  Boost
+)
+
 
 add_executable(diagnostics
     src/diagnostics.cpp
@@ -71,30 +99,31 @@ ament_target_dependencies(diagnostics
   helpers_commons
   candriver
   pinocchio
+  Boost
 )
 
 
-add_executable(single_joint_debug
-    src/single_joint_debug.cpp
-    src/PID.cpp
-    )
+# add_executable(single_joint_debug
+#     src/single_joint_debug.cpp
+#     src/PID.cpp
+#     )
 
-target_include_directories(single_joint_debug  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+# target_include_directories(single_joint_debug  PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>)
   
- target_link_libraries(single_joint_debug  base_controller_lib Eigen3::Eigen)
+#  target_link_libraries(single_joint_debug  base_controller_lib Eigen3::Eigen)
   
- ament_target_dependencies(single_joint_debug 
-    pluginlib
-    rclcpp
-    std_msgs 
-    sensor_msgs
-    custom_interfaces
-    helpers_commons
-    candriver
-    pinocchio
-  )
+#  ament_target_dependencies(single_joint_debug 
+#     pluginlib
+#     rclcpp
+#     std_msgs 
+#     sensor_msgs
+#     custom_interfaces
+#     helpers_commons
+#     candriver
+#     pinocchio
+#   )
 
 add_executable(friction_calibration
     src/friction_calibration.cpp
@@ -116,6 +145,7 @@ ament_target_dependencies(friction_calibration
   custom_interfaces
   sensor_msgs
   pinocchio
+  Boost
 )
 
 
@@ -129,7 +159,7 @@ target_include_directories(base_controller_lib  PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(base_controller_lib  Eigen3::Eigen)
+target_link_libraries(base_controller_lib  Eigen3::Eigen rt)
 
 target_compile_definitions(base_controller_lib PRIVATE "BASE_CONTROLLER_BUILDING_LIBRARY")
 
@@ -142,13 +172,15 @@ ament_target_dependencies(base_controller_lib
   helpers_commons
   candriver
   pinocchio
+  Boost
 )
 
 install(TARGETS
   base_controller
   diagnostics
   friction_calibration
-  single_joint_debug
+  hw_interface
+  # single_joint_debug
   DESTINATION lib/${PROJECT_NAME})
 
 install(

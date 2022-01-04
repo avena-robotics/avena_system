@@ -106,7 +106,7 @@ int Diagnostics::communicate()
     _arm_joint_states_pub->publish(_arm_joint_state_msg);
     _controller_state_pub->publish(state_msg);
     _arm_command.timestamp = std::chrono::steady_clock::now();
-    _arm_interface->setArmCommand(_arm_command);
+    setArmCommand();
     return 0;
 }
 
@@ -128,7 +128,7 @@ void Diagnostics::controlLoop()
         exit(0);
     }
     //GET JOINT STATES
-    _arm_status = _arm_interface->getArmState();
+    getArmState();
 
     // if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
     // {
@@ -176,7 +176,7 @@ int Diagnostics::varInit()
     RCLCPP_INFO(_node->get_logger(), "Initializing controller variables.");
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
-    _arm_command.joints.resize(_joints_number);
+    // _arm_command.joints.resize(_joints_number);
     _friction_chart.resize(_joints_number);
     _Kp.resize(_joints_number);
     _Ki.resize(_joints_number);
@@ -250,7 +250,7 @@ int Diagnostics::varInit()
     }
 
     //GET STARTING POSITION - HOLD TRAJECTORY
-    _arm_status = _arm_interface->getArmState();
+    getArmState();
     _trajectory.points.resize(1);
     _trajectory.points[0].positions.resize(_joints_number);
     _trajectory.points[0].velocities.resize(_joints_number);
@@ -302,7 +302,7 @@ void Diagnostics::init()
         _arm_command.joints[jnt_idx].c_status = 2;
     }
     _arm_command.timestamp = std::chrono::steady_clock::now();
-    _arm_interface->setArmCommand(_arm_command);
+    setArmCommand();
     RCLCPP_INFO(_node->get_logger(), "shutting down");
     exit(0);
 }

@@ -14,10 +14,17 @@ void FrictionCalibration::init()
     _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     _exec->add_node(_node);
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
-    _arm_status = _arm_interface->getArmState();
+    getArmState();
+
+    int connected_joints=0;
+    for (size_t i = 0; i < _joints_number; i++){
+        if(_arm_status.joints[i].state!=420)
+            connected_joints++;
+    }
+    _joints_number=connected_joints;
+    
 
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
-    _joints_number = _arm_status.joints.size();
     for (size_t i = 0; i < _joints_number; i++)
     {
         if (_arm_status.joints[i].state == 255)
@@ -28,7 +35,7 @@ void FrictionCalibration::init()
 
     RCLCPP_INFO(_node->get_logger(), "Joint number: %i", _joints_number);
 
-    _arm_command.joints.resize(_joints_number);
+    // _arm_command.joints.resize(_joints_number);
     _friction_chart.resize(_joints_number);
     _Kp.resize(_joints_number);
     _Ki.resize(_joints_number);
@@ -147,24 +154,24 @@ void FrictionCalibration::init()
     {
         while (_arm_status.joints[jnt_idx].state == 1)
         {
-            _arm_status = _arm_interface->getArmState();
+            getArmState();
             RCLCPP_INFO(_node->get_logger(), "Joint number: %i", jnt_idx);
             std::cout << "Initializing joint " << jnt_idx << std::endl;
 
             //send init command to a single joint
             _arm_command.joints[jnt_idx].c_status = 2;
             _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
+            setArmCommand();
             std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
         }
             _arm_command.joints[jnt_idx].c_status = 3;
             _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
+            setArmCommand();
             std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
             
             _arm_command.joints[jnt_idx].c_status = 2;
             _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
+            setArmCommand();
             std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
 
     }
@@ -173,7 +180,7 @@ void FrictionCalibration::init()
     RCLCPP_INFO(_node->get_logger(), "Done initializing robot position.");
 
     //GET STARTING POSITION - HOLD TRAJECTORY
-    _arm_status = _arm_interface->getArmState();
+    getArmState();
     _trajectory.points.resize(1);
     _trajectory.points[0].positions.resize(_joints_number);
     _trajectory.points[0].velocities.resize(_joints_number);
@@ -306,7 +313,7 @@ void FrictionCalibration::init()
 
             //std::chrono::time_point<std::chrono::steady_clock> t_current = std::chrono::steady_clock::now();
 
-            _arm_status = _arm_interface->getArmState();
+            getArmState();
             auto t_current = std::chrono::steady_clock::now();
             if (_controller_state == 3)
             {
@@ -497,7 +504,7 @@ void FrictionCalibration::init()
             _arm_joint_states_pub->publish(_arm_joint_state_msg);
 
             _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
+            setArmCommand();
 
             //control loop frequency
             _remaining_time = std::floor(1000000 / _trajectory_rate - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t_current).count());
@@ -545,7 +552,7 @@ void FrictionCalibration::init()
             chart->close();
         }
     }
-    _arm_interface->setArmCommand(_arm_command);
+    setArmCommand();
     std::cout << "Calibration took: " << std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - calib_time).count() << " minutes" << std::endl;
     RCLCPP_INFO(_node->get_logger(), "Done calibrating, shutting down");
     exit(0);

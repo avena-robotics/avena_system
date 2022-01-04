@@ -8,6 +8,21 @@ BaseController::BaseController(int argc, char **argv)
     // helpers::commons::setLoggerLevel(_node->get_logger(),"debug");
     _watchdog = std::make_shared<helpers::Watchdog>(_node.get(), this, "system_monitor");
     status = custom_interfaces::msg::Heartbeat::RUNNING;
+    // _arm_interface = std::make_shared<ArmInterface>("0AA", (int)_trajectory_rate);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    try
+    {
+        _shared_memory_segment = std::make_shared<boost::interprocess::managed_shared_memory>(boost::interprocess::open_only, "HWSharedMemory");
+    }
+    catch (const std::exception &e)
+    {
+        std::cout << e.what();
+        exit(0);
+    }
+
+    // boost::interprocess::managed_shared_memory asdf(boost::interprocess::open_only, "HWSharedMemory");
+    _shm_arm_command = std::shared_ptr<ArmCommand>(_shared_memory_segment->find<ArmCommand>("shmArmCommand").first);
+    _shm_arm_status = std::shared_ptr<ArmStatus>(_shared_memory_segment->find<ArmStatus>("shmArmStatus").first);
 
     //COMMUNICATION INIT
     _command_service = _node->create_service<custom_interfaces::srv::ControlCommand>("/arm_controller/commands", std::bind(&BaseController::setStateCb, this, std::placeholders::_1, std::placeholders::_2));
@@ -23,12 +38,40 @@ BaseController::BaseController(int argc, char **argv)
         rclcpp::QoS(rclcpp::KeepLast(1)),
         std::bind(&BaseController::securityTriggerStatusCb, this, std::placeholders::_1));
 
-    _arm_interface = std::make_shared<ArmInterface>("0AA", (int)_trajectory_rate);
     std::this_thread::sleep_for(std::chrono::seconds(3));
 }
 
 BaseController::~BaseController()
 {
+}
+
+bool BaseController::getArmState()
+{
+    boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_shm_arm_status->mutex);
+    // _get_timestamp = std::chrono::steady_clock::now();
+    // _get_delay = std::chrono::duration_cast<std::chrono::microseconds>(_get_timestamp - _status_timestamp);
+
+    for (size_t i = 0; i < _joints_number; i++)
+    {
+        _arm_status.joints[i] = _shm_arm_status->joints[i];
+        // std::cout<<"Joint "<<i<<":"<<_arm_status.joints[i].state<<std::endl;
+    }
+    _arm_status.timestamp = _shm_arm_status->timestamp;
+
+    return 1;
+}
+
+bool BaseController::setArmCommand()
+{
+    boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_shm_arm_command->mutex);
+
+    for (size_t i = 0; i < _joints_number; i++)
+    {
+        _shm_arm_command->joints[i] = _arm_command.joints[i];
+    }
+    _shm_arm_command->timestamp = _arm_command.timestamp;
+
+    return 1;
 }
 
 void BaseController::loadFrictionChart(std::string path)
@@ -143,66 +186,6 @@ double BaseController::compensateFriction(double vel, double temp, int jnt_idx)
     return _friction_chart[jnt_idx][v][t].tq;
 }
 
-//only for debug purposes
-void BaseController::loadTrajTxt(std::string path)
-{
-
-    trajectory_msgs::msg::JointTrajectoryPoint temp_point;
-    std::string temp_s;
-    int it = 0;
-    //position
-    std::ifstream fs(path + "position.txt");
-    if (fs.good())
-    {
-        while (!fs.eof())
-        {
-            for (size_t i = 0; i < _joints_number; i++)
-            {
-                std::getline(fs, temp_s);
-                temp_point.positions.push_back(std::stod(temp_s));
-                temp_point.time_from_start.sec = std::floor(it / _trajectory_rate);
-                temp_point.time_from_start.nanosec = it / _trajectory_rate - temp_point.time_from_start.sec;
-            }
-            _saved_trajectory.points.push_back(temp_point);
-            temp_point.positions.clear();
-            it++;
-        }
-        fs.close();
-    }
-    //velocity
-    it = 0;
-    fs.open(path + "velocity.txt", std::fstream::in);
-    if (fs.good())
-    {
-        while (!fs.eof())
-        {
-            for (size_t i = 0; i < _joints_number; i++)
-            {
-                std::getline(fs, temp_s);
-                _saved_trajectory.points[it].velocities.push_back(std::stod(temp_s));
-            }
-            it++;
-        }
-        fs.close();
-    }
-    //acceleration
-    it = 0;
-    fs.open(path + "acceleration.txt", std::fstream::in);
-    if (fs.good())
-    {
-        while (!fs.eof())
-        {
-            for (size_t i = 0; i < _joints_number; i++)
-            {
-                std::getline(fs, temp_s);
-                _saved_trajectory.points[it].accelerations.push_back(std::stod(temp_s));
-            }
-            it++;
-        }
-        fs.close();
-    }
-}
-
 //dynamic PID parameters
 void BaseController::updateParams(PID &pid, int joint_index)
 {
@@ -241,14 +224,14 @@ void BaseController::setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg)
     if (_controller_state != 4)
     {
         _prev_time_factor = msg->data / 100.;
-        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f " , _prev_time_factor);
+        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f ", _prev_time_factor);
     }
     else
     {
         _time_factor = msg->data / 100.;
-        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f " , _time_factor);
+        RCLCPP_INFO(_node->get_logger(), "Time factor set to: %f ", _time_factor);
     }
-    
+
     return;
 }
 
@@ -313,7 +296,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         }
 
         bool in_place = true;
-        for (size_t jnt_idx=0; jnt_idx < _joints_number; jnt_idx++)
+        for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
             _error[jnt_idx] = std::abs(_saved_trajectory.points[0].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position));
             std::cout << _error[jnt_idx] << std::endl;
@@ -382,26 +365,30 @@ int BaseController::jointInit()
     _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     _exec->add_node(_node);
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
-    _arm_status = _arm_interface->getArmState();
+    getArmState();
 
-    while (_arm_status.joints.size() < 6)
-    {
-        RCLCPP_ERROR(_node->get_logger(), "Received invalid arm state. Waiting ...");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        _arm_status = _arm_interface->getArmState();
-    }
-
+    // while (_arm_status.joints.size() < 6)
+    // {
+    //     RCLCPP_ERROR(_node->get_logger(), "Received invalid arm state. Waiting ...");
+    //     std::this_thread::sleep_for(std::chrono::seconds(1));
+    //     getArmState();
+    // }
+    bool all_joints_ready = false;
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
-    _joints_number = _arm_status.joints.size();
-    for (size_t i = 0; i < _joints_number; i++)
+    while (!all_joints_ready)
     {
-        if (_arm_status.joints[i].state == 255)
+        getArmState();
+        all_joints_ready = true;
+        for (size_t i = 0; i < _joints_number; i++)
         {
-            RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
+            if (_arm_status.joints[i].state == 255 || _arm_status.joints[i].state == 420)
+            {
+                RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
+                all_joints_ready = false;
+            }
         }
     }
-
-    RCLCPP_INFO(_node->get_logger(), "Joint number: %i", _joints_number);
+    RCLCPP_INFO(_node->get_logger(), "Joints number: %i", _joints_number);
 
     RCLCPP_INFO(_node->get_logger(), "Done initializing joints.");
     return 0;
@@ -421,25 +408,24 @@ int BaseController::jointPositionInit()
     {
         while (_arm_status.joints[jnt_idx].state == 1)
         {
-            _arm_status = _arm_interface->getArmState();
-            RCLCPP_INFO(_node->get_logger(), "Joint number: %i", jnt_idx);
-            std::cout << "Initializing joint " << jnt_idx << std::endl;
+            getArmState();
+            RCLCPP_INFO(_node->get_logger(), "Initializing joint: %i", jnt_idx);
 
             //send init command to a single joint
             _arm_command.joints[jnt_idx].c_status = 2;
             _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
+            setArmCommand();
             std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
         }
-            _arm_command.joints[jnt_idx].c_status = 3;
-            _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
-            std::this_thread::sleep_for(std::chrono::microseconds((int)(2000000)));
-            
-            _arm_command.joints[jnt_idx].c_status = 2;
-            _arm_command.timestamp = std::chrono::steady_clock::now();
-            _arm_interface->setArmCommand(_arm_command);
-            std::this_thread::sleep_for(std::chrono::microseconds((int)(100000)));
+        _arm_command.joints[jnt_idx].c_status = 3;
+        _arm_command.timestamp = std::chrono::steady_clock::now();
+        setArmCommand();
+        std::this_thread::sleep_for(std::chrono::microseconds((int)(2000000)));
+
+        _arm_command.joints[jnt_idx].c_status = 2;
+        _arm_command.timestamp = std::chrono::steady_clock::now();
+        setArmCommand();
+        std::this_thread::sleep_for(std::chrono::microseconds((int)(100000)));
     }
     RCLCPP_INFO(_node->get_logger(), "Done initializing robot position.");
     return 0;
@@ -508,7 +494,7 @@ int BaseController::paramInit()
 int BaseController::varInit()
 {
     RCLCPP_INFO(_node->get_logger(), "Initializing controller variables.");
-    _arm_command.joints.resize(_joints_number);
+    // _arm_command.joints.resize(_joints_number);
     _friction_chart.resize(_joints_number);
     _Kp.resize(_joints_number);
     _Ki.resize(_joints_number);
@@ -574,7 +560,7 @@ int BaseController::varInit()
     }
 
     //GET STARTING POSITION - HOLD TRAJECTORY
-    _arm_status = _arm_interface->getArmState();
+    getArmState();
     _trajectory.points.resize(1);
     _trajectory.points[0].positions.resize(_joints_number);
     _trajectory.points[0].velocities.resize(_joints_number);
@@ -749,7 +735,6 @@ int BaseController::calculateID()
     return 0;
 }
 
-
 int BaseController::communicate()
 {
     // helpers::Timer asdf(__func__,_node->get_logger());
@@ -782,7 +767,7 @@ int BaseController::communicate()
     _cartesian_error_norm_pub->publish(error_msg);
     _controller_state_pub->publish(state_msg);
     _arm_command.timestamp = std::chrono::steady_clock::now();
-    _arm_interface->setArmCommand(_arm_command);
+    setArmCommand();
     return 0;
 }
 
@@ -793,7 +778,7 @@ void BaseController::controlLoop()
     _t_current = std::chrono::steady_clock::now();
 
     //GET JOINT STATES
-    _arm_status = _arm_interface->getArmState();
+    getArmState();
 
     // for (size_t i = 0; i < _joints_number; i++)
     // {
@@ -870,7 +855,7 @@ void BaseController::init()
         _arm_command.joints[jnt_idx].c_status = 2;
     }
     _arm_command.timestamp = std::chrono::steady_clock::now();
-    _arm_interface->setArmCommand(_arm_command);
+    setArmCommand();
     RCLCPP_INFO(_node->get_logger(), "shutting down");
     exit(0);
 }
