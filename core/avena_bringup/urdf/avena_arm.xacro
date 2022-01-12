@@ -37,9 +37,9 @@
         <material name="gray" />
       </visual>
       <inertial>
-        <origin xyz="0.019 0. 0.0445 " rpy="0. 0. ${pi/2}"/>
-        <mass value="1.960"/>
-        <inertia ixx="2.233e-03"  ixy="0."  ixz="0." iyy="2.047e-03" iyz="0." izz="2.384e-03" />
+        <origin xyz="-0.00005 -0.007 0.0175 " rpy="0. 0. ${pi/2}"/>
+        <mass value="3.5"/>
+        <inertia ixx="5.372e-03"  ixy="0."  ixz="0." iyy="4.691e-03" iyz="0." izz="5.059e-03" />
       </inertial>
       <collision>
         <origin xyz="0 0 0.0495" rpy="${pi} 0 ${-pi/2}" />
@@ -58,9 +58,9 @@
         <material name="gray" />
       </visual>
       <inertial>
-        <origin xyz="-0.226 0 0.0334" rpy="0. 0. ${pi/2}"/>
-        <mass value="4.660"/>
-        <inertia ixx="1.941e-01"  ixy="0."  ixz="0." iyy="5.522e-03" iyz="0." izz="1.941e-01" />
+        <origin xyz="0. 0.17651 0.015.28" rpy="0. 0. ${pi/2}"/>
+        <mass value="6.3"/>
+        <inertia ixx="2.809e-01"  ixy="0."  ixz="0." iyy="8.463e-03" iyz="0." izz="2.804e-01" />
       </inertial>
       <collision>
         <origin xyz="0 0 0.0495" rpy="0 ${pi} ${pi/2}" />
