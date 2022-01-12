@@ -58,7 +58,7 @@
         <material name="gray" />
       </visual>
       <inertial>
-        <origin xyz="0. 0.17651 0.015.28" rpy="0. 0. ${pi/2}"/>
+        <origin xyz="0. 0.17651 0.01528" rpy="0. 0. ${pi/2}"/>
         <mass value="6.3"/>
         <inertia ixx="2.809e-01"  ixy="0."  ixz="0." iyy="8.463e-03" iyz="0." izz="2.804e-01" />
       </inertial>
