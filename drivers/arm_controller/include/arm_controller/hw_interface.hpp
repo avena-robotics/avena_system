@@ -67,8 +67,7 @@ public:
         std::cout << "Allocating " << var_mem_size << " bytes" << std::endl;
 
         std::cout << "Create shared memory location" << std::endl;
-        _shared_memory_segment = std::make_shared<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, "HWSharedMemory", var_mem_size*2);
-        
+        _shared_memory_segment = std::make_shared<boost::interprocess::managed_shared_memory>(boost::interprocess::create_only, "HWSharedMemory", var_mem_size * 2);
 
         std::cout << "Create shared memory variables" << std::endl;
         _arm_command = std::shared_ptr<ArmCommand>(_shared_memory_segment->construct<ArmCommand>("shmArmCommand")());
@@ -76,10 +75,8 @@ public:
         _gripper_command = std::shared_ptr<GripperCommand>(_shared_memory_segment->construct<GripperCommand>("shmGripperCommand")());
         _gripper_status = std::shared_ptr<GripperStatus>(_shared_memory_segment->construct<GripperStatus>("shmGripperStatus")());
         std::cout << "Done initializing shared memory" << std::endl;
-        std::cout << _shared_memory_segment->get_free_memory()<< std::endl;
+        std::cout << _shared_memory_segment->get_free_memory() << std::endl;
         _can_addr = can_addr;
-
-
 
         //init vars
         for (size_t i = 0; i < 6; i++)
@@ -111,7 +108,6 @@ public:
             _gripper_status->state = 420;
         }
 
-
         while (_last_msg.rx_msgs.size() < 1)
         {
             std::cout << "Initializing connection with CAN." << std::endl;
@@ -125,7 +121,6 @@ public:
                 std::cout << "Established connection with CAN" << std::endl;
             }
         }
-
 
         _get_timestamp = std::chrono::steady_clock::now();
         _command_timestamp = std::chrono::steady_clock::now();
@@ -167,7 +162,7 @@ private:
     {
         std::chrono::microseconds ref_read_time((int)(1000000. / fq));
         std::chrono::microseconds read_time = ref_read_time;
-
+        std::cout << "Starting communication loop." << std::endl;
         while (1)
         {
             // if (_get_delay > std::chrono::microseconds(100))
@@ -204,14 +199,17 @@ private:
 
     bool sendArmCommand(std::shared_ptr<ArmCommand> arm_command, std::chrono::microseconds read_time)
     {
-        boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_arm_command->mutex);
+
         std::stringstream can_msg_str;
 
         can_msg_str << _can_addr << "##1";
-        for (size_t i = 0; i < 6; i++)
         {
-            can_msg_str << std::hex << std::setfill('0') << std::setw(4) << (int16_t)(arm_command->joints[i].c_torque / _torque_multiplier);
-            can_msg_str << std::hex << std::setfill('0') << std::setw(2) << (int16_t)(arm_command->joints[i].c_status);
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_arm_command->mutex);
+            for (size_t i = 0; i < 6; i++)
+            {
+                can_msg_str << std::hex << std::setfill('0') << std::setw(4) << (int16_t)(arm_command->joints[i].c_torque / _torque_multiplier);
+                can_msg_str << std::hex << std::setfill('0') << std::setw(2) << (int16_t)(arm_command->joints[i].c_status);
+            }
         }
         // for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
         // {
@@ -252,6 +250,16 @@ private:
             _arm_status->joints[arm_id].current_error = _last_msg.rx_msgs[i][10];
             _arm_status->joints[arm_id].prev_error = _last_msg.rx_msgs[i][11];
         }
+        // {
+        //     arm_id = i;
+        //     _arm_status->joints[arm_id].position += 0;
+        //     _arm_status->joints[arm_id].velocity = 0;
+        //     _arm_status->joints[arm_id].torque = _arm_command->joints[arm_id].c_torque;
+        //     _arm_status->joints[arm_id].temperature = 20;
+        //     _arm_status->joints[arm_id].state = 3;
+        //     _arm_status->joints[arm_id].current_error = 0;
+        //     _arm_status->joints[arm_id].prev_error = 0;
+        // }
 
         _arm_status->timestamp = _status_timestamp;
 

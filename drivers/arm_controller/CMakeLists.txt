@@ -27,6 +27,7 @@ find_package(sensor_msgs REQUIRED)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(pinocchio REQUIRED)
 find_package(Boost REQUIRED)
+find_package(OpenMP REQUIRED)
 
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -40,7 +41,7 @@ target_include_directories(base_controller  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(base_controller  Eigen3::Eigen rt)
+target_link_libraries(base_controller  Eigen3::Eigen OpenMP::OpenMP_CXX rt)
 
 
 ament_target_dependencies(base_controller 
@@ -53,6 +54,7 @@ ament_target_dependencies(base_controller
   candriver
   pinocchio
   Boost
+  OpenMP
 )
 
 
@@ -159,7 +161,7 @@ target_include_directories(base_controller_lib  PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(base_controller_lib  Eigen3::Eigen rt)
+target_link_libraries(base_controller_lib  Eigen3::Eigen OpenMP::OpenMP_CXX rt)
 
 target_compile_definitions(base_controller_lib PRIVATE "BASE_CONTROLLER_BUILDING_LIBRARY")
 
@@ -173,6 +175,7 @@ ament_target_dependencies(base_controller_lib
   candriver
   pinocchio
   Boost
+  OpenMP
 )
 
 install(TARGETS

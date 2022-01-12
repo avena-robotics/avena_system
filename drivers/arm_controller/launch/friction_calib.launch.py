@@ -20,6 +20,13 @@ def launch_setup(context, *args, **kwargs):
     return [
         Node(
             package='arm_controller',
+            executable='hw_interface',
+            output='both',
+            # parameters=[params, {'config_path':config}]
+            # prefix=['valgrind --leak-check=yes --track-origins=yes']
+        ),
+        Node(
+            package='arm_controller',
             executable='friction_calibration',
             output='both',
             parameters=[params, {'config_path':config}],

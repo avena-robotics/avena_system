@@ -24,8 +24,9 @@ BaseController::BaseController(int argc, char **argv)
     _shm_arm_command = std::shared_ptr<ArmCommand>(_shared_memory_segment->find<ArmCommand>("shmArmCommand").first);
     _shm_arm_status = std::shared_ptr<ArmStatus>(_shared_memory_segment->find<ArmStatus>("shmArmStatus").first);
 
+    _cb_group = _node->create_callback_group(rclcpp::callback_group::CallbackGroupType::Reentrant);
     //COMMUNICATION INIT
-    _command_service = _node->create_service<custom_interfaces::srv::ControlCommand>("/arm_controller/commands", std::bind(&BaseController::setStateCb, this, std::placeholders::_1, std::placeholders::_2));
+    _command_service = _node->create_service<custom_interfaces::srv::ControlCommand>("/arm_controller/commands", std::bind(&BaseController::setStateCb, this, std::placeholders::_1, std::placeholders::_2), ::rmw_qos_profile_default, _cb_group);
     _trajectory_sub = _node->create_subscription<trajectory_msgs::msg::JointTrajectory>("/trajectory", 1000, std::bind(&BaseController::setTrajectoryCb, this, std::placeholders::_1));
     _time_factor_sub = _node->create_subscription<std_msgs::msg::Float64>("/arm_controller/time_factor", 10, std::bind(&BaseController::setTimeFactorCb, this, std::placeholders::_1));
     _set_joint_states_pub = _node->create_publisher<sensor_msgs::msg::JointState>("set_joint_states", 10);
@@ -43,6 +44,16 @@ BaseController::BaseController(int argc, char **argv)
 
 BaseController::~BaseController()
 {
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
+        _arm_command.joints[jnt_idx].c_torque = 0;
+        //TODO: change to stop (2)
+        _arm_command.joints[jnt_idx].c_status = 2;
+    }
+    _arm_command.timestamp = std::chrono::steady_clock::now();
+    setArmCommand();
+    RCLCPP_INFO(_node->get_logger(), "shutting down");
+    exit(0);
 }
 
 bool BaseController::getArmState()
@@ -387,6 +398,7 @@ int BaseController::jointInit()
                 all_joints_ready = false;
             }
         }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     RCLCPP_INFO(_node->get_logger(), "Joints number: %i", _joints_number);
 
@@ -715,8 +727,7 @@ int BaseController::calculateTorque()
 
 int BaseController::calculateID()
 {
-    // helpers::Timer asdf(__func__,_node->get_logger());
-    //ID
+    // ID
     std::vector<double> q_temp;
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
@@ -726,6 +737,25 @@ int BaseController::calculateID()
     _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(q_temp.data(), q_temp.size());
     _qd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].velocities.data(), _trajectory.points[_trajectory_index].velocities.size());
     _qdd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].accelerations.data(), _trajectory.points[_trajectory_index].accelerations.size());
+
+    // const Eigen::VectorXd qmax = Eigen::VectorXd::Ones(_model.nq);
+    // // PinocchioTicToc timer(PinocchioTicToc::US);
+    // PINOCCHIO_ALIGNED_STD_VECTOR(Eigen::VectorXd)
+    // qs(1);
+    // PINOCCHIO_ALIGNED_STD_VECTOR(Eigen::VectorXd)
+    // qdots(1);
+    // PINOCCHIO_ALIGNED_STD_VECTOR(Eigen::VectorXd)
+    // qddots(1);
+    // for (size_t i = 0; i < 1; ++i)
+    // {
+    //     qs[i] = pinocchio::randomConfiguration(_model, -qmax, qmax);
+    //     qdots[i] = Eigen::VectorXd::Random(_model.nv);
+    //     qddots[i] = Eigen::VectorXd::Random(_model.nv);
+    // }
+
+    // timer.tic();
+    // pinocchio::rnea(_model, *_data, qs[0], qdots[0], qddots[0]);
+    // std::cout << "RNEA = \t\t"; timer.toc(std::cout,1);
     pinocchio::rnea(_model, *_data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
     _tau = _data->tau;
     pinocchio::forwardKinematics(_model, *_data, _q);
@@ -813,12 +843,8 @@ void BaseController::controlLoop()
     }
     calculateID();
     calculateTorque();
-    communicate();
 
-    //execute callbacks
-    _exec->spin_some();
-
-    _loop_it++;
+    // _loop_it++;
     //control loop frequency
     _remaining_time = std::floor(1000000 / _trajectory_rate - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
 
@@ -826,7 +852,6 @@ void BaseController::controlLoop()
     {
         RCLCPP_ERROR(_node->get_logger(), "Loop taking too long to execute. Loop took: %i us", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(_remaining_time));
 }
 
 //initialize movement functionalities, start controller
@@ -843,21 +868,11 @@ void BaseController::init()
     std::this_thread::sleep_for(std::chrono::microseconds(100));
     RCLCPP_INFO(_node->get_logger(), "Done initializing, entering control loop");
 
-    while (rclcpp::ok())
-    {
-        controlLoop();
-    }
 
-    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
-    {
-        _arm_command.joints[jnt_idx].c_torque = 0;
-        //TODO: change to stop (2)
-        _arm_command.joints[jnt_idx].c_status = 2;
-    }
-    _arm_command.timestamp = std::chrono::steady_clock::now();
-    setArmCommand();
-    RCLCPP_INFO(_node->get_logger(), "shutting down");
-    exit(0);
+    rclcpp::TimerBase::SharedPtr loop_timer, comms_timer;
+    comms_timer = _node->create_wall_timer(std::chrono::microseconds(10000), std::bind(&BaseController::communicate, this), _cb_group);
+    loop_timer = _node->create_wall_timer(std::chrono::microseconds(2000), std::bind(&BaseController::controlLoop, this), _cb_group);
+    _exec->spin();
 }
 
 int main(int argc, char **argv)

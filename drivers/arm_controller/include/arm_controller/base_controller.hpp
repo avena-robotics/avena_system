@@ -34,7 +34,7 @@
 #include "pinocchio/parsers/urdf.hpp"
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
-#include "pinocchio/algorithm/parallel/rnea.hpp"
+// #include "pinocchio/algorithm/parallel/rnea.hpp"
 #include "pinocchio/algorithm/kinematics.hpp"
 
 struct friction_comp
@@ -172,8 +172,12 @@ protected:
     trajectory_msgs::msg::JointTrajectory _trajectory;
     trajectory_msgs::msg::JointTrajectory _saved_trajectory;
 
-    //COMMUNICATION
+
+    //ROS
     std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> _exec;
+    rclcpp::callback_group::CallbackGroup::SharedPtr _cb_group;
+
+    //COMMUNICATION
 
     //__PUBLISHERS
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _set_joint_states_pub;
