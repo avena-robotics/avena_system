@@ -9,4 +9,4 @@ franka:
   controller_frequency: 30
 
 avena:
-  controller_frequency: 500
+  controller_frequency: 1000
