@@ -22,7 +22,7 @@ def launch_setup(context, *args, **kwargs):
             package='arm_controller',
             executable='hw_interface',
             output='both',
-            # parameters=[params, {'config_path':config}]
+            parameters=[{'loop_frequency':1100.}]
             # prefix=['valgrind --leak-check=yes --track-origins=yes']
         ),
         Node(

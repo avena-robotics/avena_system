@@ -467,9 +467,13 @@ int BaseController::paramInit()
     //PARAMETERS INIT
     RCLCPP_INFO(_node->get_logger(), "Initializing controller parameters.");
     _node->declare_parameter<double>("error_margin", 0.01);
-    _node->declare_parameter<double>("_cartesian_error_margin", 0.01);
+    _node->declare_parameter<double>("loop_frequency", 500.);
+    _node->declare_parameter<double>("communication_rate", 100.);
+    _node->declare_parameter<double>("cartesian_error_margin", 0.01);
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
+    _node->get_parameter("loop_frequency", _trajectory_rate);
+    _node->get_parameter("communication_rate", _communication_rate);
     _node->get_parameter("error_margin", _error_margin);
     _node->get_parameter("_cartesian_error_margin", _cartesian_error_margin);
     for (size_t i = 0; i < _joints_number; i++)
@@ -868,10 +872,9 @@ void BaseController::init()
     std::this_thread::sleep_for(std::chrono::microseconds(100));
     RCLCPP_INFO(_node->get_logger(), "Done initializing, entering control loop");
 
-
     rclcpp::TimerBase::SharedPtr loop_timer, comms_timer;
-    comms_timer = _node->create_wall_timer(std::chrono::microseconds(10000), std::bind(&BaseController::communicate, this), _cb_group);
-    loop_timer = _node->create_wall_timer(std::chrono::microseconds(2000), std::bind(&BaseController::controlLoop, this), _cb_group);
+    comms_timer = _node->create_wall_timer(std::chrono::microseconds(int(1000000 / _communication_rate)), std::bind(&BaseController::communicate, this), _cb_group);
+    loop_timer = _node->create_wall_timer(std::chrono::microseconds(int(1000000 / _trajectory_rate)), std::bind(&BaseController::controlLoop, this), _cb_group);
     _exec->spin();
 }
 

@@ -4,6 +4,8 @@
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
 #include "rclcpp/rclcpp.hpp"
+#include <std_msgs/msg/bool.hpp>
+
 #include <string>
 #include <cstdlib>
 #include <math.h>
@@ -56,7 +58,7 @@ class ArmInterface : public rclcpp::Node
 {
 
 public:
-    ArmInterface(std::string can_addr, int fq) : Node("candriver")
+    ArmInterface(std::string can_addr) : Node("candriver")
     {
         std::cout << "Clear shared memory location" << std::endl;
         boost::interprocess::shared_memory_object::remove("HWSharedMemory");
@@ -122,18 +124,33 @@ public:
             }
         }
 
+        this->declare_parameter<double>("loop_frequency", 500);
+        this->get_parameter("loop_frequency", _loop_fq);
+
+        _can_loop_t = std::chrono::microseconds(int(1000000 / _loop_fq));
+
         _get_timestamp = std::chrono::steady_clock::now();
         _command_timestamp = std::chrono::steady_clock::now();
         _status_timestamp = std::chrono::steady_clock::now();
 
-        _max_delay = std::chrono::microseconds((int)(1000000. / fq) * 5);
+        // _max_delay = std::chrono::microseconds((int)(1000000. / fq) * 5);
 
         _joints_number = _last_msg.rx_msgs.size();
 
         std::cout << "Arm connection initialization successfull." << std::endl;
 
-        std::thread comms_thread(&ArmInterface::startCommsLoop, this, fq);
-        comms_thread.detach();
+        // std::thread comms_thread(&ArmInterface::startCommsLoop, this, fq);
+        // comms_thread.detach();
+
+        _test_pub = this->create_publisher<std_msgs::msg::Bool>("candriver_test", 100);
+        _test_msg.data = 1;
+
+        rclcpp::TimerBase::SharedPtr loop_timer, comms_timer;
+        comms_timer = this->create_wall_timer(_can_loop_t, std::bind(&ArmInterface::startCommsLoop, this));
+        _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+        _exec->add_node(this->get_node_base_interface());
+        std::cout << "Starting communication loop." << std::endl;
+        _exec->spin();
     }
 
     ~ArmInterface()
@@ -158,43 +175,39 @@ public:
     // }
 
 private:
-    void startCommsLoop(int fq)
+    void startCommsLoop()
     {
-        std::chrono::microseconds ref_read_time((int)(1000000. / fq));
-        std::chrono::microseconds read_time = ref_read_time;
-        std::cout << "Starting communication loop." << std::endl;
-        while (1)
-        {
-            // if (_get_delay > std::chrono::microseconds(100))
-            // {
-            //     if (_get_delay > std::chrono::microseconds(1100))
-            //     {
-            //         read_time = _get_delay - std::chrono::microseconds(100);
-            //     }
-            //     else
-            //     {
-            //         std::this_thread::sleep_for(_get_delay - std::chrono::microseconds(100));
-            //     }
-            // }
 
-            // if (read_time < ref_read_time/2)
-            // {
-            //     read_time = ref_read_time;
-            // }
+        // if (_get_delay > std::chrono::microseconds(100))
+        // {
+        //     if (_get_delay > std::chrono::microseconds(1100))
+        //     {
+        //         read_time = _get_delay - std::chrono::microseconds(100);
+        //     }
+        //     else
+        //     {
+        //         std::this_thread::sleep_for(_get_delay - std::chrono::microseconds(100));
+        //     }
+        // }
 
-            // if (std::chrono::steady_clock::now() - _command_timestamp > _max_delay)
-            // {
-            //     sendArmCommand(ArmCommand(), read_time);
-            // }
-            // else
-            // {
-            //     sendArmCommand(_arm_command, read_time);
-            // }
+        // if (read_time < ref_read_time/2)
+        // {
+        //     read_time = ref_read_time;
+        // }
 
-            sendArmCommand(_arm_command, read_time);
+        // if (std::chrono::steady_clock::now() - _command_timestamp > _max_delay)
+        // {
+        //     sendArmCommand(ArmCommand(), read_time);
+        // }
+        // else
+        // {
+        //     sendArmCommand(_arm_command, read_time);
+        // }
+        _test_pub->publish(_test_msg);
+        // std::cout << "asdf" << std::endl;
+        sendArmCommand(_arm_command, _can_loop_t);
 
-            updateArmState();
-        }
+        updateArmState();
     }
 
     bool sendArmCommand(std::shared_ptr<ArmCommand> arm_command, std::chrono::microseconds read_time)
@@ -225,7 +238,7 @@ private:
         //     can_msg_str << "0";
         // }
 
-        _can_interface.sendMessage(can_msg_str.str(), read_time);
+        _can_interface.sendMessage(can_msg_str.str(), read_time - std::chrono::microseconds(400));
 
         _last_msg = _can_interface.getResponse(_joints_number);
         _status_timestamp = _last_msg.response_timestamp;
@@ -238,28 +251,29 @@ private:
         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_arm_status->mutex);
         int arm_id;
 
-        for (size_t i = 0; i < _last_msg.rx_msgs.size(); i++)
+        // for (size_t i = 0; i < _last_msg.rx_msgs.size(); i++)
 
-        {
-            arm_id = _last_msg.rx_msgs[i][0] / 16 - 10;
-            _arm_status->joints[arm_id].position = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][2] << 8) ^ (_last_msg.rx_msgs[i][3])) * _position_multiplier;
-            _arm_status->joints[arm_id].velocity = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5])) / INT16_MAX * 2 * M_PI;
-            _arm_status->joints[arm_id].torque = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][6] << 8) ^ (_last_msg.rx_msgs[i][7])) * _torque_multiplier;
-            _arm_status->joints[arm_id].temperature = _last_msg.rx_msgs[i][8];
-            _arm_status->joints[arm_id].state = _last_msg.rx_msgs[i][9];
-            _arm_status->joints[arm_id].current_error = _last_msg.rx_msgs[i][10];
-            _arm_status->joints[arm_id].prev_error = _last_msg.rx_msgs[i][11];
-        }
         // {
-        //     arm_id = i;
-        //     _arm_status->joints[arm_id].position += 0;
-        //     _arm_status->joints[arm_id].velocity = 0;
-        //     _arm_status->joints[arm_id].torque = _arm_command->joints[arm_id].c_torque;
-        //     _arm_status->joints[arm_id].temperature = 20;
-        //     _arm_status->joints[arm_id].state = 3;
-        //     _arm_status->joints[arm_id].current_error = 0;
-        //     _arm_status->joints[arm_id].prev_error = 0;
+        //     arm_id = _last_msg.rx_msgs[i][0] / 16 - 10;
+        //     _arm_status->joints[arm_id].position = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][2] << 8) ^ (_last_msg.rx_msgs[i][3])) * _position_multiplier;
+        //     _arm_status->joints[arm_id].velocity = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5])) / INT16_MAX * 2 * M_PI;
+        //     _arm_status->joints[arm_id].torque = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][6] << 8) ^ (_last_msg.rx_msgs[i][7])) * _torque_multiplier;
+        //     _arm_status->joints[arm_id].temperature = _last_msg.rx_msgs[i][8];
+        //     _arm_status->joints[arm_id].state = _last_msg.rx_msgs[i][9];
+        //     _arm_status->joints[arm_id].current_error = _last_msg.rx_msgs[i][10];
+        //     _arm_status->joints[arm_id].prev_error = _last_msg.rx_msgs[i][11];
         // }
+        for (size_t i = 0; i < 6; i++)
+        {
+            arm_id = i;
+            _arm_status->joints[arm_id].position += 0;
+            _arm_status->joints[arm_id].velocity = 0;
+            _arm_status->joints[arm_id].torque = _arm_command->joints[arm_id].c_torque;
+            _arm_status->joints[arm_id].temperature = 20;
+            _arm_status->joints[arm_id].state = 3;
+            _arm_status->joints[arm_id].current_error = 0;
+            _arm_status->joints[arm_id].prev_error = 0;
+        }
 
         _arm_status->timestamp = _status_timestamp;
 
@@ -276,14 +290,20 @@ private:
     std::shared_ptr<boost::interprocess::managed_shared_memory> _shared_memory_segment;
     int _joints_number;
 
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _test_pub;
+    std_msgs::msg::Bool _test_msg;
+
     std::chrono::steady_clock::time_point _status_timestamp, _command_timestamp, _get_timestamp;
     std::chrono::microseconds _max_delay, _get_delay;
+    std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> _exec;
 
     //PHYSICAL PARAMS
     double _gear_ratio = 121.;
     double _gear_const = 84;
     double _torque_const = 0.1118;
     double _motor_max_current = 31.853;
+    double _loop_fq = 0;
+    std::chrono::microseconds _can_loop_t;
 
     // double _torque_multiplier = _torque_const * _gear_ratio * _motor_max_current / (double)INT16_MAX;
     double _torque_multiplier = 256. / (double)INT16_MAX;

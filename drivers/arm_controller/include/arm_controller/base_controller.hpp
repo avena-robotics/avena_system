@@ -104,12 +104,9 @@ protected:
 
     // std::shared_ptr<ArmInterface> _arm_interface;
 
-    //TODO:
-    const double _trajectory_rate = 500;
-
     //PARAMETERS
     size_t _joints_number = 6;
-    double _error_margin, _cartesian_error_margin;
+    double _error_margin, _cartesian_error_margin, _communication_rate, _trajectory_rate;
     std::string _config_path;
     std::string _urdf;
 
