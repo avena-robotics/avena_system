@@ -30,7 +30,7 @@
 
     <link name="${arm_id}_link_1">
       <visual>
-        <origin xyz="0 0 0.0495" rpy="${pi} 0 ${-pi/2}" />
+        <origin xyz="0 0 0.0763" rpy="${pi} 0 ${-pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_1.stl" scale="0.001 0.001 0.001" />
         </geometry>
@@ -42,7 +42,7 @@
         <inertia ixx="5.372e-03"  ixy="0."  ixz="0." iyy="4.691e-03" iyz="0." izz="5.059e-03" />
       </inertial>
       <collision>
-        <origin xyz="0 0 0.0495" rpy="${pi} 0 ${-pi/2}" />
+        <origin xyz="0 0 0.0763" rpy="${pi} 0 ${-pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_1.stl" scale="0.001 0.001 0.001" />
         </geometry>
@@ -51,7 +51,7 @@
 
     <link name="${arm_id}_link_2">
       <visual>
-        <origin xyz="0 0 0.0495" rpy="0 ${pi} ${pi/2}" />
+        <origin xyz="0 0 0.0763" rpy="0 ${pi} ${pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_2.stl" scale="0.001 0.001 0.001" />
         </geometry>
@@ -63,7 +63,7 @@
         <inertia ixx="2.809e-01"  ixy="0."  ixz="0." iyy="8.463e-03" iyz="0." izz="2.804e-01" />
       </inertial>
       <collision>
-        <origin xyz="0 0 0.0495" rpy="0 ${pi} ${pi/2}" />
+        <origin xyz="0 0 0.0763" rpy="0 ${pi} ${pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_2.stl" scale="0.001 0.001 0.001" />
         </geometry>
@@ -173,7 +173,7 @@
     </joint>
 
     <joint name="${arm_id}_joint_2" type="revolute">
-      <origin xyz="0.064 0 0.0495" rpy="0 ${pi/2} 0" />
+      <origin xyz="0.063 0 0.0763" rpy="0 ${pi/2} 0" />
       <parent link="${arm_id}_link_1" />
       <child link="${arm_id}_link_2" />
       <axis xyz="0 0 1" />
@@ -181,7 +181,7 @@
     </joint>
 
     <joint name="${arm_id}_joint_3" type="revolute">
-      <origin xyz="-0.452 0 0" rpy="0 ${pi} 0" />
+      <origin xyz="-0.467 0 0.009" rpy="0 ${pi} 0" />
       <parent link="${arm_id}_link_2" />
       <child link="${arm_id}_link_3" />
       <axis xyz="0 0 1" />

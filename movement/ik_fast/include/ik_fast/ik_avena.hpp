@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// ikfast version 0x1000004b generated on 2021-08-25 14:28:29.768267
+/// ikfast version 0x1000004b generated on 2022-01-18 09:54:36.019359
 /// Generated using solver transform6d
 /// To compile with gcc:
 ///     gcc -lstdc++ ik.cpp
@@ -1007,7 +1007,6 @@ namespace IKFAST_NAMESPACE_AVENA
     IKFAST_API bool ComputeIk(const IkReal *eetrans, const IkReal *eerot, const IkReal *pfree, IkSolutionListBase<IkReal> &solutions);
 
     IKFAST_API bool ComputeIk2(const IkReal *eetrans, const IkReal *eerot, const IkReal *pfree, IkSolutionListBase<IkReal> &solutions, void *pOpenRAVEManip);
-
     IKFAST_API const char *GetKinematicsHash();
 
     IKFAST_API const char *GetIkFastVersion();
