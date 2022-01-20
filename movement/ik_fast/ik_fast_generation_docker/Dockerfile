@@ -5,7 +5,7 @@
 # 1. Convert URDF to Collada:
 #    rosrun collada_urdf urdf_to_collada robot.urdf robot.dae
 # 2. Round all numbers to 5 decimal places:
-#    python /opt/ros/noetic/lib/moveit_kinematics/round_collada_numbers.py /robot.dae /robot.rounded.dae 5
+#    python /opt/ros/noetic/lib/moveit_kinematics/round_collada_numbers.py ./robot.dae ./robot.rounded.dae 5
 # 3. Generate IK solution (remember to set --baselink, --eelink and --freeindex to correct values):
 #    python `openrave-config --python-dir`/openravepy/_openravepy_/ikfast.py --robot=robot.rounded.dae --iktype=transform6d --baselink=0 --eelink=7 --savefile=ik_robot.cpp
 #    Examples:
