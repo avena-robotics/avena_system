@@ -1,6 +1,6 @@
 controller_list:
   - name: fake_avena_arm_controller
-    type: $(arg fake_execution_type)
+    type: FollowJointTrajectory
     joints:
       - avena_joint_1
       - avena_joint_2
