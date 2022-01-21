@@ -36,10 +36,29 @@ struct ResponseMsg
 class CanInterface
 {
 public:
+
+/****
+ * Initializes CAN FD communication on specified interface.
+ * @param can_id socket interface
+ ****/
+
     CanInterface(std::string can_id = "can1");
     ~CanInterface();
 
+/****
+ * Returns response messages from CAN FD socket
+ * @param expected_size number of expected responses
+ * @return vector containing response frames
+ ****/
+
     ResponseMsg getResponse(size_t expected_msg = 0);
+
+/****
+ * Transmits a message and retrieves the responses
+ * @param msg message to transmit
+ * @param read_duration time given for response retrieval
+ ****/
+
     bool sendMessage(std::string msg, std::chrono::microseconds read_duration);
 
 private:
@@ -49,7 +68,17 @@ private:
     canfd_frame _rx_frame, _tx_frame;
 
     ResponseMsg _response_msg;
+
+/****
+ * Sends a single frame previously written to @see _tx_frame
+ ****/
+
     bool sendFrame();
+
+/****
+ * Reads a single frame from rx buffer into @see _rx_frame
+ ****/
+
     bool readFrame(bool verbose);
 };
 #endif // CANDRIVER_H_

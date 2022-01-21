@@ -198,14 +198,14 @@ double BaseController::compensateFriction(double vel, double temp, int jnt_idx)
 }
 
 //dynamic PID parameters
-void BaseController::updateParams(PID &pid, int joint_index)
+void BaseController::updateParams(std::vector<PID> &pid, int joint_index)
 {
     _node->get_parameter("Kp_gain_" + std::to_string(joint_index), _Kp[joint_index]);
     _node->get_parameter("Ki_gain_" + std::to_string(joint_index), _Ki[joint_index]);
     _node->get_parameter("Kd_gain_" + std::to_string(joint_index), _Kd[joint_index]);
     _node->get_parameter("FFv_gain_" + std::to_string(joint_index), _FFv[joint_index]);
     _node->get_parameter("FFa_gain_" + std::to_string(joint_index), _FFv[joint_index]);
-    pid.update(_Kp[joint_index], _Ki[joint_index], _Kd[joint_index]);
+    pid[joint_index].update(_Kp[joint_index], _Ki[joint_index], _Kd[joint_index]);
 }
 
 void BaseController::setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg)
@@ -223,7 +223,7 @@ void BaseController::setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::Shar
 void BaseController::securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr msg)
 {
     RCLCPP_INFO(_node->get_logger(), "Received security pause trigger.");
-    _controller_state = 1;
+    _controller_state = STOP;
     if (_time_factor != 0.)
         _prev_time_factor = _time_factor;
     _time_factor = 0.;
@@ -254,7 +254,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
     //init
     case 0:
         RCLCPP_INFO(_node->get_logger(), "Received start command.");
-        _controller_state = 4;
+        _controller_state = EXECUTE;
         _t_start = std::chrono::steady_clock::now();
         _time_accumulator = std::chrono::microseconds(0);
         _time_factor = 1.;
@@ -318,7 +318,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         if (in_place)
         {
             _trajectory = _saved_trajectory;
-            _controller_state = 4;
+            _controller_state = EXECUTE;
             _time_factor = _prev_time_factor;
             _t_start = std::chrono::steady_clock::now();
             _time_accumulator = std::chrono::microseconds(0);
@@ -342,7 +342,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
 int BaseController::stopArm()
 {
     RCLCPP_INFO(_node->get_logger(), "Received stop command.");
-    _controller_state = 1;
+    _controller_state = STOP;
     if (_time_factor != 0.)
         _prev_time_factor = _time_factor;
     _time_factor = 0.;
@@ -354,7 +354,7 @@ int BaseController::pauseArm()
     if (_controller_state != 3)
     {
         RCLCPP_INFO(_node->get_logger(), "Received pause command.");
-        _controller_state = 3;
+        _controller_state = PAUSE;
         _t_stop = std::chrono::steady_clock::now();
         if (_time_factor != 0.)
             _prev_time_factor = _time_factor;
@@ -364,7 +364,7 @@ int BaseController::pauseArm()
 
 int BaseController::resumeArm()
 {
-    _controller_state = 2;
+    _controller_state = RESUME;
     _t_stop = std::chrono::steady_clock::now();
     return 0;
 }
@@ -466,9 +466,9 @@ int BaseController::paramInit()
 {
     //PARAMETERS INIT
     RCLCPP_INFO(_node->get_logger(), "Initializing controller parameters.");
-    _node->declare_parameter<double>("error_margin", 0.01);
     _node->declare_parameter<double>("loop_frequency", 500.);
     _node->declare_parameter<double>("communication_rate", 100.);
+    _node->declare_parameter<double>("error_margin", 0.01);
     _node->declare_parameter<double>("cartesian_error_margin", 0.01);
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
@@ -507,81 +507,81 @@ int BaseController::paramInit()
     return 0;
 }
 
-int BaseController::varInit()
+int BaseController::varInit(size_t joints_number)
 {
     RCLCPP_INFO(_node->get_logger(), "Initializing controller variables.");
-    // _arm_command.joints.resize(_joints_number);
-    _friction_chart.resize(_joints_number);
-    _Kp.resize(_joints_number);
-    _Ki.resize(_joints_number);
-    _Kd.resize(_joints_number);
-    _FFv.resize(_joints_number);
-    _FFa.resize(_joints_number);
-    _i_clamp_h.resize(_joints_number);
-    _i_clamp_l.resize(_joints_number);
-    _c_friction_val.resize(_joints_number);
-    _error.resize(_joints_number);
+    // _arm_command.joints.resize(joints_number);
+    _friction_chart.resize(joints_number);
+    _Kp.resize(joints_number);
+    _Ki.resize(joints_number);
+    _Kd.resize(joints_number);
+    _FFv.resize(joints_number);
+    _FFa.resize(joints_number);
+    _i_clamp_h.resize(joints_number);
+    _i_clamp_l.resize(joints_number);
+    _c_friction_val.resize(joints_number);
+    _error.resize(joints_number);
 
-    _set_joint_state_msg.name.resize(_joints_number);
-    _set_joint_state_msg.position.resize(_joints_number);
-    _set_joint_state_msg.velocity.resize(_joints_number);
-    _set_joint_state_msg.effort.resize(_joints_number);
+    _set_joint_state_msg.name.resize(joints_number);
+    _set_joint_state_msg.position.resize(joints_number);
+    _set_joint_state_msg.velocity.resize(joints_number);
+    _set_joint_state_msg.effort.resize(joints_number);
 
-    _arm_joint_state_msg.name.resize(_joints_number);
-    _arm_joint_state_msg.position.resize(_joints_number);
-    _arm_joint_state_msg.velocity.resize(_joints_number);
-    _arm_joint_state_msg.effort.resize(_joints_number);
+    _arm_joint_state_msg.name.resize(joints_number);
+    _arm_joint_state_msg.position.resize(joints_number);
+    _arm_joint_state_msg.velocity.resize(joints_number);
+    _arm_joint_state_msg.effort.resize(joints_number);
 
-    _arm_joint_errors_msg.name.resize(_joints_number);
-    _arm_joint_errors_msg.position.resize(_joints_number);
-    _arm_joint_errors_msg.velocity.resize(_joints_number);
-    _arm_joint_errors_msg.effort.resize(_joints_number);
+    _arm_joint_errors_msg.name.resize(joints_number);
+    _arm_joint_errors_msg.position.resize(joints_number);
+    _arm_joint_errors_msg.velocity.resize(joints_number);
+    _arm_joint_errors_msg.effort.resize(joints_number);
 
-    _q.resize(_joints_number);
-    _qd.resize(_joints_number);
-    _qdd.resize(_joints_number);
+    _q.resize(joints_number);
+    _qd.resize(joints_number);
+    _qdd.resize(joints_number);
 
-    _avg_acc.resize(_joints_number);
-    _avg_pos.resize(_joints_number);
-    _avg_vel.resize(_joints_number);
-    _avg_temp.resize(_joints_number);
-    _avg_tau.resize(_joints_number);
-    _prev_pos.resize(_joints_number);
+    _avg_acc.resize(joints_number);
+    _avg_pos.resize(joints_number);
+    _avg_vel.resize(joints_number);
+    _avg_temp.resize(joints_number);
+    _avg_tau.resize(joints_number);
+    _prev_pos.resize(joints_number);
 
-    _avg_acc_b.resize(_joints_number);
-    _avg_pos_b.resize(_joints_number);
-    _avg_vel_b.resize(_joints_number);
-    _avg_temp_b.resize(_joints_number);
-    _avg_tau_b.resize(_joints_number);
-    _frick_acu.resize(_joints_number);
+    _avg_acc_b.resize(joints_number);
+    _avg_pos_b.resize(joints_number);
+    _avg_vel_b.resize(joints_number);
+    _avg_temp_b.resize(joints_number);
+    _avg_tau_b.resize(joints_number);
+    _frick_acu.resize(joints_number);
 
-    //MEASUREMENT INIT
-    for (size_t i = 0; i < _joints_number; i++)
-    {
-        _frick_acu[i] = 0;
-        _prev_pos[i] = 0;
-        _avg_acc_b[i].resize(_avg_samples);
-        _avg_pos_b[i].resize(_avg_samples);
-        _avg_vel_b[i].resize(_avg_samples);
-        _avg_temp_b[i].resize(_avg_samples);
-        _avg_tau_b[i].resize(_avg_samples);
-        for (size_t j = 0; j < _avg_samples; j++)
-        {
-            _avg_acc_b[i][j] = 0;
-            _avg_pos_b[i][j] = 0;
-            _avg_vel_b[i][j] = 0;
-            _avg_temp_b[i][j] = 0;
-            _avg_tau_b[i][j] = 0;
-        }
-    }
+    // //MEASUREMENT INIT
+    // for (size_t i = 0; i < joints_number; i++)
+    // {
+    //     _frick_acu[i] = 0;
+    //     _prev_pos[i] = 0;
+    //     _avg_acc_b[i].resize(_avg_samples);
+    //     _avg_pos_b[i].resize(_avg_samples);
+    //     _avg_vel_b[i].resize(_avg_samples);
+    //     _avg_temp_b[i].resize(_avg_samples);
+    //     _avg_tau_b[i].resize(_avg_samples);
+    //     for (size_t j = 0; j < _avg_samples; j++)
+    //     {
+    //         _avg_acc_b[i][j] = 0;
+    //         _avg_pos_b[i][j] = 0;
+    //         _avg_vel_b[i][j] = 0;
+    //         _avg_temp_b[i][j] = 0;
+    //         _avg_tau_b[i][j] = 0;
+    //     }
+    // }
 
     //GET STARTING POSITION - HOLD TRAJECTORY
     getArmState();
     _trajectory.points.resize(1);
-    _trajectory.points[0].positions.resize(_joints_number);
-    _trajectory.points[0].velocities.resize(_joints_number);
-    _trajectory.points[0].accelerations.resize(_joints_number);
-    for (size_t i = 0; i < _joints_number; i++)
+    _trajectory.points[0].positions.resize(joints_number);
+    _trajectory.points[0].velocities.resize(joints_number);
+    _trajectory.points[0].accelerations.resize(joints_number);
+    for (size_t i = 0; i < joints_number; i++)
     {
         _trajectory.points[0].positions[i] = _arm_status.joints[i].position;
         _trajectory.points[0].velocities[i] = 0.;
@@ -594,7 +594,7 @@ int BaseController::varInit()
     _loop_it = 0;
     _t_start = std::chrono::steady_clock::now();
     _time_accumulator = std::chrono::microseconds(0);
-    _controller_state = 4;
+    _controller_state = EXECUTE;
     _time_factor = 0.;
     _prev_time_factor = 1.;
     _t_current = std::chrono::steady_clock::now();
@@ -634,26 +634,26 @@ int BaseController::getAverageArmState()
     return 0;
 }
 
-int BaseController::handleControllerState()
+int BaseController::handleControllerState(ControllerState controller_state)
 {
     //STATES
-    //stop
-    if (_controller_state == 3)
+    //pause
+    if (controller_state == PAUSE)
     {
         if (_time_factor != 0.)
             _time_factor = double(std::max(0., double(std::chrono::duration_cast<std::chrono::microseconds>(_t_stop - _t_current + _slowdown_duration).count() / double(_slowdown_duration.count())))) * _prev_time_factor;
     }
     //resume
-    if (_controller_state == 2)
+    if (controller_state == RESUME)
     {
         _time_factor = double(std::min(1., double(std::chrono::duration_cast<std::chrono::microseconds>(_t_current - _t_stop).count() / double(_slowdown_duration.count())))) * _prev_time_factor;
         if (_time_factor == _prev_time_factor)
         {
-            _controller_state = 4;
+            _controller_state = EXECUTE;
         }
     }
     //execute
-    if (_controller_state == 4)
+    if (controller_state == EXECUTE)
     {
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
@@ -673,7 +673,7 @@ int BaseController::calculateTorque()
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         //dynamic PID reconfigure
-        updateParams(_pid_ctrl[jnt_idx], jnt_idx);
+        updateParams(_pid_ctrl, jnt_idx);
 
         //calculate torques (PID+FF)
         _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
@@ -800,8 +800,7 @@ int BaseController::communicate()
     _arm_joint_errors_pub->publish(_arm_joint_errors_msg);
     _cartesian_error_norm_pub->publish(error_msg);
     _controller_state_pub->publish(state_msg);
-    _arm_command.timestamp = std::chrono::steady_clock::now();
-    setArmCommand();
+
     return 0;
 }
 
@@ -830,7 +829,7 @@ void BaseController::controlLoop()
     //is this still needed?
     // getAverageArmState();
 
-    handleControllerState();
+    handleControllerState(_controller_state);
 
     //get trajectory time index
     _trajectory_index = int(std::min(double(_trajectory.points.size() - 1), std::floor(float(std::chrono::duration_cast<std::chrono::microseconds>(_time_accumulator).count()) / 1000000 * _trajectory_rate)));
@@ -848,6 +847,9 @@ void BaseController::controlLoop()
     calculateID();
     calculateTorque();
 
+    _arm_command.timestamp = std::chrono::steady_clock::now();
+    setArmCommand();
+
     // _loop_it++;
     //control loop frequency
     _remaining_time = std::floor(1000000 / _trajectory_rate - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
@@ -864,7 +866,7 @@ void BaseController::init()
 
     jointInit();
     idInit();
-    varInit();
+    varInit(_joints_number);
     paramInit();
     jointPositionInit();
 

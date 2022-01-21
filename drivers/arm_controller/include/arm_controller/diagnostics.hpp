@@ -19,6 +19,7 @@ public:
 private:
     std::vector<DiagnosticData> _diag_data;
     size_t _diag_samples=314;
+    double _const_torque;
     int saveDiagnostics();
     int writeDiagnostics();
 
@@ -27,6 +28,6 @@ private:
     int communicate() override;
     int paramInit() override;
     int idInit() override;
-    int varInit() override;
+    int varInit(size_t joints_number) override;
     void controlLoop() override;
 };

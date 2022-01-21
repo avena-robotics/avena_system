@@ -9,9 +9,8 @@ int Diagnostics::saveDiagnostics()
         if (_arm_status.joints[jnt_idx].velocity < 0)
             continue;
         // int index = std::floor(std::fmod(std::fmod(_avg_pos[jnt_idx], (2. * M_PI)) + (2. * M_PI), (2. * M_PI)) / (2. * M_PI) * (double)_diag_samples);
-        int index = std::floor((_arm_status.joints[jnt_idx].position+M_PI)  * ((double)_diag_samples)/ (2 * M_PI));
+        int index = std::floor((_arm_status.joints[jnt_idx].position + M_PI) * ((double)_diag_samples) / (2 * M_PI));
         // int index = std::floor((_arm_status.joints[jnt_idx].position + 0.5 * M_PI)  * ((double)_diag_samples)/ M_PI);
-
 
         _diag_data[jnt_idx].velocity[index] += _arm_status.joints[jnt_idx].velocity;
         _diag_data[jnt_idx].position[index] += 1;
@@ -26,19 +25,19 @@ int Diagnostics::getAverageArmState()
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
 
-                //crimge
-                if (std::abs(_arm_status.joints[jnt_idx].position - _prev_pos[jnt_idx]) > 10)
-                {
-                    _avg_pos[jnt_idx] = 0;
-                    for (size_t i = 0; i < _avg_samples; i++)
-                    {
-                        _avg_pos_b[jnt_idx][(i + _loop_it) % _avg_samples] = _arm_status.joints[jnt_idx].position - ((double)(_avg_samples - i) / _trajectory_rate * _avg_vel[jnt_idx]);
-                        _avg_pos[jnt_idx] += _avg_pos_b[jnt_idx][(i + _loop_it) % _avg_samples];
-                    }
-                    _avg_pos[jnt_idx] /= _avg_samples;
-                    // prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
-                    _prev_pos[jnt_idx] = _avg_pos[jnt_idx] + _avg_vel[jnt_idx] / _trajectory_rate;
-                }
+        //crimge
+        if (std::abs(_arm_status.joints[jnt_idx].position - _prev_pos[jnt_idx]) > 10)
+        {
+            _avg_pos[jnt_idx] = 0;
+            for (size_t i = 0; i < _avg_samples; i++)
+            {
+                _avg_pos_b[jnt_idx][(i + _loop_it) % _avg_samples] = _arm_status.joints[jnt_idx].position - ((double)(_avg_samples - i) / _trajectory_rate * _avg_vel[jnt_idx]);
+                _avg_pos[jnt_idx] += _avg_pos_b[jnt_idx][(i + _loop_it) % _avg_samples];
+            }
+            _avg_pos[jnt_idx] /= _avg_samples;
+            // prev_pos[jnt_idx] = _arm_status.joints[jnt_idx].position;
+            _prev_pos[jnt_idx] = _avg_pos[jnt_idx] + _avg_vel[jnt_idx] / _trajectory_rate;
+        }
 
         _avg_pos_b[jnt_idx][_loop_it % _avg_samples] = _arm_status.joints[jnt_idx].position;
         _avg_temp_b[jnt_idx][_loop_it % _avg_samples] = _arm_status.joints[jnt_idx].temperature;
@@ -105,8 +104,7 @@ int Diagnostics::communicate()
     state_msg.set__data(_controller_state);
     _arm_joint_states_pub->publish(_arm_joint_state_msg);
     _controller_state_pub->publish(state_msg);
-    _arm_command.timestamp = std::chrono::steady_clock::now();
-    setArmCommand();
+
     return 0;
 }
 
@@ -120,13 +118,16 @@ void Diagnostics::controlLoop()
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
             _arm_command.joints[jnt_idx].c_torque = 0;
-            _arm_command.joints[jnt_idx].c_status = 3;
+            _arm_command.joints[jnt_idx].c_status = 2;
         }
         communicate();
-
+        _arm_command.timestamp = std::chrono::steady_clock::now();
+        setArmCommand();
         writeDiagnostics();
+        RCLCPP_INFO(_node->get_logger(), "shutting down");
         exit(0);
     }
+
     //GET JOINT STATES
     getArmState();
 
@@ -137,27 +138,27 @@ void Diagnostics::controlLoop()
     getAverageArmState();
     if ((_t_current - _t_start) > std::chrono::seconds(2))
         saveDiagnostics();
-    handleControllerState();
+    handleControllerState(_controller_state);
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        _arm_command.joints[jnt_idx].c_torque = 9;
+        _arm_command.joints[jnt_idx].c_torque = _const_torque;
         _arm_command.joints[jnt_idx].c_status = 3;
     }
-    communicate();
-
+    _arm_command.timestamp = std::chrono::steady_clock::now();
+    setArmCommand();
     //execute callbacks
-    _exec->spin_some(std::chrono::nanoseconds(1000));
+    // _exec->spin_some(std::chrono::nanoseconds(1000));
 
     _loop_it++;
     //control loop frequency
-    _remaining_time = std::floor(1000000 / _trajectory_rate - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
+    // _remaining_time = std::floor(1000000 / _trajectory_rate - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
 
-    if (_remaining_time < 0)
-    {
-        RCLCPP_ERROR(_node->get_logger(), "Loop taking too long to execute. Loop took: %i us.", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
-    }
-    std::this_thread::sleep_for(std::chrono::microseconds(_remaining_time));
+    // if (_remaining_time < 0)
+    // {
+    //     RCLCPP_ERROR(_node->get_logger(), "Loop taking too long to execute. Loop took: %i us.", std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
+    // }
+    // std::this_thread::sleep_for(std::chrono::microseconds(_remaining_time));
 }
 
 int Diagnostics::idInit()
@@ -167,58 +168,68 @@ int Diagnostics::idInit()
 
 int Diagnostics::paramInit()
 {
+    //PARAMETERS INIT
+    RCLCPP_INFO(_node->get_logger(), "Initializing controller parameters.");
+    _node->declare_parameter<std::string>("config_path", "");
+    _node->declare_parameter<double>("loop_frequency", 500.);
+    _node->declare_parameter<double>("communication_rate", 100.);
+    _node->declare_parameter<double>("const_torque", 9.);
+    
+    _node->get_parameter("config_path", _config_path);
+    _node->get_parameter("loop_frequency", _trajectory_rate);
+    _node->get_parameter("communication_rate", _communication_rate);
+    _node->get_parameter("const_torque", _const_torque);
+    RCLCPP_INFO(_node->get_logger(), "Constant torque: %f.",_const_torque);
     return 0;
 }
 
-int Diagnostics::varInit()
+int Diagnostics::varInit(size_t joints_number)
 {
 
     RCLCPP_INFO(_node->get_logger(), "Initializing controller variables.");
-    _node->declare_parameter<std::string>("config_path", "");
-    _node->get_parameter("config_path", _config_path);
-    // _arm_command.joints.resize(_joints_number);
-    _friction_chart.resize(_joints_number);
-    _Kp.resize(_joints_number);
-    _Ki.resize(_joints_number);
-    _Kd.resize(_joints_number);
-    _FFv.resize(_joints_number);
-    _FFa.resize(_joints_number);
-    _i_clamp_h.resize(_joints_number);
-    _i_clamp_l.resize(_joints_number);
-    _c_friction_val.resize(_joints_number);
+    // _arm_command.joints.resize(joints_number);
+    _friction_chart.resize(joints_number);
+    _Kp.resize(joints_number);
+    _Ki.resize(joints_number);
+    _Kd.resize(joints_number);
+    _FFv.resize(joints_number);
+    _FFa.resize(joints_number);
+    _i_clamp_h.resize(joints_number);
+    _i_clamp_l.resize(joints_number);
+    _c_friction_val.resize(joints_number);
 
-    _set_joint_state_msg.name.resize(_joints_number);
-    _set_joint_state_msg.position.resize(_joints_number);
-    _set_joint_state_msg.velocity.resize(_joints_number);
-    _set_joint_state_msg.effort.resize(_joints_number);
+    _set_joint_state_msg.name.resize(joints_number);
+    _set_joint_state_msg.position.resize(joints_number);
+    _set_joint_state_msg.velocity.resize(joints_number);
+    _set_joint_state_msg.effort.resize(joints_number);
 
-    _arm_joint_state_msg.name.resize(_joints_number);
-    _arm_joint_state_msg.position.resize(_joints_number);
-    _arm_joint_state_msg.velocity.resize(_joints_number);
-    _arm_joint_state_msg.effort.resize(_joints_number);
+    _arm_joint_state_msg.name.resize(joints_number);
+    _arm_joint_state_msg.position.resize(joints_number);
+    _arm_joint_state_msg.velocity.resize(joints_number);
+    _arm_joint_state_msg.effort.resize(joints_number);
 
-    _q.resize(_joints_number);
-    _qd.resize(_joints_number);
-    _qdd.resize(_joints_number);
+    _q.resize(joints_number);
+    _qd.resize(joints_number);
+    _qdd.resize(joints_number);
 
-    _avg_acc.resize(_joints_number);
-    _avg_pos.resize(_joints_number);
-    _avg_vel.resize(_joints_number);
-    _avg_temp.resize(_joints_number);
-    _avg_tau.resize(_joints_number);
-    _prev_pos.resize(_joints_number);
+    _avg_acc.resize(joints_number);
+    _avg_pos.resize(joints_number);
+    _avg_vel.resize(joints_number);
+    _avg_temp.resize(joints_number);
+    _avg_tau.resize(joints_number);
+    _prev_pos.resize(joints_number);
 
-    _avg_acc_b.resize(_joints_number);
-    _avg_pos_b.resize(_joints_number);
-    _avg_vel_b.resize(_joints_number);
-    _avg_temp_b.resize(_joints_number);
-    _avg_tau_b.resize(_joints_number);
-    _frick_acu.resize(_joints_number);
+    _avg_acc_b.resize(joints_number);
+    _avg_pos_b.resize(joints_number);
+    _avg_vel_b.resize(joints_number);
+    _avg_temp_b.resize(joints_number);
+    _avg_tau_b.resize(joints_number);
+    _frick_acu.resize(joints_number);
 
-    _diag_data.resize(_joints_number);
+    _diag_data.resize(joints_number);
 
     //MEASUREMENT INIT
-    for (size_t i = 0; i < _joints_number; i++)
+    for (size_t i = 0; i < joints_number; i++)
     {
         _diag_data[i].position.resize(_diag_samples);
         _diag_data[i].velocity.resize(_diag_samples);
@@ -252,10 +263,10 @@ int Diagnostics::varInit()
     //GET STARTING POSITION - HOLD TRAJECTORY
     getArmState();
     _trajectory.points.resize(1);
-    _trajectory.points[0].positions.resize(_joints_number);
-    _trajectory.points[0].velocities.resize(_joints_number);
-    _trajectory.points[0].accelerations.resize(_joints_number);
-    for (size_t i = 0; i < _joints_number; i++)
+    _trajectory.points[0].positions.resize(joints_number);
+    _trajectory.points[0].velocities.resize(joints_number);
+    _trajectory.points[0].accelerations.resize(joints_number);
+    for (size_t i = 0; i < joints_number; i++)
     {
         _trajectory.points[0].positions[i] = _arm_status.joints[i].position;
         _trajectory.points[0].velocities[i] = 0.;
@@ -268,7 +279,7 @@ int Diagnostics::varInit()
     _loop_it = 0;
     _t_start = std::chrono::steady_clock::now();
     _time_accumulator = std::chrono::microseconds(0);
-    _controller_state = 1;
+    _controller_state = STOP;
     _time_factor = 1.;
     _prev_time_factor = 1.;
     _t_current = std::chrono::steady_clock::now();
@@ -284,27 +295,17 @@ void Diagnostics::init()
     jointInit();
     idInit();
     paramInit();
-    varInit();
+    varInit(_joints_number);
     jointPositionInit();
 
     //CONTROL LOOP
     std::this_thread::sleep_for(std::chrono::microseconds(100));
     RCLCPP_INFO(_node->get_logger(), "Done initializing, entering control loop");
 
-    while (rclcpp::ok())
-    {
-        controlLoop();
-    }
-
-    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
-    {
-        _arm_command.joints[jnt_idx].c_torque = 0;
-        _arm_command.joints[jnt_idx].c_status = 2;
-    }
-    _arm_command.timestamp = std::chrono::steady_clock::now();
-    setArmCommand();
-    RCLCPP_INFO(_node->get_logger(), "shutting down");
-    exit(0);
+    rclcpp::TimerBase::SharedPtr loop_timer, comms_timer;
+    comms_timer = _node->create_wall_timer(std::chrono::microseconds(int(1000000 / _communication_rate)), std::bind(&Diagnostics::communicate, this), _cb_group);
+    loop_timer = _node->create_wall_timer(std::chrono::microseconds(int(1000000 / _trajectory_rate)), std::bind(&Diagnostics::controlLoop, this), _cb_group);
+    _exec->spin();
 }
 
 int main(int argc, char **argv)

@@ -1,0 +1,9 @@
+/base_controller:
+  ros__parameters:
+
+    loop_frequency: 200.
+    communication_rate: 50.
+    const_torque: 16.
+
+    use_sim_time: false
+

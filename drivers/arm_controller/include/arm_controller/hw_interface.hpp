@@ -58,6 +58,11 @@ class ArmInterface : public rclcpp::Node
 {
 
 public:
+
+/****
+ * 
+ ****/
+
     ArmInterface(std::string can_addr) : Node("candriver")
     {
         std::cout << "Clear shared memory location" << std::endl;
@@ -142,11 +147,8 @@ public:
         // std::thread comms_thread(&ArmInterface::startCommsLoop, this, fq);
         // comms_thread.detach();
 
-        _test_pub = this->create_publisher<std_msgs::msg::Bool>("candriver_test", 100);
-        _test_msg.data = 1;
-
         rclcpp::TimerBase::SharedPtr loop_timer, comms_timer;
-        comms_timer = this->create_wall_timer(_can_loop_t, std::bind(&ArmInterface::startCommsLoop, this));
+        comms_timer = this->create_wall_timer(_can_loop_t, std::bind(&ArmInterface::commsLoop, this));
         _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
         _exec->add_node(this->get_node_base_interface());
         std::cout << "Starting communication loop." << std::endl;
@@ -175,7 +177,12 @@ public:
     // }
 
 private:
-    void startCommsLoop()
+
+/****
+ * Main communication loop.
+ * Transmits and receives messages via CAN FD interface and updates ArmState.
+ ****/
+    void commsLoop()
     {
 
         // if (_get_delay > std::chrono::microseconds(100))
@@ -203,12 +210,17 @@ private:
         // {
         //     sendArmCommand(_arm_command, read_time);
         // }
-        _test_pub->publish(_test_msg);
         // std::cout << "asdf" << std::endl;
         sendArmCommand(_arm_command, _can_loop_t);
 
         updateArmState();
     }
+
+/****
+ * Transmits and receives an ArmCommand message via CAN FD interface.
+ * @param arm_command command to be sent
+ * @param read_time maximum time for all responses to arrive
+ ****/
 
     bool sendArmCommand(std::shared_ptr<ArmCommand> arm_command, std::chrono::microseconds read_time)
     {
@@ -245,6 +257,10 @@ private:
 
         return 1;
     }
+
+/****
+ * Writes current ArmState to shared memory.
+ ****/
 
     bool updateArmState()
     {
@@ -289,9 +305,6 @@ private:
     ResponseMsg _last_msg;
     std::shared_ptr<boost::interprocess::managed_shared_memory> _shared_memory_segment;
     int _joints_number;
-
-    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr _test_pub;
-    std_msgs::msg::Bool _test_msg;
 
     std::chrono::steady_clock::time_point _status_timestamp, _command_timestamp, _get_timestamp;
     std::chrono::microseconds _max_delay, _get_delay;

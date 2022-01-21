@@ -200,7 +200,7 @@ void FrictionCalibration::init()
     int loop_it = 0;
     _t_start = std::chrono::steady_clock::now();
     _time_accumulator = std::chrono::microseconds(0);
-    _controller_state = 4;
+    _controller_state = EXECUTE;
     _time_factor = 1.;
     _prev_time_factor = 0.;
     _t_current = std::chrono::steady_clock::now();
@@ -383,7 +383,7 @@ void FrictionCalibration::init()
                     continue;
                 }
                 //dynamic PID reconfigure
-                updateParams(_pid_ctrl[jnt_idx], jnt_idx);
+                updateParams(_pid_ctrl, jnt_idx);
 
                 //calculate torques (PID+FF)
 
