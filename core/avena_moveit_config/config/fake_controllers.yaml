@@ -1,0 +1,13 @@
+controller_list:
+  - name: fake_avena_arm_controller
+    type: $(arg fake_execution_type)
+    joints:
+      - avena_joint_1
+      - avena_joint_2
+      - avena_joint_3
+      - avena_joint_4
+      - avena_joint_5
+      - avena_joint_6
+initial:  # Define initial robot poses per group
+  - group: avena_arm
+    pose: home

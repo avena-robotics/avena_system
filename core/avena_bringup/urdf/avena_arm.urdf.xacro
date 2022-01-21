@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="avena">
+  <xacro:include filename="$(find avena_bringup)/urdf/avena_arm.xacro"/>
+  <xacro:avena_arm arm_id="avena" />
+</robot>

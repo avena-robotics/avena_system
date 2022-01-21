@@ -6,7 +6,6 @@
 
   <xacro:macro name="avena_arm" params="arm_id:='avena' description_pkg:='avena_bringup'">
     <!-- Links -->
-    <link name="robot_base_link" />
     <link name="${arm_id}_link_0">
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0" />
@@ -157,13 +156,6 @@
     <link name="${arm_id}_gripper_connection"/>
 
     <!-- Joints -->
-    <joint name="base_joint" type="fixed">
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <parent link="robot_base_link"/>
-      <child link="${arm_id}_link_0"/>
-      <axis xyz="0 0 0"/>
-    </joint>
-
     <joint name="${arm_id}_joint_1" type="revolute">
       <origin xyz="0 0 0.063" rpy="0 0 -0.1963" /> <!-- Offset from position -->
       <parent link="${arm_id}_link_0" />

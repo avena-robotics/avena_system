@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: ""
+    relative_path: /home/avena/ros2_ws/src/avena_arm.urdf
+    xacro_args: ""
+  SRDF:
+    relative_path: config/avena.srdf
+  CONFIG:
+    author_name: Bartłomiej Styczeń
+    author_email: bartlomiej.styczen@pomagier.info
+    generated_timestamp: 1642757877
