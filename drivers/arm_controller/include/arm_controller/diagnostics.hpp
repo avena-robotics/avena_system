@@ -27,6 +27,7 @@ private:
     int getAverageArmState() override;
     int communicate() override;
     int paramInit() override;
+    int jointInit() override;
     int idInit() override;
     int varInit(size_t joints_number) override;
     void controlLoop() override;

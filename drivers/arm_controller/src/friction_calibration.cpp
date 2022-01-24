@@ -90,8 +90,12 @@ void FrictionCalibration::init()
     //PARAMETERS INIT
     _node->declare_parameter<double>("error_margin", 0);
     _node->declare_parameter<std::string>("config_path", "");
+        _node->declare_parameter<double>("loop_frequency", 500.);
+    _node->declare_parameter<double>("communication_rate", 100.);
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("error_margin", _error_margin);
+        _node->get_parameter("loop_frequency", _trajectory_rate);
+    _node->get_parameter("communication_rate", _communication_rate);
     for (size_t i = 0; i < _joints_number; i++)
     {
         //set defaults in case config file is not provided
@@ -311,7 +315,7 @@ void FrictionCalibration::init()
         while (rclcpp::ok())
         {
 
-            //std::chrono::time_point<std::chrono::steady_clock> t_current = std::chrono::steady_clock::now();
+            // std::chrono::time_point<std::chrono::steady_clock> t_current = std::chrono::steady_clock::now();
 
             getArmState();
             auto t_current = std::chrono::steady_clock::now();
@@ -453,8 +457,8 @@ void FrictionCalibration::init()
                 _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
                 //limit torque
                 {
-                    if (_set_torque_val * _torque_sign > 28)
-                        _set_torque_val = 28 * _torque_sign;
+                    if (_set_torque_val * _torque_sign > 40)
+                        _set_torque_val = 40 * _torque_sign;
                 }
 
                 // _set_torque_val = -14;

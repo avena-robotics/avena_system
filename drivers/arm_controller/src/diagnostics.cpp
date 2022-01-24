@@ -161,6 +161,48 @@ void Diagnostics::controlLoop()
     // std::this_thread::sleep_for(std::chrono::microseconds(_remaining_time));
 }
 
+int Diagnostics::jointInit()
+{
+    //JOINT COMMUNICATION INIT
+    RCLCPP_INFO(_node->get_logger(), "Starting executor");
+    _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+    _exec->add_node(_node);
+    RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
+    getArmState();
+
+    // while (_arm_status.joints.size() < 6)
+    // {
+    //     RCLCPP_ERROR(_node->get_logger(), "Received invalid arm state. Waiting ...");
+    //     std::this_thread::sleep_for(std::chrono::seconds(1));
+    //     getArmState();
+    // }
+
+    RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
+    int connected_joints = 0;
+    for (size_t i = 0; i < _joints_number; i++)
+    {
+        if (_arm_status.joints[i].state != 420)
+            connected_joints++;
+    }
+    _joints_number = connected_joints;
+
+    getArmState();
+
+    for (size_t i = 0; i < _joints_number; i++)
+    {
+        if (_arm_status.joints[i].state == 255 || _arm_status.joints[i].state == 420)
+        {
+            RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
+        }
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    RCLCPP_INFO(_node->get_logger(), "Joints number: %i", _joints_number);
+
+    RCLCPP_INFO(_node->get_logger(), "Done initializing joints.");
+    return 0;
+}
+
 int Diagnostics::idInit()
 {
     return 0;
@@ -174,12 +216,12 @@ int Diagnostics::paramInit()
     _node->declare_parameter<double>("loop_frequency", 500.);
     _node->declare_parameter<double>("communication_rate", 100.);
     _node->declare_parameter<double>("const_torque", 9.);
-    
+
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("loop_frequency", _trajectory_rate);
     _node->get_parameter("communication_rate", _communication_rate);
     _node->get_parameter("const_torque", _const_torque);
-    RCLCPP_INFO(_node->get_logger(), "Constant torque: %f.",_const_torque);
+    RCLCPP_INFO(_node->get_logger(), "Constant torque: %f.", _const_torque);
     return 0;
 }
 

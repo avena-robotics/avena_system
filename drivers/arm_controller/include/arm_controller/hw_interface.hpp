@@ -267,29 +267,29 @@ private:
         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_arm_status->mutex);
         int arm_id;
 
-        // for (size_t i = 0; i < _last_msg.rx_msgs.size(); i++)
+        for (size_t i = 0; i < _last_msg.rx_msgs.size(); i++)
 
-        // {
-        //     arm_id = _last_msg.rx_msgs[i][0] / 16 - 10;
-        //     _arm_status->joints[arm_id].position = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][2] << 8) ^ (_last_msg.rx_msgs[i][3])) * _position_multiplier;
-        //     _arm_status->joints[arm_id].velocity = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5])) / INT16_MAX * 2 * M_PI;
-        //     _arm_status->joints[arm_id].torque = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][6] << 8) ^ (_last_msg.rx_msgs[i][7])) * _torque_multiplier;
-        //     _arm_status->joints[arm_id].temperature = _last_msg.rx_msgs[i][8];
-        //     _arm_status->joints[arm_id].state = _last_msg.rx_msgs[i][9];
-        //     _arm_status->joints[arm_id].current_error = _last_msg.rx_msgs[i][10];
-        //     _arm_status->joints[arm_id].prev_error = _last_msg.rx_msgs[i][11];
-        // }
-        for (size_t i = 0; i < 6; i++)
         {
-            arm_id = i;
-            _arm_status->joints[arm_id].position += 0;
-            _arm_status->joints[arm_id].velocity = 0;
-            _arm_status->joints[arm_id].torque = _arm_command->joints[arm_id].c_torque;
-            _arm_status->joints[arm_id].temperature = 20;
-            _arm_status->joints[arm_id].state = 3;
-            _arm_status->joints[arm_id].current_error = 0;
-            _arm_status->joints[arm_id].prev_error = 0;
+            arm_id = _last_msg.rx_msgs[i][0] / 16 - 10;
+            _arm_status->joints[arm_id].position = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][2] << 8) ^ (_last_msg.rx_msgs[i][3])) * _position_multiplier;
+            _arm_status->joints[arm_id].velocity = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5])) / INT16_MAX * 2 * M_PI;
+            _arm_status->joints[arm_id].torque = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][6] << 8) ^ (_last_msg.rx_msgs[i][7])) * _torque_multiplier;
+            _arm_status->joints[arm_id].temperature = _last_msg.rx_msgs[i][8];
+            _arm_status->joints[arm_id].state = _last_msg.rx_msgs[i][9];
+            _arm_status->joints[arm_id].current_error = _last_msg.rx_msgs[i][10];
+            _arm_status->joints[arm_id].prev_error = _last_msg.rx_msgs[i][11];
         }
+        // for (size_t i = 0; i < 6; i++)
+        // {
+        //     arm_id = i;
+        //     _arm_status->joints[arm_id].position += 0;
+        //     _arm_status->joints[arm_id].velocity = 0;
+        //     _arm_status->joints[arm_id].torque = _arm_command->joints[arm_id].c_torque;
+        //     _arm_status->joints[arm_id].temperature = 20;
+        //     _arm_status->joints[arm_id].state = 3;
+        //     _arm_status->joints[arm_id].current_error = 0;
+        //     _arm_status->joints[arm_id].prev_error = 0;
+        // }
 
         _arm_status->timestamp = _status_timestamp;
 

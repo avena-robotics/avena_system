@@ -1,8 +1,8 @@
 /base_controller:
   ros__parameters:
 
-    loop_frequency: 1000.
-    communication_rate: 50.
+    loop_frequency: 500.
+    communication_rate: 10.
 
     error_margin: 0.09
 

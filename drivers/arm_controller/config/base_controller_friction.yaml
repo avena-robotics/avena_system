@@ -2,6 +2,9 @@
   ros__parameters:
     error_margin: 0.005
 
+    loop_frequency: 500.
+    communication_rate: 10.
+
     #friction
 
     Fv_gain_0: 0.
@@ -10,8 +13,8 @@
     Ki_gain_0: 5.
     Kp_gain_0: 10.0
     Coulomb_friction_0: 0.
-    i_clamp_h_0: 25.
-    i_clamp_l_0: -25.
+    i_clamp_h_0: 40.
+    i_clamp_l_0: -40.
 
     Fv_gain_1: 0.
     FFa_gain_1: 0.
@@ -19,8 +22,8 @@
     Ki_gain_1: 5.
     Kp_gain_1: 10.0
     Coulomb_friction_1: 0.
-    i_clamp_h_1: 25.
-    i_clamp_l_1: -25.
+    i_clamp_h_1: 40.
+    i_clamp_l_1: -40.
 
 
     Fv_gain_2: 0.
@@ -29,8 +32,8 @@
     Ki_gain_2: 5.
     Kp_gain_2: 10.0
     Coulomb_friction_2: 0.
-    i_clamp_h_2: 25.
-    i_clamp_l_2: -25.
+    i_clamp_h_2: 40.
+    i_clamp_l_2: -40.
 
     Fv_gain_3: 0.
     FFa_gain_3: 0.
@@ -38,8 +41,8 @@
     Ki_gain_3: 5.
     Kp_gain_3: 10.0
     Coulomb_friction_3: 0.
-    i_clamp_h_3: 25.
-    i_clamp_l_3: -25.
+    i_clamp_h_3: 40.
+    i_clamp_l_3: -40.
 
     Fv_gain_4: 0.
     FFa_gain_4: 0.
@@ -47,8 +50,8 @@
     Ki_gain_4: 5.
     Kp_gain_4: 10.0
     Coulomb_friction_4: 0.
-    i_clamp_h_4: 25.
-    i_clamp_l_4: -25.
+    i_clamp_h_4: 40.
+    i_clamp_l_4: -40.
 
     Fv_gain_5: 0.
     FFa_gain_5: 0.
@@ -56,8 +59,8 @@
     Ki_gain_5: 5.
     Kp_gain_5: 10.0
     Coulomb_friction_5: 0.
-    i_clamp_h_5: 25.
-    i_clamp_l_5: -25.
+    i_clamp_h_5: 40.
+    i_clamp_l_5: -40.
 
 
 

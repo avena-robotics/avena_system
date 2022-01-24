@@ -4,3 +4,4 @@ __pycache__
 install
 build
 log
+core/avena_bringup/urdf/avena_arm_id.urdf
