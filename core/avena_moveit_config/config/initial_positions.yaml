@@ -1,0 +1,8 @@
+# Default initial positions for the panda arm's ros2_control fake system
+initial_positions:
+  avena_joint_1: 0.0
+  avena_joint_2: 0.0
+  avena_joint_3: 0.0
+  avena_joint_4: 0.0
+  avena_joint_5: 0.0
+  avena_joint_6: 0.0
