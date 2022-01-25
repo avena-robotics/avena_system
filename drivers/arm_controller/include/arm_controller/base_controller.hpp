@@ -37,7 +37,6 @@
 // #include "pinocchio/algorithm/parallel/rnea.hpp"
 #include "pinocchio/algorithm/kinematics.hpp"
 
-
 enum ControllerState
 {
     START = 0, //not used
@@ -61,26 +60,28 @@ struct friction_comp
 class BaseController : public helpers::WatchdogInterface
 {
 public:
-
-/****
- * \brief Initializes vital components of the controller, such as ROS2 communication, candriver communication and watchdog functionality
-****/
+    /****
+     * \brief Initializes vital components of the controller:
+     *  -   watchdog functionality
+     *  -   candriver communication
+     *  -   ROS2 communication
+    ****/
 
     BaseController(int argc, char **argv);
     ~BaseController();
 
-/****
- * \brief Performs initialization of all components
- * Initializes the following:
- * @see jointInit()
- * @see idInit()
- * @see varInit()
- * @see paramInit()
- * @see jointPositionInit()
- * 
- * Once the initialization is complete, starts communication and controll loops.
- * 
- ****/
+    /****
+     * \brief Performs initialization of all control related components
+     * Initializes the following:
+     * @see jointInit()
+     * @see idInit()
+     * @see varInit()
+     * @see paramInit()
+     * @see jointPositionInit()
+     * 
+     * Once the initialization is complete, starts communication and control loops.
+     * 
+     ****/
 
     virtual void init();
 
@@ -94,170 +95,174 @@ public:
         rclcpp::shutdown();
     };
 
-/****
- * ROS2 node pointer
- ****/
+    /****
+     * ROS2 node pointer
+     ****/
 
     std::shared_ptr<rclcpp::Node> _node;
 
 protected:
-
-/****
- * Retrieves latest arm state from the candriver.
- ****/
+    /****
+     * Retrieves latest arm state from the candriver.
+     ****/
 
     bool getArmState();
 
-/****
- * Writes an arm command to the candriver,
- * which sends it to the specified interface during its following cycles.
- ****/
+    /****
+     * Writes an arm command to the candriver,
+     * which sends it to the specified interface during its following cycles.
+     ****/
 
     bool setArmCommand();
 
-/****
- * Loads joint friction charts from the specified location
- * @param path global path to a folder containing friction charts
- ****/
+    /****
+     * Loads joint friction charts from the specified location
+     * @param path global path to a folder containing friction charts
+     ****/
 
     void loadFrictionChart(std::string path);
 
-/****
- * Reads PID parameters from this ROS2 node and updates PIDs used for controlling the arm.
- * @param pid A vector containing PID objects
- * @param joint_index Index of PID for corresponding joint to be updated
- ****/
+    /****
+     * Reads PID parameters from this ROS2 node and updates PIDs used for controlling the arm.
+     * @param pid A vector containing PID objects
+     * @param joint_index Index of PID for corresponding joint to be updated
+     ****/
 
     void updateParams(std::vector<PID> &pid, int joint_index);
 
-/****
- * Reads friction value from corresponding friction chart.
- * @param vel current joint velocity
- * @param temp current joint temperature
- * @param jnt_idx index of the joint for which the friction value is returned
- * @return friction value for given parameters, in Nm.
- ****/
+    /****
+     * Reads friction value from corresponding friction chart.
+     * @param vel current joint velocity
+     * @param temp current joint temperature
+     * @param jnt_idx index of the joint for which the friction value is returned
+     * @return friction value for given parameters, in Nm.
+     ****/
 
     double compensateFriction(double vel, double temp, int jnt_idx);
 
-/****
- * Initializes inverse dynamic variables, such as robot model and data.
- * Requires a robot urdf published on /robot_description topic.
- ****/
+    /****
+     * Initializes inverse dynamic variables, such as robot model and data.
+     * Requires a robot urdf published on /robot_description topic.
+     ****/
 
     virtual int idInit();
 
-/****
- * Initializes node parameters and reads them from the config file.
- ****/
+    /****
+     * Initializes node parameters and reads them from the config file.
+     ****/
 
     virtual int paramInit();
 
-/****
- * Initializes variables used during control loop for specified joints number.
- * @param joints_number number of joints for which the variables are initialized
- ****/
+    /****
+     * Initializes variables used during control loop for specified joints number.
+     * @param joints_number number of joints for which the variables are initialized
+     ****/
 
     virtual int varInit(size_t joints_number);
 
-/****
- * Initializes joint connection.
- * Blocks if joints are returning errors or not responding.
- ****/
+    /****
+     * Initializes joint connection.
+     * Blocks if joints are returning errors or not responding.
+     ****/
 
     virtual int jointInit();
 
-/****
- * Performs joint firmware initialization procedure.
- * Should move joint's states into operation readiness.
- ****/
+    /****
+     * Performs joint firmware initialization procedure.
+     * Should move joint's states into operation readiness.
+     ****/
 
     virtual int jointPositionInit();
 
-/****
- * Returns arm state averaged from last *_avg_samples* received arm states.
- * @warning DEPRECATED
- ****/
+    /****
+     * Returns arm state averaged from last *_avg_samples* received arm states.
+     * @warning DEPRECATED
+     ****/
 
     virtual int getAverageArmState();
 
-/****
- * Performs state transition according to current and given state.
- * @param controller_state desired state
- ****/
+    /****
+     * Performs state transition according to current and desired state.
+     * @param controller_state desired state
+     ****/
 
     virtual int handleControllerState(ControllerState controller_state);
 
-/****
- * Calculates torques for each joint used to carry out movement for current trajectory step.
- * Torque comprises of:
- *  -   PID used to correct errors caused by unaccounted variables
- *  -   Friction compensation
- *  -   Inverse dynamic
- * This function also checks if the arm end-effector is not exceeding position error margin
- *  and limits the torque to specified joint torque limit values.
- ****/
+    /****
+     * Calculates torques for each joint used to carry out movement for current trajectory step.
+     * Torque comprises of:
+     *  -   PID used to correct errors caused by unaccounted variables
+     *  -   Friction compensation
+     *  -   Inverse dynamic
+     * This function also checks if the arm end-effector is exceeding position error margin
+     * and limits the torque to specified joint torque limit values.
+     ****/
 
     virtual int calculateTorque();
 
-/****
- * Calculates joint torques using inverse dynamics.
- * Also calculates forward kinematics to validate end-effector position.
- ****/
+    /****
+     * Calculates current end-effector pose according to forward kinematics.
+     ****/
+
+    virtual int calculateFK();
+    /****
+     * Calculates joint torques using inverse dynamics.
+     * Also calculates forward kinematics to validate end-effector position.
+     ****/
 
     virtual int calculateID();
 
-/****
- * Publishes controller data on ROS2 topics.
- ****/
+    /****
+     * Publishes controller data on ROS2 topics.
+     ****/
     virtual int communicate();
 
-/****
- * Main controll loop function which gets called periodically by ROS2 executor initialized in @see init()
- ****/
+    /****
+     * Main control loop function which gets called periodically by ROS2 executor initialized in @see init()
+     ****/
 
     virtual void controlLoop();
 
-/****
- * Stops arm movement (brakes on)
- ****/
+    /****
+     * Stops arm movement (brakes on)
+     ****/
 
     int stopArm();
 
-/****
- * Pauses arm movement - smoothly decelerates and goes into hold position.
- ****/
+    /****
+     * Pauses arm movement - smoothly decelerates and goes into hold position.
+     ****/
 
     int pauseArm();
 
-/****
- * Smoothly resumes movement from pause.
- ****/
+    /****
+     * Smoothly resumes movement from pause.
+     ****/
 
     int resumeArm();
 
-/****
- * Callback handling state transition commands
- ****/
+    /****
+     * Callback handling state transition commands
+     ****/
 
     void setStateCb(const std::shared_ptr<custom_interfaces::srv::ControlCommand::Request> request,
                     std::shared_ptr<custom_interfaces::srv::ControlCommand::Response> response);
 
-/****
- * Callback handling time factor changes.
- ****/
+    /****
+     * Callback handling time factor changes.
+     ****/
 
     void setTimeFactorCb(std_msgs::msg::Float64::SharedPtr msg);
 
-/****
- * Callback handling setting trajectories
- ****/
+    /****
+     * Callback handling setting trajectories
+     ****/
 
     void setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg);
 
-/****
- * Callback handling security trigger
- ****/
+    /****
+     * Callback handling security trigger
+     ****/
 
     void securityTriggerStatusCb(std_msgs::msg::Bool::SharedPtr);
 
@@ -329,7 +334,6 @@ protected:
     //TRAJECTORY
     trajectory_msgs::msg::JointTrajectory _trajectory;
     trajectory_msgs::msg::JointTrajectory _saved_trajectory;
-
 
     //ROS
     std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> _exec;

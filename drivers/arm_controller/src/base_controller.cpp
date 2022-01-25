@@ -68,7 +68,9 @@ bool BaseController::getArmState()
         // std::cout<<"Joint "<<i<<":"<<_arm_status.joints[i].state<<std::endl;
     }
     _arm_status.timestamp = _shm_arm_status->timestamp;
-
+    auto t_delta = (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-_arm_status.timestamp)).count();
+    if(t_delta>2*(1000000/_trajectory_rate))
+        RCLCPP_WARN(_node->get_logger(),"Arm state is %d us old.",t_delta);
     return 1;
 }
 
@@ -378,12 +380,6 @@ int BaseController::jointInit()
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
     getArmState();
 
-    // while (_arm_status.joints.size() < 6)
-    // {
-    //     RCLCPP_ERROR(_node->get_logger(), "Received invalid arm state. Waiting ...");
-    //     std::this_thread::sleep_for(std::chrono::seconds(1));
-    //     getArmState();
-    // }
     bool all_joints_ready = false;
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
     while (!all_joints_ready)
@@ -510,7 +506,6 @@ int BaseController::paramInit()
 int BaseController::varInit(size_t joints_number)
 {
     RCLCPP_INFO(_node->get_logger(), "Initializing controller variables.");
-    // _arm_command.joints.resize(joints_number);
     _friction_chart.resize(joints_number);
     _Kp.resize(joints_number);
     _Ki.resize(joints_number);
@@ -629,7 +624,6 @@ int BaseController::getAverageArmState()
 
         _avg_vel[jnt_idx] = ((_avg_pos[jnt_idx] - _prev_pos[jnt_idx]) * _trajectory_rate);
         _prev_pos[jnt_idx] = _avg_pos[jnt_idx];
-        // _avg_vel[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
     }
     return 0;
 }
@@ -681,8 +675,6 @@ int BaseController::calculateTorque()
 
         if (std::abs(_error[jnt_idx]) > _error_margin)
         {
-            // _arm_command.joints[jnt_idx].c_torque = 0;
-            // _arm_command.joints[jnt_idx].c_status = 3;
 
             RCLCPP_WARN(_node->get_logger(), "Joint %i exceeded trajectory error margin by %f", jnt_idx, _error[jnt_idx] - _error_margin);
             // pauseArm();
@@ -722,13 +714,24 @@ int BaseController::calculateTorque()
         else
         {
             _arm_command.joints[jnt_idx].c_torque = 0;
-            //TODO: change to stop (2)
             _arm_command.joints[jnt_idx].c_status = 2;
         }
     }
     return 0;
 }
-
+int BaseController::calculateFK()
+{
+    std::vector<double> q_temp;
+    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    {
+        q_temp.push_back(_arm_status.joints[jnt_idx].position);
+    }
+    _q_traj = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].positions.data(), _trajectory.points[_trajectory_index].positions.size());
+    _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(q_temp.data(), q_temp.size());
+    pinocchio::forwardKinematics(_model, *_data, _q);
+    pinocchio::forwardKinematics(_model, *_traj_data, _q_traj);
+    _cartesian_error_norm = (_data->oMi[6].translation() - _traj_data->oMi[6].translation()).transpose().norm();
+}
 int BaseController::calculateID()
 {
     // ID
@@ -737,34 +740,11 @@ int BaseController::calculateID()
     {
         q_temp.push_back(_arm_status.joints[jnt_idx].position);
     }
-    _q_traj = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].positions.data(), _trajectory.points[_trajectory_index].positions.size());
     _q = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(q_temp.data(), q_temp.size());
     _qd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].velocities.data(), _trajectory.points[_trajectory_index].velocities.size());
     _qdd = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(_trajectory.points[_trajectory_index].accelerations.data(), _trajectory.points[_trajectory_index].accelerations.size());
-
-    // const Eigen::VectorXd qmax = Eigen::VectorXd::Ones(_model.nq);
-    // // PinocchioTicToc timer(PinocchioTicToc::US);
-    // PINOCCHIO_ALIGNED_STD_VECTOR(Eigen::VectorXd)
-    // qs(1);
-    // PINOCCHIO_ALIGNED_STD_VECTOR(Eigen::VectorXd)
-    // qdots(1);
-    // PINOCCHIO_ALIGNED_STD_VECTOR(Eigen::VectorXd)
-    // qddots(1);
-    // for (size_t i = 0; i < 1; ++i)
-    // {
-    //     qs[i] = pinocchio::randomConfiguration(_model, -qmax, qmax);
-    //     qdots[i] = Eigen::VectorXd::Random(_model.nv);
-    //     qddots[i] = Eigen::VectorXd::Random(_model.nv);
-    // }
-
-    // timer.tic();
-    // pinocchio::rnea(_model, *_data, qs[0], qdots[0], qddots[0]);
-    // std::cout << "RNEA = \t\t"; timer.toc(std::cout,1);
     pinocchio::rnea(_model, *_data, _q, _qd * _time_factor, _qdd * pow(_time_factor, 2));
     _tau = _data->tau;
-    pinocchio::forwardKinematics(_model, *_data, _q);
-    pinocchio::forwardKinematics(_model, *_traj_data, _q_traj);
-    _cartesian_error_norm = (_data->oMi[6].translation() - _traj_data->oMi[6].translation()).transpose().norm();
 
     return 0;
 }

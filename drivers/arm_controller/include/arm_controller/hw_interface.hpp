@@ -129,7 +129,7 @@ public:
             }
         }
 
-        this->declare_parameter<double>("loop_frequency", 500);
+        this->declare_parameter<double>("loop_frequency", 200.);
         this->get_parameter("loop_frequency", _loop_fq);
 
         _can_loop_t = std::chrono::microseconds(int(1000000 / _loop_fq));
