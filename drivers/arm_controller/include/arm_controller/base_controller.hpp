@@ -43,7 +43,8 @@ enum ControllerState
     STOP = 1,
     RESUME = 2,
     PAUSE = 3,
-    EXECUTE = 4
+    EXECUTE = 4,
+    GRAV_COMP = 5
 };
 
 /****
@@ -240,6 +241,13 @@ protected:
      ****/
 
     int resumeArm();
+
+
+    /****
+     * Go into gravity compensation mode.
+     ****/
+
+    int gravityMode();
 
     /****
      * Callback handling state transition commands

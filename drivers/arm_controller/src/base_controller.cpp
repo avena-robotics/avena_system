@@ -68,9 +68,9 @@ bool BaseController::getArmState()
         // std::cout<<"Joint "<<i<<":"<<_arm_status.joints[i].state<<std::endl;
     }
     _arm_status.timestamp = _shm_arm_status->timestamp;
-    auto t_delta = (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-_arm_status.timestamp)).count();
-    if(t_delta>2*(1000000/_trajectory_rate))
-        RCLCPP_WARN(_node->get_logger(),"Arm state is %d us old.",t_delta);
+    auto t_delta = (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _arm_status.timestamp)).count();
+    if (t_delta > 2 * (1000000 / _trajectory_rate))
+        RCLCPP_WARN(_node->get_logger(), "Arm state is %d us old.", t_delta);
     return 1;
 }
 
@@ -273,7 +273,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
     //resume
     case 2:
         RCLCPP_INFO(_node->get_logger(), "Received resume command.");
-        if (_controller_state == 3)
+        if (_controller_state == PAUSE)
         {
             resumeArm();
             response->feedback = "Received resume command.";
@@ -286,7 +286,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         break;
     //pause
     case 3:
-        if (_controller_state == 4)
+        if (_controller_state == EXECUTE)
         {
             pauseArm();
             response->feedback = "Received pause command.";
@@ -334,6 +334,19 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         response->feedback = "Received execute command.";
         break;
     }
+    //gravity compensation
+    case 5:
+        if (_controller_state == STOP || _controller_state == PAUSE)
+        {
+            gravityMode();
+            response->feedback = "Received gravity mode command.";
+        }
+        else
+        {
+            RCLCPP_INFO(_node->get_logger(), "Controller can only enter gravity mode from stop or pause state.");
+            response->feedback = "Controller can only enter gravity mode from stop or pause state.";
+        }
+        break;
     default:
         RCLCPP_INFO(_node->get_logger(), "Received unknown command.");
         response->feedback = "Received unknown command.";
@@ -353,7 +366,7 @@ int BaseController::stopArm()
 
 int BaseController::pauseArm()
 {
-    if (_controller_state != 3)
+    if (_controller_state != PAUSE)
     {
         RCLCPP_INFO(_node->get_logger(), "Received pause command.");
         _controller_state = PAUSE;
@@ -368,6 +381,16 @@ int BaseController::resumeArm()
 {
     _controller_state = RESUME;
     _t_stop = std::chrono::steady_clock::now();
+    return 0;
+}
+
+int BaseController::gravityMode()
+{
+
+    _controller_state = GRAV_COMP;
+    if (_time_factor != 0.)
+        _prev_time_factor = _time_factor;
+    _time_factor = 0.;
     return 0;
 }
 
@@ -658,6 +681,18 @@ int BaseController::handleControllerState(ControllerState controller_state)
             }
         }
     }
+
+    if (controller_state == GRAV_COMP)
+    {
+        for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+        {
+            if (_arm_status.joints[jnt_idx].state == 255)
+            {
+                RCLCPP_ERROR(_node->get_logger(), "Joint %i current error status: %i, previous error status: %i", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
+                stopArm();
+            }
+        }
+    }
     return 0;
 }
 
@@ -695,7 +730,25 @@ int BaseController::calculateTorque()
         _vel_sign = ((_set_vel > 0) - (_set_vel < 0));
         _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
 
-        _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
+        switch (_controller_state)
+        {
+        case EXECUTE:
+            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
+            break;
+        case RESUME:
+            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
+            break;
+        case PAUSE:
+            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val;
+            break;
+        case GRAV_COMP:
+            _set_torque_val = _tau[jnt_idx];
+            break;
+        default:
+            _set_torque_val = 0;
+            break;
+        }
+
         // _set_torque_val = _tau[jnt_idx];
         _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
 
@@ -706,7 +759,7 @@ int BaseController::calculateTorque()
                 _set_torque_val = _model.effortLimit[jnt_idx] * _torque_sign;
         }
 
-        if (_controller_state != 1)
+        if (_controller_state != STOP)
         {
             _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
             _arm_command.joints[jnt_idx].c_status = 3;
@@ -731,6 +784,7 @@ int BaseController::calculateFK()
     pinocchio::forwardKinematics(_model, *_data, _q);
     pinocchio::forwardKinematics(_model, *_traj_data, _q_traj);
     _cartesian_error_norm = (_data->oMi[6].translation() - _traj_data->oMi[6].translation()).transpose().norm();
+    return 0;
 }
 int BaseController::calculateID()
 {
@@ -824,6 +878,7 @@ void BaseController::controlLoop()
             _time_factor = 0.;
         }
     }
+    calculateFK();
     calculateID();
     calculateTorque();
 

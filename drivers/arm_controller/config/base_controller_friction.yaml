@@ -1,3 +1,7 @@
+/candriver:
+  ros__parameters:
+    loop_frequency: 500.
+    
 /base_controller:
   ros__parameters:
     error_margin: 0.005
