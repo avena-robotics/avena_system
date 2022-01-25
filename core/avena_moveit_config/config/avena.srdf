@@ -11,6 +11,7 @@
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
     <group name="avena_arm">
         <joint name="virtual_joint"/>
+        <joint name="avena_base_link_joint"/>
         <joint name="avena_joint_1"/>
         <joint name="avena_joint_2"/>
         <joint name="avena_joint_3"/>
@@ -29,7 +30,7 @@
         <joint name="avena_joint_6" value="0"/>
     </group_state>
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
-    <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="avena_link_0"/>
+    <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="avena_base_link"/>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="avena_link_0" link2="avena_link_1" reason="Adjacent"/>
     <disable_collisions link1="avena_link_0" link2="avena_link_2" reason="Never"/>
