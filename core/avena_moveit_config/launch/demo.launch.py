@@ -133,7 +133,6 @@ def generate_launch_description():
             ompl_planning_pipeline_config,
             kinematics_yaml,
         ],
-        # condition=UnlessCondition(tutorial_mode),
     )
 
     # Static TF
@@ -174,7 +173,6 @@ def generate_launch_description():
     load_controllers = []
     for controller in [
         "avena_arm_controller",
-        # "panda_hand_controller",
         "joint_state_broadcaster",
     ]:
         load_controllers += [
@@ -184,18 +182,6 @@ def generate_launch_description():
                 output="screen",
             )
         ]
-
-    # # Warehouse mongodb server
-    # mongodb_server_node = Node(
-    #     package="warehouse_ros_mongo",
-    #     executable="mongo_wrapper_ros.py",
-    #     parameters=[
-    #         {"warehouse_port": 33829},
-    #         {"warehouse_host": "localhost"},
-    #         {"warehouse_plugin": "warehouse_ros_mongo::MongoDatabaseConnection"},
-    #     ],
-    #     output="screen",
-    # )
 
     return LaunchDescription(
         [
