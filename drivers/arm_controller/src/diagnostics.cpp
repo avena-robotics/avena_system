@@ -125,6 +125,7 @@ void Diagnostics::controlLoop()
         setArmCommand();
         writeDiagnostics();
         RCLCPP_INFO(_node->get_logger(), "shutting down");
+        rclcpp::shutdown();
         exit(0);
     }
 
@@ -215,12 +216,12 @@ int Diagnostics::paramInit()
     _node->declare_parameter<std::string>("config_path", "");
     _node->declare_parameter<double>("loop_frequency", 500.);
     _node->declare_parameter<double>("communication_rate", 100.);
-    _node->declare_parameter<double>("const_torque", 9.);
+    _node->declare_parameter<double>("tq", 12.);
 
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("loop_frequency", _trajectory_rate);
     _node->get_parameter("communication_rate", _communication_rate);
-    _node->get_parameter("const_torque", _const_torque);
+    _node->get_parameter("tq", _const_torque);
     RCLCPP_INFO(_node->get_logger(), "Constant torque: %f.", _const_torque);
     return 0;
 }

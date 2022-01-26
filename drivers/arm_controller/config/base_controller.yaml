@@ -1,36 +1,36 @@
 /candriver:
   ros__parameters:
-    loop_frequency: 500.
+    loop_frequency: 1000.
     
 /base_controller:
   ros__parameters:
 
-    loop_frequency: 500.
+    loop_frequency: 1000.
     communication_rate: 10.
 
     error_margin: 0.09
 
     FFv_gain_0: 0.0
     FFa_gain_0: 0.
-    Kd_gain_0: 20.0
+    Kd_gain_0: 40.0
     Ki_gain_0: 160.0
-    Kp_gain_0: 420.0
+    Kp_gain_0: 820.0
     i_clamp_h_0: 10.
     i_clamp_l_0: -10.
 
     FFv_gain_1: 0.0
     FFa_gain_1: 0.
-    Kd_gain_1: 25.0
-    Ki_gain_1: 160.0
-    Kp_gain_1: 420.0
+    Kd_gain_1: 20.0
+    Ki_gain_1: 200.0
+    Kp_gain_1: 900.0
     i_clamp_h_1: 25.
     i_clamp_l_1: -25.
 
     FFv_gain_2: 0.0
     FFa_gain_2: 0.
-    Kd_gain_2: 20.0
+    Kd_gain_2: 5.0
     Ki_gain_2: 160.0
-    Kp_gain_2: 380.0
+    Kp_gain_2: 620.0
     i_clamp_h_2: 25.
     i_clamp_l_2: -25.
 

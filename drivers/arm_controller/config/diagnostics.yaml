@@ -7,7 +7,7 @@
 
     loop_frequency: 500.
     communication_rate: 10.
-    const_torque: 16.
+    const_torque: 12.
 
     use_sim_time: false
 

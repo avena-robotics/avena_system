@@ -16,8 +16,10 @@ def launch_setup(context, *args, **kwargs):
     pkg_share = FindPackageShare('arm_controller').find('arm_controller')
     config = os.path.join(pkg_share,'config')
     params = os.path.join(config,'diagnostics.yaml')
+    tq_arg = DeclareLaunchArgument('tq', default_value = '12.')
+    
 
-    return [
+    return [tq_arg,
         Node(
             package='arm_controller',
             executable='hw_interface',
@@ -29,7 +31,7 @@ def launch_setup(context, *args, **kwargs):
             package='arm_controller',
             executable='diagnostics',
             output='both',
-            parameters=[params, {'config_path':config}]
+            parameters=[params, {'config_path':config,'tq':LaunchConfiguration('tq')}]
         )
     ]
 
