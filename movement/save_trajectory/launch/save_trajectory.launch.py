@@ -81,21 +81,21 @@ def generate_launch_description():
     )
     ompl_planning_pipeline_config["move_group"].update(ompl_planning_yaml)
 
-    # RViz
-    rviz_full_config = os.path.join(get_package_share_directory("avena_moveit_config"), "launch", "avena_moveit_config_demo.rviz")
-    rviz_node = Node(
-        package="rviz2",
-        executable="rviz2",
-        name="rviz2",
-        output="log",
-        arguments=["-d", rviz_full_config],
-        parameters=[
-            robot_description,
-            robot_description_semantic,
-            ompl_planning_pipeline_config,
-            kinematics_yaml,
-        ],
-    )
+    # # RViz
+    # rviz_full_config = os.path.join(get_package_share_directory("avena_moveit_config"), "launch", "avena_moveit_config_demo.rviz")
+    # rviz_node = Node(
+    #     package="rviz2",
+    #     executable="rviz2",
+    #     name="rviz2",
+    #     output="log",
+    #     arguments=["-d", rviz_full_config],
+    #     parameters=[
+    #         robot_description,
+    #         robot_description_semantic,
+    #         ompl_planning_pipeline_config,
+    #         kinematics_yaml,
+    #     ],
+    # )
 
     save_trajectory = Node(
         package="save_trajectory",
@@ -120,7 +120,7 @@ def generate_launch_description():
                 description="Whether module should run dummy joint state publisher or not.",
                 choices=['True', 'False'],
             ),
-            rviz_node,
+            # rviz_node,
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('avena_bringup'), 'launch', 'avena_arm_moveit_setup.launch.py')),
             ),

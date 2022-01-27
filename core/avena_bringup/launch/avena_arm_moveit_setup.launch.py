@@ -2,7 +2,9 @@ import os
 import yaml
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import ExecuteProcess
+from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_directory
 import xacro
 
@@ -30,6 +32,13 @@ def load_yaml(package_name, file_path):
 
 
 def generate_launch_description():
+    # run_rviz = DeclareLaunchArgument(
+    #     name="rviz", 
+    #     default_value="True", 
+    #     description="Whether to run RViz visualization or not.",
+    #     choices=['True', 'False'],
+    # )
+
     # planning_context
     robot_description_config = xacro.process_file(
         os.path.join(
@@ -106,8 +115,7 @@ def generate_launch_description():
         "publish_state_updates": True,
         "publish_transforms_updates": True,
     }
-    # from pprint import pprint
-    # pprint(ompl_planning_pipeline_config, indent=4)
+
     # Start the actual move_group node/action server
     run_move_group_node = Node(
         package="moveit_ros_move_group",
@@ -123,22 +131,6 @@ def generate_launch_description():
             planning_scene_monitor_parameters,
         ],
     )
-
-    # # RViz
-    # rviz_full_config = os.path.join(get_package_share_directory("avena_moveit_config"), "launch", "avena_moveit_config_demo.rviz")
-    # rviz_node = Node(
-    #     package="rviz2",
-    #     executable="rviz2",
-    #     name="rviz2",
-    #     output="log",
-    #     arguments=["-d", rviz_full_config],
-    #     parameters=[
-    #         robot_description,
-    #         robot_description_semantic,
-    #         ompl_planning_pipeline_config,
-    #         kinematics_yaml,
-    #     ],
-    # )
 
     # Static TF
     static_tf = Node(
@@ -158,14 +150,32 @@ def generate_launch_description():
         parameters=[robot_description],
     )
 
-    # save_trajectory = Node(
-    #     package="save_trajectory",
-    #     executable="save_trajectory",
-    #     output="screen",
-    # )
+    # RViz
+    rviz_full_config = os.path.join(get_package_share_directory("avena_moveit_config"), "launch", "avena_moveit_config_demo.rviz")
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='log',
+        arguments=['-d', rviz_full_config],
+        parameters=[
+            robot_description,
+            robot_description_semantic,
+            ompl_planning_pipeline_config,
+            kinematics_yaml,
+        ],
+        condition=IfCondition(LaunchConfiguration('rviz')),
+    )
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                name='rviz', 
+                default_value='True', 
+                description='Whether to run RViz visualization or not.',
+                choices=['True', 'False'],
+            ),
+            rviz_node,
             static_tf,
             robot_state_publisher,
             run_move_group_node,
