@@ -31,6 +31,7 @@ namespace save_trajectory
     {
         RCLCPP_INFO(LOGGER, "Saving generated trajectory to file");
         // const auto goal = goal_handle->get_goal();
+        RCLCPP_INFO_STREAM(LOGGER, "Number of points in trajectory " << trajectory->points.size());
 
         // ////////////////////////////////////////////////////////////
         // std::stringstream ss;
