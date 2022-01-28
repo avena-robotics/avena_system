@@ -14,11 +14,10 @@ def generate_launch_description():
         default_value=TextSubstitution(text='/home/avena/Documents'),
         description="Path to directory where generated trajectories will be saved.",
     )
-    run_joint_state_pub_arg = DeclareLaunchArgument(
-        name='run_joint_state_pub', 
-        default_value='True',
-        description="Whether module should run dummy joint state publisher or not.",
-        choices=['True', 'False'],
+
+    # Dummy arm controller
+    dummy_arm_controller = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('dummy_arm_controller'), 'launch', 'dummy_arm_controller.launch.py')),
     )
 
     # Avena MoveIt setup
@@ -32,14 +31,13 @@ def generate_launch_description():
         executable="save_trajectory_node",
         parameters=[{
             'base_path': LaunchConfiguration('base_path'),
-            'run_joint_state_pub': LaunchConfiguration('run_joint_state_pub'),
         }],
         output="screen",
     )
 
     return LaunchDescription([
         base_path_arg,
-        run_joint_state_pub_arg,
         avena_moveit_setup,
+        dummy_arm_controller,
         save_trajectory,
     ])

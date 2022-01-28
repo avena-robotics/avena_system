@@ -18,10 +18,8 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
-find_package(control_msgs REQUIRED)
-find_package(sensor_msgs REQUIRED)
+find_package(trajectory_msgs REQUIRED)
 
 add_library(save_trajectory SHARED src/save_trajectory.cpp)
 target_include_directories(save_trajectory 
@@ -36,16 +34,9 @@ rclcpp_components_register_node(save_trajectory
 
 ament_target_dependencies(save_trajectory
   rclcpp
-  rclcpp_action
   rclcpp_components
-  control_msgs
-  sensor_msgs
+  trajectory_msgs
 )
-
-# install(
-#   TARGETS save_trajectory
-#   DESTINATION lib/${PROJECT_NAME}
-# )
 
 install(
   TARGETS save_trajectory
