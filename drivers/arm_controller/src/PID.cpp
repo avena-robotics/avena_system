@@ -54,13 +54,16 @@ void PID::update(double Kp, double Ki, double Kd)
     Ki_ = Ki;
     Kd_ = Kd;
 }
+std::array<double,3> PID::getComponents(){
+    return std::array<double,3>{_error_p,_error_i,_error_d};
+}
 
 double PID::getValue(double error)
 {
 
     _d_buffer[_iter] = error;
 
-    double error_p = error * Kp_;
+    _error_p = error * Kp_;
     i_val_ += (error * dt_);
 
     if (i_val_ > i_clamp_high_)
@@ -72,7 +75,7 @@ double PID::getValue(double error)
         i_val_ = i_clamp_low_;
     }
 
-    double error_i = i_val_ * Ki_;
+    _error_i = i_val_ * Ki_;
 
     //TODO: add inertia?
 
@@ -81,10 +84,10 @@ double PID::getValue(double error)
     {
         _d_sum += _d_buffer[i];
     }
-    double error_d = (_d_sum - prev_error_) / (dt_ * _d_n) * Kd_;
+    _error_d = (_d_sum - prev_error_) / (dt_ * _d_n) * Kd_;
     prev_error_ = _d_sum;
 
-    double error_sum = error_p + error_i + error_d;
+    double error_sum = _error_p + _error_i + _error_d;
 
     _iter = (_iter + 1) % _d_n;
     return error_sum;

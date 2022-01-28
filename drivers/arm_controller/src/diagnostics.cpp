@@ -128,6 +128,20 @@ void Diagnostics::controlLoop()
         rclcpp::shutdown();
         exit(0);
     }
+    if (!rclcpp::ok())
+    {
+        for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+        {
+            _arm_command.joints[jnt_idx].c_torque = 0;
+            _arm_command.joints[jnt_idx].c_status = 2;
+        }
+        communicate();
+        _arm_command.timestamp = std::chrono::steady_clock::now();
+        setArmCommand();
+        RCLCPP_INFO(_node->get_logger(), "shutting down");
+        rclcpp::shutdown();
+        exit(0);
+    }
 
     //GET JOINT STATES
     getArmState();

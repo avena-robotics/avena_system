@@ -58,8 +58,7 @@ class ArmInterface : public rclcpp::Node
 {
 
 public:
-
-/****
+    /****
  * 
  ****/
 
@@ -159,6 +158,7 @@ public:
     {
         boost::interprocess::shared_memory_object::remove("HWSharedMemory");
         std::cout << "Shared memory cleared" << std::endl;
+        exit(0);
     }
 
     // ArmStatus getArmState()
@@ -177,46 +177,51 @@ public:
     // }
 
 private:
-
-/****
+    /****
  * Main communication loop.
  * Transmits and receives messages via CAN FD interface and updates ArmState.
  ****/
     void commsLoop()
     {
+        if (rclcpp::ok())
+        {
+            // if (_get_delay > std::chrono::microseconds(100))
+            // {
+            //     if (_get_delay > std::chrono::microseconds(1100))
+            //     {
+            //         read_time = _get_delay - std::chrono::microseconds(100);
+            //     }
+            //     else
+            //     {
+            //         std::this_thread::sleep_for(_get_delay - std::chrono::microseconds(100));
+            //     }
+            // }
 
-        // if (_get_delay > std::chrono::microseconds(100))
-        // {
-        //     if (_get_delay > std::chrono::microseconds(1100))
-        //     {
-        //         read_time = _get_delay - std::chrono::microseconds(100);
-        //     }
-        //     else
-        //     {
-        //         std::this_thread::sleep_for(_get_delay - std::chrono::microseconds(100));
-        //     }
-        // }
+            // if (read_time < ref_read_time/2)
+            // {
+            //     read_time = ref_read_time;
+            // }
 
-        // if (read_time < ref_read_time/2)
-        // {
-        //     read_time = ref_read_time;
-        // }
+            // if (std::chrono::steady_clock::now() - _command_timestamp > _max_delay)
+            // {
+            //     sendArmCommand(ArmCommand(), read_time);
+            // }
+            // else
+            // {
+            //     sendArmCommand(_arm_command, read_time);
+            // }
+            // std::cout << "asdf" << std::endl;
+            sendArmCommand(_arm_command, _can_loop_t);
 
-        // if (std::chrono::steady_clock::now() - _command_timestamp > _max_delay)
-        // {
-        //     sendArmCommand(ArmCommand(), read_time);
-        // }
-        // else
-        // {
-        //     sendArmCommand(_arm_command, read_time);
-        // }
-        // std::cout << "asdf" << std::endl;
-        sendArmCommand(_arm_command, _can_loop_t);
-
-        updateArmState();
+            updateArmState();
+        }
+        else
+        {
+            rclcpp::shutdown();
+        }
     }
 
-/****
+    /****
  * Transmits and receives an ArmCommand message via CAN FD interface.
  * @param arm_command command to be sent
  * @param read_time maximum time for all responses to arrive
@@ -258,7 +263,7 @@ private:
         return 1;
     }
 
-/****
+    /****
  * Writes current ArmState to shared memory.
  ****/
 

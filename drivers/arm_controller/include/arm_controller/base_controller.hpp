@@ -12,6 +12,7 @@
 #include "std_msgs/msg/string.hpp"
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float64.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include "sensor_msgs/msg/joint_state.hpp"
 
@@ -353,7 +354,11 @@ protected:
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _set_joint_states_pub;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_states_pub;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_errors_pub;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_pid_errors_pub;
+
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr _cartesian_error_norm_pub;
+
+
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr _controller_state_pub;
 
     //__SUBSCRIBERS
