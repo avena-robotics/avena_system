@@ -48,6 +48,23 @@ enum ControllerState
     GRAV_COMP = 5
 };
 
+enum JointState
+{
+    INIT = 1,
+    READY_TO_OPERATE = 2,
+    OPERATION_ENABLED = 3,
+    FAULT = 255,
+    NOT_CONNECTED = 420
+};
+
+enum JointWarn
+{
+    POSITION_ACCURATE = 0,
+    POSITION_APPROXIMATED = 1,
+    UNDER_WORKING_AREA = 2,
+    OVER_WORKING_AREA = 3
+};
+
 /****
  * /brief A structure for storing joint friction parameters.
 ****/

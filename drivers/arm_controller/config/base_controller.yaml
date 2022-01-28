@@ -12,25 +12,25 @@
 
     FFv_gain_0: 0.0
     FFa_gain_0: 0.
-    Kd_gain_0: 80.0
-    Ki_gain_0: 240.0
-    Kp_gain_0: 820.0
-    i_clamp_h_0: 15.
-    i_clamp_l_0: -15.
+    Kd_gain_0: 100.0
+    Ki_gain_0: 420.0
+    Kp_gain_0: 760.0
+    i_clamp_h_0: 20.
+    i_clamp_l_0: -20.
 
     FFv_gain_1: 0.0
     FFa_gain_1: 0.
-    Kd_gain_1: 80.0
-    Ki_gain_1: 420.0
-    Kp_gain_1: 760.0
+    Kd_gain_1: 100.0
+    Ki_gain_1: 460.0
+    Kp_gain_1: 720.0
     i_clamp_h_1: 25.
     i_clamp_l_1: -25.
 
     FFv_gain_2: 0.0
     FFa_gain_2: 0.
-    Kd_gain_2: 40.0
-    Ki_gain_2: 200.0
-    Kp_gain_2: 620.0
+    Kd_gain_2: 60.0
+    Ki_gain_2: 300.0
+    Kp_gain_2: 480.0
     i_clamp_h_2: 25.
     i_clamp_l_2: -25.
 
