@@ -102,6 +102,13 @@ int main(int argc, char **argv)
         if (file.path().extension() == ".csv")
             trajectories_files_paths.push_back(file.path());
 
+    if (trajectories_files_paths.size() == 0)
+    {
+        RCLCPP_WARN_STREAM(LOGGER, "There are not CSV files with trajectories in " << base_path << " directory.");
+        rclcpp::shutdown();
+        return 0;
+    }
+    
     // std::filesystem::directory_iterator does not iterate in order, no names 
     // have to sorted assuming that names of CSV files can be sorted
     std::sort(trajectories_files_paths.begin(), trajectories_files_paths.end());
@@ -186,7 +193,7 @@ int main(int argc, char **argv)
         }
 
         RCLCPP_INFO_STREAM(LOGGER, "Result received. Error code: " << wrapped_result.result->error_code);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     rclcpp::shutdown();
