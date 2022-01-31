@@ -105,27 +105,26 @@ ament_target_dependencies(diagnostics
 )
 
 
-# add_executable(single_joint_debug
-#     src/single_joint_debug.cpp
-#     src/PID.cpp
-#     )
+add_executable(single_joint_debug
+    src/single_joint_debug.cpp
+    src/PID.cpp
+    )
 
-# target_include_directories(single_joint_debug  PUBLIC
-#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#     $<INSTALL_INTERFACE:include>)
+target_include_directories(single_joint_debug  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
   
-#  target_link_libraries(single_joint_debug  base_controller_lib Eigen3::Eigen)
+ target_link_libraries(single_joint_debug  base_controller_lib Eigen3::Eigen)
   
-#  ament_target_dependencies(single_joint_debug 
-#     pluginlib
-#     rclcpp
-#     std_msgs 
-#     sensor_msgs
-#     custom_interfaces
-#     helpers_commons
-#     candriver
-#     pinocchio
-#   )
+ ament_target_dependencies(single_joint_debug 
+    pluginlib
+    rclcpp
+    std_msgs 
+    sensor_msgs
+    custom_interfaces
+    helpers_commons
+    candriver
+  )
 
 add_executable(friction_calibration
     src/friction_calibration.cpp
@@ -183,7 +182,7 @@ install(TARGETS
   diagnostics
   friction_calibration
   hw_interface
-  # single_joint_debug
+  single_joint_debug
   DESTINATION lib/${PROJECT_NAME})
 
 install(

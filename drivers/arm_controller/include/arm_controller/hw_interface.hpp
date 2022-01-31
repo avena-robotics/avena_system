@@ -156,6 +156,13 @@ public:
 
     ~ArmInterface()
     {
+        for (size_t i = 0; i < 6; i++)
+        {
+            _arm_command->joints[i].c_torque = 0;
+            _arm_command->joints[i].c_status = 2;
+
+        }
+        sendArmCommand(_arm_command, std::chrono::microseconds(100));
         boost::interprocess::shared_memory_object::remove("HWSharedMemory");
         std::cout << "Shared memory cleared" << std::endl;
         exit(0);
