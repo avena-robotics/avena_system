@@ -10,6 +10,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   
   <depend>avena_bringup</depend>
+  <depend>custom_interfaces</depend>
   <depend>dummy_arm_controller</depend>
   <depend>save_trajectory</depend>
   <depend>rclcpp</depend>

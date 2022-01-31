@@ -5,6 +5,7 @@
 #include <memory>
 #include <fstream>
 #include <mutex>
+#include <atomic>
 
 // ROS2
 #include <control_msgs/action/follow_joint_trajectory.hpp>
@@ -41,7 +42,6 @@ namespace dummy_arm_controller
     rclcpp::TimerBase::SharedPtr _joint_states_timer;
     sensor_msgs::msg::JointState _current_joint_states;
     std::mutex _current_joint_states_mtx;
-    // bool _run_joint_state_pub = true;
 
     rclcpp_action::GoalResponse _handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const Action::Goal> /*goal*/);
     rclcpp_action::CancelResponse _handleCancel(const std::shared_ptr<GoalHandleAction> /*goal_handle*/);

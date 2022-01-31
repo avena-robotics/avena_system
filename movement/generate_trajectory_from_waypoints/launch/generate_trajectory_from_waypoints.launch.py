@@ -54,25 +54,27 @@ def generate_launch_description():
         description="Path to directory where generated trajectories will be saved.",
     )
 
-    # initialized_env = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         os.path.join(get_package_share_directory('generate_trajectory_from_waypoints'), 
-    #                                                  'launch', 
-    #                                                  'save_waypoints.launch.py')),
-    #     launch_arguments={"warehouse_port": LaunchConfiguration('warehouse_port'),
-    #                       "warehouse_host": LaunchConfiguration('warehouse_host'),
-    #                       "warehouse_plugin": LaunchConfiguration('warehouse_plugin')}.items(),
-    # )
+    # Avena MoveIt setup
+    avena_moveit_setup = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('avena_bringup'), 'launch', 'avena_arm_moveit_setup.launch.py')),
+    )
 
-    # # Main module which saves generated trajectories
-    # save_trajectory = Node(
-    #     package="save_trajectory",
-    #     executable="save_trajectory_node",
-    #     parameters=[{
-    #         'base_path': LaunchConfiguration('base_path'),
-    #     }],
-    #     output="screen",
-    # )
+    # Dummy arm controller
+    dummy_arm_controller = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('dummy_arm_controller'), 'launch', 'dummy_arm_controller.launch.py')),
+    )
+
+    # Warehouse mongodb server
+    mongodb_server_node = Node(
+        package="warehouse_ros_mongo",
+        executable="mongo_wrapper_ros.py",
+        parameters=[
+            {"warehouse_port": LaunchConfiguration('warehouse_port')},
+            {"warehouse_host": LaunchConfiguration('warehouse_host')},
+            {"warehouse_plugin": LaunchConfiguration('warehouse_plugin')},
+        ],
+        output="screen",
+    )
 
     robot_description_config = xacro.process_file(
         os.path.join(
@@ -110,9 +112,11 @@ def generate_launch_description():
         output="screen",
     )
 
+    # Module reads robot state (arm configurations) from Warehouse DB
+    # and generate trajectory for each pair of configurations
     generate_trajectory_node = Node(
         package="generate_trajectory_from_waypoints",
-        executable="generate_trajectory_from_waypoints",
+        executable="generate_trajectory_from_waypoints_node",
         parameters=[
             {"warehouse_port": LaunchConfiguration('warehouse_port')},
             {"warehouse_host": LaunchConfiguration('warehouse_host')},
@@ -132,4 +136,7 @@ def generate_launch_description():
 
         save_trajectory,
         generate_trajectory_node,
+        avena_moveit_setup,
+        dummy_arm_controller,
+        mongodb_server_node,
     ])

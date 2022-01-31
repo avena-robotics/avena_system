@@ -69,23 +69,39 @@ namespace dummy_arm_controller
     {
         RCLCPP_INFO(LOGGER, "Publishing trajectory to topic");
         const auto goal = goal_handle->get_goal();
+        auto result = std::make_shared<Action::Result>();
 
+        if (goal->trajectory.points.size() == 0)
+        {
+            result->error_code = control_msgs::action::FollowJointTrajectory::Result::INVALID_GOAL;
+            goal_handle->abort(result);
+            RCLCPP_INFO_STREAM(LOGGER, "There are not trajectory points. Exiting...");
+            return;
+        }
         // Publish generated trajectory on topic
         _trajectory_pub->publish(goal->trajectory);
 
-        // Set current position of arm to last from trajectory
+        constexpr int64_t sec_to_nsec = 1e9;
+        const int64_t time_step = goal->trajectory.points[1].time_from_start.sec * sec_to_nsec + goal->trajectory.points[1].time_from_start.nanosec;
+
+        for (size_t i = 0; i < goal->trajectory.points.size(); i++)
         {
-            std::lock_guard<std::mutex> lg(_current_joint_states_mtx);
-            const auto &current_jtp = goal->trajectory.points.back();
-            _current_joint_states.position = current_jtp.positions;
-            _current_joint_states.velocity = current_jtp.velocities;
-            _current_joint_states.effort = current_jtp.effort;
+            
+            auto start = std::chrono::system_clock::now();
+            {
+                std::lock_guard<std::mutex> lg(_current_joint_states_mtx);
+                const auto &current_jtp = goal->trajectory.points[i];
+                _current_joint_states.position = current_jtp.positions;
+                _current_joint_states.velocity = current_jtp.velocities;
+                _current_joint_states.effort = current_jtp.effort;
+            }
+            std::this_thread::sleep_until(start + std::chrono::nanoseconds(time_step));
         }
 
         // Check if goal is done
         if (rclcpp::ok())
         {
-            auto result = std::make_shared<Action::Result>();
+            result->error_code = control_msgs::action::FollowJointTrajectory::Result::SUCCESSFUL;
             goal_handle->succeed(result);
             RCLCPP_INFO_STREAM(LOGGER, "Goal Succeeded");
         }
