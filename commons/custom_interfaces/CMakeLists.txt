@@ -129,7 +129,8 @@ set(action_files
   # "action/SceneChangeStatus.action"
   # "action/ScenePublisher.action"
   # "action/HandEye.action"
-  "action/BTPickAndPlaceAction.action"
+  # "action/BTPickAndPlaceAction.action"
+  "action/Trigger.action"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

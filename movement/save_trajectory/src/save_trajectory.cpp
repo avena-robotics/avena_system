@@ -7,17 +7,7 @@ namespace save_trajectory
                                            .allow_undeclared_parameters(true)
                                            .automatically_declare_parameters_from_overrides(true))
     {
-        RCLCPP_INFO(LOGGER, "Initializing dummy joint trajectory to save generated trajectories to file and/or database");
-
-        get_parameter("run_joint_state_pub", _run_joint_state_pub);
-        if (_run_joint_state_pub)
-        {
-            RCLCPP_INFO_STREAM(LOGGER, "Running dummy joint state publisher");
-        }
-        else
-        {
-            RCLCPP_WARN_STREAM(LOGGER, "Other module provides current joint states for motion planning");
-        }
+        RCLCPP_INFO(LOGGER, "Initializing module to save generated trajectories to file and/or database");
 
         if (get_parameter("base_path", _base_path))
         {
@@ -30,66 +20,18 @@ namespace save_trajectory
             RCLCPP_WARN_STREAM(LOGGER, "Parameter \"base_path\" was not specified. Saving generated trajectories to " << _base_path);
         }
 
-        _action_server = rclcpp_action::create_server<Action>(
-            get_node_base_interface(),
-            get_node_clock_interface(),
-            get_node_logging_interface(),
-            get_node_waitables_interface(),
-            "avena_arm_controller/follow_joint_trajectory",
-            std::bind(&SaveTrajectory::_handleGoal, this, std::placeholders::_1, std::placeholders::_2),
-            std::bind(&SaveTrajectory::_handleCancel, this, std::placeholders::_1),
-            std::bind(&SaveTrajectory::_handleAccepted, this, std::placeholders::_1));
+        const auto qos_latching = rclcpp::QoS(1).transient_local().reliable();
+        _trajectory_sub = create_subscription<trajectory_msgs::msg::JointTrajectory>(
+            "/debug/trajectory", qos_latching, 
+            std::bind(&SaveTrajectory::_trajectoryCallback, this, std::placeholders::_1));
 
-        if (_run_joint_state_pub)
-        {
-            _dummy_joint_state_pub = create_publisher<sensor_msgs::msg::JointState>("joint_states", rclcpp::QoS(10).reliable());
-            _current_joint_states.name.clear();
-            for (size_t i = 0; i < 6; i++)
-            {
-                _current_joint_states.name.push_back("avena_joint_" + std::to_string(i + 1));
-                _current_joint_states.position.push_back(0);
-                _current_joint_states.velocity.push_back(0);
-                _current_joint_states.effort.push_back(0);
-            }
-
-            _joint_states_timer = create_wall_timer(
-                std::chrono::milliseconds(10), [this]()
-                {
-                    sensor_msgs::msg::JointState joint_states_to_publish;
-                    {
-                        std::lock_guard<std::mutex> lg(_current_joint_states_mtx);
-                        joint_states_to_publish = _current_joint_states;
-                    }
-                    joint_states_to_publish.header.frame_id = "avena_arm";
-                    joint_states_to_publish.header.stamp = get_clock()->now();
-
-                    _dummy_joint_state_pub->publish(joint_states_to_publish);
-                });
-        }
     }
 
-    rclcpp_action::GoalResponse SaveTrajectory::_handleGoal(const rclcpp_action::GoalUUID & /*uuid*/, std::shared_ptr<const Action::Goal> /*goal*/)
-    {
-        RCLCPP_INFO(LOGGER, "Got goal request");
-        return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
-    }
-
-    rclcpp_action::CancelResponse SaveTrajectory::_handleCancel(const std::shared_ptr<GoalHandleAction> /*goal_handle*/)
-    {
-        RCLCPP_INFO(LOGGER, "Got request to cancel goal");
-        return rclcpp_action::CancelResponse::ACCEPT;
-    }
-
-    void SaveTrajectory::_handleAccepted(const std::shared_ptr<GoalHandleAction> goal_handle)
-    {
-        // this needs to return quickly to avoid blocking the executor, so spin up a new thread
-        std::thread{std::bind(&SaveTrajectory::_execute, this, std::placeholders::_1), goal_handle}.detach();
-    }
-
-    void SaveTrajectory::_execute(const std::shared_ptr<GoalHandleAction> goal_handle)
+    void SaveTrajectory::_trajectoryCallback(trajectory_msgs::msg::JointTrajectory::ConstSharedPtr trajectory)
     {
         RCLCPP_INFO(LOGGER, "Saving generated trajectory to file");
-        const auto goal = goal_handle->get_goal();
+        // const auto goal = goal_handle->get_goal();
+        RCLCPP_INFO_STREAM(LOGGER, "Number of points in trajectory " << trajectory->points.size());
 
         // ////////////////////////////////////////////////////////////
         // std::stringstream ss;
@@ -109,9 +51,9 @@ namespace save_trajectory
         // ////////////////////////////////////////////////////////////
 
         std::stringstream data_stream;
-        for (size_t idx = 0; idx < goal->trajectory.points.size(); idx++)
+        for (size_t idx = 0; idx < trajectory->points.size(); idx++)
         {
-            const auto &jtp = goal->trajectory.points[idx];
+            const auto &jtp = trajectory->points[idx];
             int time_from_start_ms = static_cast<int>((jtp.time_from_start.sec + jtp.time_from_start.nanosec / 1e9) * 1000);
             data_stream << time_from_start_ms << ",";
             for (const auto pos : jtp.positions)
@@ -126,7 +68,7 @@ namespace save_trajectory
                 if (joint_idx < jtp.accelerations.size() - 1)
                     data_stream << ",";
             }
-            if (idx < goal->trajectory.points.size() - 1)
+            if (idx < trajectory->points.size() - 1)
                 data_stream << std::endl;
         }
 
@@ -135,24 +77,8 @@ namespace save_trajectory
         f << data_stream.rdbuf();
         f.close();
 
-        // Set current position of arm to last from trajectory
-        {
-            std::lock_guard<std::mutex> lg(_current_joint_states_mtx);
-            const auto &current_jtp = goal->trajectory.points.back();
-            _current_joint_states.position = current_jtp.positions;
-            _current_joint_states.velocity = current_jtp.velocities;
-            _current_joint_states.effort = current_jtp.effort;
-        }
-
-        // Check if goal is done
-        if (rclcpp::ok())
-        {
-            auto result = std::make_shared<Action::Result>();
-            goal_handle->succeed(result);
-            RCLCPP_INFO_STREAM(LOGGER, "Goal Succeeded - trajectory saved to " << file_path);
-        }
+        RCLCPP_INFO_STREAM(LOGGER, "Trajectory saved to " << file_path);
     }
-
 } // namespace save_trajectory
 
 #include "rclcpp_components/register_node_macro.hpp"

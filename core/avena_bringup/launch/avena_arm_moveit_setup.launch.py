@@ -32,11 +32,10 @@ def load_yaml(package_name, file_path):
 
 
 def generate_launch_description():
-    # run_rviz = DeclareLaunchArgument(
-    #     name="rviz", 
+    # rviz_config = DeclareLaunchArgument(
+    #     name="rviz_config", 
     #     default_value="True", 
     #     description="Whether to run RViz visualization or not.",
-    #     choices=['True', 'False'],
     # )
 
     # planning_context
@@ -151,13 +150,13 @@ def generate_launch_description():
     )
 
     # RViz
-    rviz_full_config = os.path.join(get_package_share_directory("avena_moveit_config"), "launch", "avena_moveit_config_demo.rviz")
+    # rviz_full_config = os.path.join(get_package_share_directory("avena_moveit_config"), "launch", "avena_moveit_config_demo.rviz")
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
         output='log',
-        arguments=['-d', rviz_full_config],
+        arguments=['-d', LaunchConfiguration('rviz_config')],
         parameters=[
             robot_description,
             robot_description_semantic,
@@ -174,6 +173,11 @@ def generate_launch_description():
                 default_value='True', 
                 description='Whether to run RViz visualization or not.',
                 choices=['True', 'False'],
+            ),
+            DeclareLaunchArgument(
+                name="rviz_config", 
+                default_value=os.path.join(get_package_share_directory("avena_moveit_config"), "launch", "avena_moveit_config_demo.rviz"), 
+                description="Path to RViz config file",
             ),
             rviz_node,
             static_tf,
