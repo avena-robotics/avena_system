@@ -57,14 +57,14 @@ namespace save_trajectory
             int time_from_start_ms = static_cast<int>((jtp.time_from_start.sec + jtp.time_from_start.nanosec / 1e9) * 1000);
             data_stream << time_from_start_ms << ",";
             for (const auto pos : jtp.positions)
-                data_stream << static_cast<int>(pos * MAX_INT16 / JOINT_POSMAX) << ",";
+                data_stream << static_cast<int>(pos / JOINT_POSMAX * MAX_INT16) << ",";
 
             for (const auto vel : jtp.velocities)
-                data_stream << static_cast<int>(vel * MAX_INT16 / JOINT_VELMAX) << ",";
+                data_stream << static_cast<int>(vel / JOINT_VELMAX * MAX_INT16) << ",";
 
             for (size_t joint_idx = 0; joint_idx < jtp.accelerations.size(); joint_idx++)
             {
-                data_stream << static_cast<int>(jtp.accelerations[joint_idx] * MAX_INT16 / JOINT_ACCMAX);
+                data_stream << static_cast<int>(jtp.accelerations[joint_idx] / JOINT_ACCMAX * MAX_INT16);
                 if (joint_idx < jtp.accelerations.size() - 1)
                     data_stream << ",";
             }
