@@ -70,7 +70,7 @@ namespace generate_trajectory
 
     int GenerateTrajectory::_generateTrajectoryFromPathSegment(trajectory_msgs::msg::JointTrajectory &segment_trajectory, trajectory_msgs::msg::JointTrajectory &out_trajectory)
     {
-        const float limit = 0.3;
+        const float limit = 0.5;
         Eigen::VectorXd maxAcceleration = Eigen::VectorXd::Ones(_robot_info.nr_joints) * limit;
         Eigen::VectorXd maxVelocity = Eigen::VectorXd::Ones(_robot_info.nr_joints) * limit;
 
