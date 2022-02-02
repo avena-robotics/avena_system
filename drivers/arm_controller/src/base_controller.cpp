@@ -288,7 +288,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
         break;
     //pause
     case 3:
-        if (_controller_state == EXECUTE)
+        if (_controller_state == EXECUTE || _controller_state == GRAV_COMP)
         {
             pauseArm();
             response->feedback = "Received pause command.";
@@ -338,7 +338,7 @@ void BaseController::setStateCb(const std::shared_ptr<custom_interfaces::srv::Co
     }
     //gravity compensation
     case 5:
-        if (_controller_state == STOP || _controller_state == PAUSE)
+        if (_controller_state == STOP || _controller_state == PAUSE || _controller_state == EXECUTE) //is it ok to go into gravity compensation during trajectory execution?
         {
             gravityMode();
             response->feedback = "Received gravity mode command.";
@@ -394,6 +394,24 @@ int BaseController::gravityMode()
     if (_time_factor != 0.)
         _prev_time_factor = _time_factor;
     _time_factor = 0.;
+
+    _t_start = std::chrono::steady_clock::now();
+    _time_accumulator = std::chrono::microseconds(0);
+    _t_current = std::chrono::steady_clock::now();
+
+    _trajectory.points.resize(1);
+    _trajectory.points[0].positions.resize(_joints_number);
+    _trajectory.points[0].velocities.resize(_joints_number);
+    _trajectory.points[0].accelerations.resize(_joints_number);
+    for (size_t i = 0; i < _joints_number; i++)
+    {
+        _trajectory.points[0].positions[i] = _arm_status.joints[i].position;
+        _trajectory.points[0].velocities[i] = 0.;
+        _trajectory.points[0].accelerations[i] = 0.;
+        _trajectory.points[0].time_from_start.sec = 0.;
+        _trajectory.points[0].time_from_start.nanosec = 0.;
+    }
+
     return 0;
 }
 
@@ -689,6 +707,7 @@ int BaseController::handleControllerState(ControllerState controller_state)
     {
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
+            _trajectory.points[0].positions[jnt_idx] = _arm_status.joints[jnt_idx].position;
             if (_arm_status.joints[jnt_idx].state == FAULT)
             {
                 RCLCPP_ERROR(_node->get_logger(), "Joint %i current error status: %i, previous error status: %i", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
@@ -707,9 +726,41 @@ int BaseController::calculateTorque()
         //dynamic PID reconfigure
         updateParams(_pid_ctrl, jnt_idx);
 
+        switch (_controller_state)
+        {
+        case EXECUTE:
+            _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
+            _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
+            if (std::abs(_error[jnt_idx]) < 0.002)
+                _error[jnt_idx] = 0;
+            _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
+            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
+            break;
+        case RESUME:
+            _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
+            _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
+            if (std::abs(_error[jnt_idx]) < 0.002)
+                _error[jnt_idx] = 0;
+            _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
+            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
+            break;
+        case PAUSE:
+            _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
+            if (std::abs(_error[jnt_idx]) < 0.002)
+                _error[jnt_idx] = 0;
+            _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
+            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val;
+            break;
+        case GRAV_COMP:
+            _error[jnt_idx] = 0;
+            _set_torque_val = _tau[jnt_idx];
+            break;
+        default:
+            _error[jnt_idx] = 0;
+            _set_torque_val = 0;
+            break;
+        }
         //calculate torques (PID+FF)
-        _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
-        _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
 
         if (std::abs(_error[jnt_idx]) > _error_margin)
         {
@@ -731,28 +782,9 @@ int BaseController::calculateTorque()
 
         _vel_sign = ((_set_vel > 0) - (_set_vel < 0));
         _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
+
+        //DEBUG
         _arm_joint_errors_msg.velocity[jnt_idx] = compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
-        switch (_controller_state)
-        {
-        case EXECUTE:
-            _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
-            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
-            break;
-        case RESUME:
-            _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
-            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
-            break;
-        case PAUSE:
-            _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
-            _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val;
-            break;
-        case GRAV_COMP:
-            _set_torque_val = _tau[jnt_idx];
-            break;
-        default:
-            _set_torque_val = 0;
-            break;
-        }
 
         // _set_torque_val = _tau[jnt_idx];
         _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
