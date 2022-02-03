@@ -94,7 +94,7 @@ int SingleJointDebug::varInit(size_t joints_number)
         _trajectory.points[i].accelerations.resize(joints_number);
         for (size_t jnt_idx = 0; jnt_idx < joints_number; jnt_idx++)
         {
-            _trajectory.points[i].positions[jnt_idx] = std::sin(double(i) / double(time_steps)*2*M_PI) * _sin_amp;
+            _trajectory.points[i].positions[jnt_idx] = std::sin(double(i) / double(time_steps) * 2 * M_PI) * _sin_amp;
             _trajectory.points[i].velocities[jnt_idx] = 0.;
             _trajectory.points[i].accelerations[jnt_idx] = 0.;
             _trajectory.points[i].time_from_start.sec = 0.;
@@ -183,8 +183,8 @@ int SingleJointDebug::communicate()
         _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
         _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
-        _set_joint_state_msg.position[jnt_idx] = _trajectory.points[_loop_it].positions[jnt_idx];
-        _set_joint_state_msg.velocity[jnt_idx] = _trajectory.points[_loop_it].velocities[jnt_idx];
+        // _set_joint_state_msg.position[jnt_idx] = _trajectory.points[_loop_it].positions[jnt_idx];
+        // _set_joint_state_msg.velocity[jnt_idx] = _trajectory.points[_loop_it].velocities[jnt_idx];
         _set_joint_state_msg.effort[jnt_idx] = _arm_command.joints[jnt_idx].c_torque;
         _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
     }
@@ -225,29 +225,55 @@ void SingleJointDebug::controlLoop()
 
     // handleControllerState(_controller_state);
 
-    if (_loop_it >= _trajectory.points.size())
-    {
-        _loop_it = 0;
-    }
+    // if (_loop_it >= _trajectory.points.size())
+    // {
+    //     _loop_it = 0;
+    // }
+    // for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    // {
+    //     if (_arm_status.joints[jnt_idx].state == 420)
+    //         continue;
+    //     updateParams(_pid_ctrl, jnt_idx);
+    //     _error[jnt_idx] = _trajectory.points[_loop_it].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
+    //     _arm_command.joints[jnt_idx].c_torque = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
+    //     if (_arm_command.joints[jnt_idx].c_torque > 20.)
+    //         _arm_command.joints[jnt_idx].c_torque = 20.;
+    //     if (_arm_command.joints[jnt_idx].c_torque < -20.)
+    //         _arm_command.joints[jnt_idx].c_torque = -20.;
+
+    //     _arm_command.joints[jnt_idx].c_status = 3;
+    // }
+
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         if (_arm_status.joints[jnt_idx].state == 420)
             continue;
-        updateParams(_pid_ctrl, jnt_idx);
-        _error[jnt_idx] = _trajectory.points[_loop_it].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
-        _arm_command.joints[jnt_idx].c_torque = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
-        if (_arm_command.joints[jnt_idx].c_torque > 20.)
+        if ((std::chrono::steady_clock::now() - _t_start) > std::chrono::seconds(1))
+        {
             _arm_command.joints[jnt_idx].c_torque = 20.;
-        if (_arm_command.joints[jnt_idx].c_torque < -20.)
-            _arm_command.joints[jnt_idx].c_torque = -20.;
-
-        _arm_command.joints[jnt_idx].c_status = 3;
+            _arm_command.joints[jnt_idx].c_status = 3;
+        }
+        else
+        {
+            // if ((std::chrono::steady_clock::now() - _t_start) < std::chrono::milliseconds(10))
+            // {
+            //     _arm_command.joints[jnt_idx].c_torque = 19.;
+            //     _arm_command.joints[jnt_idx].c_status = 3;
+            // }
+            // else
+            {
+                _arm_command.joints[jnt_idx].c_torque = 0.;
+                _arm_command.joints[jnt_idx].c_status = 3;
+            }
+        }
     }
+    if ((std::chrono::steady_clock::now() - _t_start) > std::chrono::seconds(1))
+        _t_start = std::chrono::steady_clock::now();
 
     _arm_command.timestamp = std::chrono::steady_clock::now();
     setArmCommand();
 
-    _loop_it++;
+    // _loop_it++;
 }
 
 void SingleJointDebug::init()
