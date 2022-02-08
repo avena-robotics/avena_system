@@ -51,19 +51,19 @@
 
     <link name="${arm_id}_link_2">
       <visual>
-        <origin xyz="0 0 0.0763" rpy="0 ${pi} ${pi/2}" />
+        <origin xyz="0 0 0.0" rpy="0 ${pi} ${pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_2.stl" scale="0.001 0.001 0.001" />
         </geometry>
         <material name="gray" />
       </visual>
       <inertial>
-        <origin xyz="-0.17651 0. 0.01528" rpy="0. ${pi} ${pi/2}"/>
-        <mass value="9."/>
-        <inertia ixx="2.809e-01"  ixy="0."  ixz="0." iyy="8.463e-03" iyz="0." izz="2.804e-01" />
+        <origin xyz="-0.34301 0. -0.05751" rpy="0. ${pi} ${pi/2}"/>
+        <mass value="6.66"/>
+        <inertia ixx="6.3107e-01"  ixy="0."  ixz="0." iyy="9.544e-03" iyz="0." izz="6.301e-01" />
       </inertial>
       <collision>
-        <origin xyz="0 0 0.0763" rpy="0 ${pi} ${pi/2}" />
+        <origin xyz="0 0 0" rpy="0 ${pi} ${pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_2.stl" scale="0.001 0.001 0.001" />
         </geometry>
@@ -72,19 +72,19 @@
 
     <link name="${arm_id}_link_3">
       <visual>
-        <origin xyz="0. 0. 0.0721" rpy="0 ${pi} ${-pi/2}" />
+        <origin xyz="0. 0. 0.0" rpy="0 ${pi} ${-pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_3.stl" scale="0.001 0.001 0.001" />
         </geometry>
         <material name="gray" />
       </visual>
       <inertial>
-        <origin xyz="0.3046 0. 0.0588" rpy="0 0 ${pi/2}"/>
-        <mass value="3.375"/>
-        <inertia ixx="1.149e-01"  ixy="0"  ixz="0" iyy="4.518e-03" iyz="0" izz="1.148e-01" />
+        <origin xyz="0.3503 0. -0.051" rpy="0 0 ${pi/2}"/>
+        <mass value="3.666"/>
+        <inertia ixx="3.158e-01"  ixy="0"  ixz="0" iyy="6.297e-03" iyz="0" izz="3.160e-01" />
       </inertial>
       <collision>
-        <origin xyz="0 0 0.0721" rpy="0 ${pi} ${-pi/2}" />
+        <origin xyz="0 0 0" rpy="0 ${pi} ${-pi/2}" />
         <geometry>
           <mesh filename="file://$(find ${description_pkg})/urdf/meshes/avena/link_3.stl" scale="0.001 0.001 0.001" />
         </geometry>
@@ -165,7 +165,7 @@
     </joint>
 
     <joint name="${arm_id}_joint_1" type="revolute">
-      <origin xyz="0 0 0.063" rpy="0 0 -0.1963" /> <!-- Offset from position -->
+      <origin xyz="0 0 0.063" rpy="0 0 0" /> <!-- Offset from position -->
       <parent link="${arm_id}_link_0" />
       <child link="${arm_id}_link_1" />
       <axis xyz="0 0 1" />
@@ -181,7 +181,7 @@
     </joint>
 
     <joint name="${arm_id}_joint_3" type="revolute">
-      <origin xyz="-0.467 0 0.009" rpy="0 ${pi} 0" />
+      <origin xyz="-0.686 0 0" rpy="0 ${pi} 0" />
       <parent link="${arm_id}_link_2" />
       <child link="${arm_id}_link_3" />
       <axis xyz="0 0 1" />
@@ -189,7 +189,7 @@
     </joint>
 
     <joint name="${arm_id}_joint_4" type="revolute">
-      <origin xyz="0.452 0 0.0226" rpy="${pi} 0 0" />
+      <origin xyz="0.671 0 -0.005" rpy="${pi} 0 0" />
       <parent link="${arm_id}_link_3" />
       <child link="${arm_id}_link_4" />
       <axis xyz="0 0 1" />
