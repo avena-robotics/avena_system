@@ -141,6 +141,9 @@ protected:
 
     void loadFrictionChart(std::string path);
 
+    void loadFrictionCoeffs(std::string path);
+
+
     /****
      * Reads PID parameters from this ROS2 node and updates PIDs used for controlling the arm.
      * @param pid A vector containing PID objects
@@ -158,6 +161,8 @@ protected:
      ****/
 
     double compensateFriction(double vel, double temp, int jnt_idx);
+
+    double compensateFriction_coeffs(double vel, std::array<double,4> coeffs);
 
     /****
      * Initializes inverse dynamic variables, such as robot model and data.
@@ -333,7 +338,9 @@ protected:
     ArmCommand _arm_command;
 
     //MEASUREMENT
-    const size_t _avg_samples = 200;
+    size_t _avg_samples;
+    const double _avg_samples_t = 0.2;
+
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;
@@ -342,6 +349,7 @@ protected:
     //FRICTION
     std::vector<std::vector<std::vector<friction_comp>>> _friction_chart;
     std::vector<std::vector<friction_comp>> _measured_friction_comp;
+    std::vector<std::array<double,4>> friction_coefficients;
 
     //KINEMATICS
 
