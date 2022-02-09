@@ -6,6 +6,8 @@ int Diagnostics::saveDiagnostics()
 {
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
+        if (_arm_status.joints[jnt_idx].state == 420)
+            continue;
         if (_arm_status.joints[jnt_idx].velocity < 0)
             continue;
         // int index = std::floor(std::fmod(std::fmod(_avg_pos[jnt_idx], (2. * M_PI)) + (2. * M_PI), (2. * M_PI)) / (2. * M_PI) * (double)_diag_samples);
@@ -25,7 +27,7 @@ int Diagnostics::getAverageArmState()
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
 
-        //crimge
+        // crimge
         if (std::abs(_arm_status.joints[jnt_idx].position - _prev_pos[jnt_idx]) > 10)
         {
             _avg_pos[jnt_idx] = 0;
@@ -69,6 +71,8 @@ int Diagnostics::writeDiagnostics()
 {
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
+        if (_arm_status.joints[jnt_idx].state == 420)
+            continue;
         if (_diag_data[jnt_idx].position.size() == 0)
             continue;
         std::string filename = std::string("/diag_j") + std::to_string(jnt_idx);
@@ -92,14 +96,14 @@ int Diagnostics::communicate()
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        //monitor data
+        // monitor data
         _arm_joint_state_msg.position[jnt_idx] = _arm_status.joints[jnt_idx].position;
         _arm_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
         _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
         _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
     }
 
-    //comms
+    // comms
     std_msgs::msg::Int32 state_msg;
     state_msg.set__data(_controller_state);
     _arm_joint_states_pub->publish(_arm_joint_state_msg);
@@ -110,7 +114,7 @@ int Diagnostics::communicate()
 
 void Diagnostics::controlLoop()
 {
-    //GET TIME
+    // GET TIME
     _time_accumulator += std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _t_current) * _time_factor);
     _t_current = std::chrono::steady_clock::now();
     if ((_t_current - _t_start) > std::chrono::minutes(2))
@@ -143,14 +147,14 @@ void Diagnostics::controlLoop()
         exit(0);
     }
 
-    //GET JOINT STATES
+    // GET JOINT STATES
     getArmState();
 
     // if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
     // {
     //     RCLCPP_WARN(_node->get_logger(), "Communication delay exceeded loop period by %i us.", std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count());
     // }
-    getAverageArmState();
+    // getAverageArmState();
     if ((_t_current - _t_start) > std::chrono::seconds(2))
         saveDiagnostics();
     handleControllerState(_controller_state);
@@ -162,12 +166,12 @@ void Diagnostics::controlLoop()
     }
     _arm_command.timestamp = std::chrono::steady_clock::now();
     setArmCommand();
-    //execute callbacks
-    // _exec->spin_some(std::chrono::nanoseconds(1000));
+    // execute callbacks
+    //  _exec->spin_some(std::chrono::nanoseconds(1000));
 
     _loop_it++;
-    //control loop frequency
-    // _remaining_time = std::floor(1000000 / _trajectory_rate - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
+    // control loop frequency
+    //  _remaining_time = std::floor(1000000 / _trajectory_rate - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
 
     // if (_remaining_time < 0)
     // {
@@ -178,7 +182,7 @@ void Diagnostics::controlLoop()
 
 int Diagnostics::jointInit()
 {
-    //JOINT COMMUNICATION INIT
+    // JOINT COMMUNICATION INIT
     RCLCPP_INFO(_node->get_logger(), "Starting executor");
     _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     _exec->add_node(_node);
@@ -193,13 +197,13 @@ int Diagnostics::jointInit()
     // }
 
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
-    int connected_joints = 0;
-    for (size_t i = 0; i < _joints_number; i++)
-    {
-        if (_arm_status.joints[i].state != 420)
-            connected_joints++;
-    }
-    _joints_number = connected_joints;
+    // int connected_joints = 0;
+    // for (size_t i = 0; i < _joints_number; i++)
+    // {
+    //     if (_arm_status.joints[i].state != 420)
+    //         connected_joints++;
+    // }
+    _joints_number = 6;
 
     getArmState();
 
@@ -225,7 +229,7 @@ int Diagnostics::idInit()
 
 int Diagnostics::paramInit()
 {
-    //PARAMETERS INIT
+    // PARAMETERS INIT
     RCLCPP_INFO(_node->get_logger(), "Initializing controller parameters.");
     _node->declare_parameter<std::string>("config_path", "");
     _node->declare_parameter<double>("loop_frequency", 500.);
@@ -237,6 +241,8 @@ int Diagnostics::paramInit()
     _node->get_parameter("communication_rate", _communication_rate);
     _node->get_parameter("tq", _const_torque);
     RCLCPP_INFO(_node->get_logger(), "Constant torque: %f.", _const_torque);
+    _avg_samples = size_t(_avg_samples_t * _trajectory_rate);
+    std::cout << "avg_samples: " << _avg_samples << std::endl;
     return 0;
 }
 
@@ -285,7 +291,7 @@ int Diagnostics::varInit(size_t joints_number)
 
     _diag_data.resize(joints_number);
 
-    //MEASUREMENT INIT
+    // MEASUREMENT INIT
     for (size_t i = 0; i < joints_number; i++)
     {
         _diag_data[i].position.resize(_diag_samples);
@@ -317,7 +323,7 @@ int Diagnostics::varInit(size_t joints_number)
         }
     }
 
-    //GET STARTING POSITION - HOLD TRAJECTORY
+    // GET STARTING POSITION - HOLD TRAJECTORY
     getArmState();
     _trajectory.points.resize(1);
     _trajectory.points[0].positions.resize(joints_number);
@@ -332,7 +338,7 @@ int Diagnostics::varInit(size_t joints_number)
         _trajectory.points[0].time_from_start.nanosec = 0.;
     }
 
-    //TIME INIT
+    // TIME INIT
     _loop_it = 0;
     _t_start = std::chrono::steady_clock::now();
     _time_accumulator = std::chrono::microseconds(0);
@@ -355,7 +361,7 @@ void Diagnostics::init()
     varInit(_joints_number);
     jointPositionInit();
 
-    //CONTROL LOOP
+    // CONTROL LOOP
     std::this_thread::sleep_for(std::chrono::microseconds(100));
     RCLCPP_INFO(_node->get_logger(), "Done initializing, entering control loop");
 
