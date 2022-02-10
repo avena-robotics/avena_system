@@ -11,6 +11,8 @@ public:
 private:
 
     double _trajectory_period, _sin_amp;
+    bool p_f;
+    double p_q;
 
     //overrides
     int communicate() override;
