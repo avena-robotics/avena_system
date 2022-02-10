@@ -7,7 +7,7 @@
     error_margin: 0.005
 
     loop_frequency: 500.
-    communication_rate: 10.
+    communication_rate: 100.
 
     #friction
 

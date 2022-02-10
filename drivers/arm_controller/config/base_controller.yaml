@@ -12,7 +12,7 @@
 
     FFv_gain_0: 0.0
     FFa_gain_0: 0.
-    Kd_gain_0: 80.0
+    Kd_gain_0: 40.0
     Ki_gain_0: 500.0
     Kp_gain_0: 760.0
     i_clamp_h_0: 20.
@@ -20,7 +20,7 @@
 
     FFv_gain_1: 0.0
     FFa_gain_1: 0.
-    Kd_gain_1: 60.0
+    Kd_gain_1: 40.0
     Ki_gain_1: 1500.0
     Kp_gain_1: 540.0
     i_clamp_h_1: 25.
@@ -36,25 +36,25 @@
 
     FFv_gain_3: 0.0
     FFa_gain_3: 0.
-    Kd_gain_3: 15.0
-    Ki_gain_3: 160.0
-    Kp_gain_3: 380.0
+    Kd_gain_3: 30.0
+    Ki_gain_3: 600.0
+    Kp_gain_3: 350.0
     i_clamp_h_3: 15.
     i_clamp_l_3: -15.
 
     FFv_gain_4: 0.0
     FFa_gain_4: 0.
-    Kd_gain_4: 10.0
-    Ki_gain_4: 160.0
-    Kp_gain_4: 380.0
+    Kd_gain_4: 30.0
+    Ki_gain_4: 600.0
+    Kp_gain_4: 350.0
     i_clamp_h_4: 15.
     i_clamp_l_4: -15.
 
     FFv_gain_5: 0.0
     FFa_gain_5: 0.
-    Kd_gain_5: 10.0
-    Ki_gain_5: 160.0
-    Kp_gain_5: 380.0
+    Kd_gain_5: 30.0
+    Ki_gain_5: 600.0
+    Kp_gain_5: 350.0
     i_clamp_h_5: 15.
     i_clamp_l_5: -15.
 
