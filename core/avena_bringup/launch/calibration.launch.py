@@ -16,8 +16,8 @@ def launch_setup(context, *args, **kwargs):
     working_side = LaunchConfiguration('working_side').perform(context)
     robot = 'franka' if working_side == 'right' else 'avena'     
     world_to_link_0_pos = {}
-    world_to_link_0_pos['x'] = '0.3'
-    world_to_link_0_pos['y'] = '-0.53' if working_side == 'right' else '0.53'
+    world_to_link_0_pos['x'] = '0'
+    world_to_link_0_pos['y'] = '0'
     world_to_link_0_pos['z'] = '0'
     ###############################
 

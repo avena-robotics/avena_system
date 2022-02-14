@@ -57,7 +57,7 @@
 
     <!-- ********************************************* -->
     <!-- WALLS -->
-    <xacro:collision_box 
+    <!-- <xacro:collision_box 
       name="front_wall" 
       xyz="${x_dim + wall_thickness / 2} ${y_origin} ${walls_height / 2}" 
       size="${wall_thickness} ${y_dim} ${walls_height}" 
@@ -86,11 +86,11 @@
       xyz="${x_dim / 2} -0.3 ${walls_height / 2}"
       size="${x_dim} ${wall_thickness} ${walls_height}"
       rgba="1 1 1 0.2"
-    />
+    /> -->
 
-    <!-- ********************************************* -->
+
     <!-- COLUMN -->
-    <xacro:collision_box 
+    <!-- <xacro:collision_box 
       name="left_back_column" 
       xyz="${column_size / 2} ${column_pos_offset} ${column_height / 2}" 
       size="${column_size} ${2 * column_size} ${column_height}"
@@ -125,22 +125,22 @@
       xyz="${column_size / 2} ${-column_pos_offset} ${column_height / 2}" 
       size="${column_size} ${2 * column_size} ${column_height}"
       visual="false" 
-    />
+    /> -->
 
     <!-- ********************************************* -->
     <!-- CAMERA SETUP BARS -->
     
-    <xacro:collision_box 
+    <!-- <xacro:collision_box 
       name="left_bar" 
       xyz="${x_dim / 2} ${column_pos_offset} ${bar_height}" 
       size="${x_dim} ${2 * column_size} ${column_size}"
       visual="false"
-    />
+    /> -->
 
 
     <!-- ********************************************* -->
     <!-- CAMERAS -->
-    <xacro:collision_box 
+    <!-- <xacro:collision_box 
       name="left_back_camera" 
       xyz="${camera_dim_x / 2} ${column_pos_offset} ${camera_height}" 
       size="${camera_dim_x} ${camera_dim_y} ${camera_dim_z}" 
@@ -163,7 +163,7 @@
       xyz="${x_dim - camera_dim_x / 2} 0 ${camera_height}" 
       size="${camera_dim_x} ${camera_dim_y} ${camera_dim_z}" 
       visual="false"
-    />
+    /> -->
 
   </xacro:macro>
 </robot>
