@@ -936,13 +936,14 @@ void BaseController::controlLoop()
         // GET JOINT STATES
         getArmState();
 
-        // for (size_t i = 0; i < _joints_number; i++)
-        // {
-        //     if (_arm_status.joints[i].state == 255)
-        //     {
-        //         RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error status: " << _arm_status.joints[i].current_error << ", previous joint error status: " << _arm_status.joints[i].prev_error << " on joint " << i);
-        //     }
-        // }
+        for (size_t i = 0; i < _joints_number; i++)
+        {
+            if (_arm_status.joints[i].state == 255)
+            {
+                stopArm();
+                RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error status: " << _arm_status.joints[i].current_error << ", previous joint error status: " << _arm_status.joints[i].prev_error << " on joint " << i);
+            }
+        }
 
         // if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate * 1.2))
         // {
