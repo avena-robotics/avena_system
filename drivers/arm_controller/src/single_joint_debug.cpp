@@ -26,7 +26,7 @@ int SingleJointDebug::jointInit()
     //         connected_joints++;
     // }
     // _joints_number = connected_joints;
-    _joints_number = 6;
+    _joints_number = 1;
 
     getArmState();
 
@@ -194,26 +194,26 @@ int SingleJointDebug::communicate()
     {
         // monitor data
         _arm_joint_state_msg.position[jnt_idx] = _arm_status.joints[jnt_idx].position;
-        _arm_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
-        _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
+        // _arm_joint_state_msg.velocity[jnt_idx] = _arm_status.joints[jnt_idx].velocity;
+        // _arm_joint_state_msg.effort[jnt_idx] = _arm_status.joints[jnt_idx].torque;
         _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
         // _set_joint_state_msg.position[jnt_idx] = _trajectory.points[_loop_it].positions[jnt_idx];
         // _set_joint_state_msg.velocity[jnt_idx] = _trajectory.points[_loop_it].velocities[jnt_idx];
-        _set_joint_state_msg.effort[jnt_idx] = _arm_command.joints[jnt_idx].c_torque;
-        _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
+        // _set_joint_state_msg.effort[jnt_idx] = _arm_command.joints[jnt_idx].c_torque;
+        // _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
-        _arm_joint_errors_msg.position[jnt_idx] = _error[jnt_idx];
-        _arm_joint_errors_msg.header.stamp = rclcpp::Clock().now();
+        // _arm_joint_errors_msg.position[jnt_idx] = _error[jnt_idx];
+        // _arm_joint_errors_msg.header.stamp = rclcpp::Clock().now();
     }
 
     // comms
     std_msgs::msg::Int32 state_msg;
     state_msg.set__data(_controller_state);
-    _arm_joint_errors_pub->publish(_arm_joint_errors_msg);
-    _set_joint_states_pub->publish(_set_joint_state_msg);
+    // _arm_joint_errors_pub->publish(_arm_joint_errors_msg);
+    // _set_joint_states_pub->publish(_set_joint_state_msg);
     _arm_joint_states_pub->publish(_arm_joint_state_msg);
-    _controller_state_pub->publish(state_msg);
+    // _controller_state_pub->publish(state_msg);
 
     return 0;
 }
@@ -238,7 +238,7 @@ void SingleJointDebug::controlLoop()
         rclcpp::shutdown();
         exit(0);
     }
-    double temp = _arm_status.joints[5].position;
+    double temp = _arm_status.joints[0].position;
     // GET JOINT STATES
     getArmState();
 
@@ -267,13 +267,13 @@ void SingleJointDebug::controlLoop()
     
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        if (_arm_status.joints[jnt_idx].state == 420)
-            continue;
+        // if (_arm_status.joints[jnt_idx].state == 420)
+        //     continue;
         if ((std::chrono::steady_clock::now() - _t_start) > std::chrono::seconds(1))
         {
             if (temp == _arm_status.joints[jnt_idx].position)
             {
-                _arm_command.joints[jnt_idx].c_torque = 20.;
+                _arm_command.joints[jnt_idx].c_torque = 10.;
                 _arm_command.joints[jnt_idx].c_status = 3;
             }
             else
@@ -305,6 +305,8 @@ void SingleJointDebug::controlLoop()
             }
         }
     }
+
+    //*************
     // if ((std::chrono::steady_clock::now() - _t_start) > std::chrono::seconds(1))
     //     _t_start = std::chrono::steady_clock::now();
     // _node->get_parameter("set_vel", _set_vel);
@@ -328,10 +330,10 @@ void SingleJointDebug::controlLoop()
     //      updateParams(_pid_ctrl, jnt_idx);
     //      _error[jnt_idx] = _trajectory.points[_loop_it].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
     //      _arm_command.joints[jnt_idx].c_torque = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction_coeffs(_trajectory.points[_loop_it].velocities[jnt_idx],friction_coefficients[jnt_idx]);
-    //      if (_arm_command.joints[jnt_idx].c_torque > 35.)
-    //          _arm_command.joints[jnt_idx].c_torque = 35.;
-    //      if (_arm_command.joints[jnt_idx].c_torque < -35.)
-    //          _arm_command.joints[jnt_idx].c_torque = -35.;
+    //      if (_arm_command.joints[jnt_idx].c_torque > 80.)
+    //          _arm_command.joints[jnt_idx].c_torque = 80.;
+    //      if (_arm_command.joints[jnt_idx].c_torque < -80.)
+    //          _arm_command.joints[jnt_idx].c_torque = -80.;
 
     //     _arm_command.joints[jnt_idx].c_status = 3;
     //     // _error[jnt_idx] = _trajectory.points[((_loop_it-int(0.01*_trajectory_rate))%_trajectory.points.size())].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
