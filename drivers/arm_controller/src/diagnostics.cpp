@@ -6,7 +6,7 @@ int Diagnostics::saveDiagnostics()
 {
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        if (_arm_status.joints[jnt_idx].state == 420)
+        if (_arm_status.joints[jnt_idx].current_error == 21)
             continue;
         if (_arm_status.joints[jnt_idx].velocity < 0)
             continue;
@@ -71,7 +71,7 @@ int Diagnostics::writeDiagnostics()
 {
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        if (_arm_status.joints[jnt_idx].state == 420)
+        if (_arm_status.joints[jnt_idx].current_error == 21)
             continue;
         if (_diag_data[jnt_idx].position.size() == 0)
             continue;
@@ -122,7 +122,7 @@ void Diagnostics::controlLoop()
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
             _arm_command.joints[jnt_idx].c_torque = 0;
-            _arm_command.joints[jnt_idx].c_status = 2;
+            // _arm_command.joints[jnt_idx].c_status = 2;
         }
         communicate();
         _arm_command.timestamp = std::chrono::steady_clock::now();
@@ -137,7 +137,7 @@ void Diagnostics::controlLoop()
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
             _arm_command.joints[jnt_idx].c_torque = 0;
-            _arm_command.joints[jnt_idx].c_status = 2;
+            // _arm_command.joints[jnt_idx].c_status = 2;
         }
         communicate();
         _arm_command.timestamp = std::chrono::steady_clock::now();
@@ -162,7 +162,7 @@ void Diagnostics::controlLoop()
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
         _arm_command.joints[jnt_idx].c_torque = _const_torque;
-        _arm_command.joints[jnt_idx].c_status = 3;
+        // _arm_command.joints[jnt_idx].c_status = 3;
     }
     _arm_command.timestamp = std::chrono::steady_clock::now();
     setArmCommand();
@@ -170,6 +170,24 @@ void Diagnostics::controlLoop()
     //  _exec->spin_some(std::chrono::nanoseconds(1000));
 
     _loop_it++;
+
+
+
+    // int barWidth = 70;
+    // float progress = std::chrono::duration_cast<std::chrono::seconds>(_t_current - _t_start).count() / 120.;
+
+    // std::cout << "[";
+    // int pos = barWidth * progress;
+    // for (int i = 0; i < barWidth; ++i) {
+    //     if (i < pos) std::cout << "=";
+    //     else if (i == pos) std::cout << ">";
+    //     else std::cout << " ";
+    // }
+    // std::cout << "] " << int(progress * 100.0) << " %\r";
+    // std::cout.flush();
+
+
+
     // control loop frequency
     //  _remaining_time = std::floor(1000000 / _trajectory_rate - std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _t_current).count());
 
@@ -209,7 +227,7 @@ int Diagnostics::jointInit()
 
     for (size_t i = 0; i < _joints_number; i++)
     {
-        if (_arm_status.joints[i].state == 255 || _arm_status.joints[i].state == 420)
+        if (_arm_status.joints[i].current_error)
         {
             RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
         }

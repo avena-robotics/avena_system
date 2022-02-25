@@ -21,12 +21,12 @@ void FrictionCalibration::init()
     //     if(_arm_status.joints[i].state!=420)
     //         connected_joints++;
     // }
-    _joints_number = 6;
+    _joints_number = 1;
 
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
     for (size_t i = 0; i < _joints_number; i++)
     {
-        if (_arm_status.joints[i].state == 255)
+        if (_arm_status.joints[i].current_error == 21)
         {
             RCLCPP_INFO_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
         }
@@ -91,10 +91,12 @@ void FrictionCalibration::init()
     _node->declare_parameter<std::string>("config_path", "");
     _node->declare_parameter<double>("loop_frequency", 500.);
     _node->declare_parameter<double>("communication_rate", 100.);
+    _node->declare_parameter<double>("average_samples_t", 0.02);
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("error_margin", _error_margin);
     _node->get_parameter("loop_frequency", _trajectory_rate);
     _node->get_parameter("communication_rate", _communication_rate);
+    _node->get_parameter("average_samples_t", _avg_samples_t);
     _avg_samples = size_t(_avg_samples_t * _trajectory_rate);
     std::cout<<"avg_samples: "<<_avg_samples<<std::endl;
     for (size_t i = 0; i < _joints_number; i++)
@@ -152,34 +154,34 @@ void FrictionCalibration::init()
     // JOINT POSITION INIT
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        _arm_command.joints[jnt_idx].c_status = 0;
+        // _arm_command.joints[jnt_idx].c_status = 0;
         _arm_command.joints[jnt_idx].c_torque = 0;
     }
 
-    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
-    {
-        while (_arm_status.joints[jnt_idx].state == 1)
-        {
-            getArmState();
-            RCLCPP_INFO(_node->get_logger(), "Joint number: %i", jnt_idx);
-            std::cout << "Initializing joint " << jnt_idx << std::endl;
+    // for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
+    // {
+    //     while (_arm_status.joints[jnt_idx].state == 1)
+    //     {
+    //         getArmState();
+    //         RCLCPP_INFO(_node->get_logger(), "Joint number: %i", jnt_idx);
+    //         std::cout << "Initializing joint " << jnt_idx << std::endl;
 
-            // send init command to a single joint
-            _arm_command.joints[jnt_idx].c_status = 2;
-            _arm_command.timestamp = std::chrono::steady_clock::now();
-            setArmCommand();
-            std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
-        }
-        _arm_command.joints[jnt_idx].c_status = 3;
-        _arm_command.timestamp = std::chrono::steady_clock::now();
-        setArmCommand();
-        std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
+    //         // send init command to a single joint
+    //         _arm_command.joints[jnt_idx].c_status = 2;
+    //         _arm_command.timestamp = std::chrono::steady_clock::now();
+    //         setArmCommand();
+    //         std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
+    //     }
+    //     _arm_command.joints[jnt_idx].c_status = 3;
+    //     _arm_command.timestamp = std::chrono::steady_clock::now();
+    //     setArmCommand();
+    //     std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
 
-        _arm_command.joints[jnt_idx].c_status = 2;
-        _arm_command.timestamp = std::chrono::steady_clock::now();
-        setArmCommand();
-        std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
-    }
+    //     _arm_command.joints[jnt_idx].c_status = 2;
+    //     _arm_command.timestamp = std::chrono::steady_clock::now();
+    //     setArmCommand();
+    //     std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
+    // }
 
     RCLCPP_INFO(_node->get_logger(), "Done initializing robot position.");
 
@@ -231,6 +233,8 @@ void FrictionCalibration::init()
     // }
     auto calib_time = std::chrono::steady_clock::now();
     int direction = 1;
+
+
     for (int asdf = 0; asdf < 6; asdf++)
     {
         if (asdf % 2)
@@ -278,7 +282,7 @@ void FrictionCalibration::init()
 
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
-            if (_arm_status.joints[jnt_idx].state == 420)
+            if (_arm_status.joints[jnt_idx].current_error == 21)
                 continue;
             p_avg[jnt_idx].resize(_avg_samples);
             temp_avg[jnt_idx].resize(_avg_samples);
@@ -316,7 +320,6 @@ void FrictionCalibration::init()
 
         while (rclcpp::ok())
         {
-
             // std::chrono::time_point<std::chrono::steady_clock> t_current = std::chrono::steady_clock::now();
 
             getArmState();
@@ -328,7 +331,7 @@ void FrictionCalibration::init()
 
             for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
             {
-                if (_arm_status.joints[jnt_idx].state == 420)
+                if (_arm_status.joints[jnt_idx].current_error == 21)
                     continue;
                 // crimge
                 //  if (std::abs(_arm_status.joints[jnt_idx].position - prev_pos[jnt_idx]) > 3)
@@ -382,20 +385,21 @@ void FrictionCalibration::init()
             // calculate torques
             for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
             {
-                if (_arm_status.joints[jnt_idx].state == 420)
+                if (_arm_status.joints[jnt_idx].current_error == 21)
                     continue;
                 // RCLCPP_INFO_STREAM(_node->get_logger(), "set_vel: " << set_vel[jnt_idx]);
                 // RCLCPP_INFO_STREAM(_node->get_logger(), "max_vel: " << max_vel);
                 if (cal_done[jnt_idx])
                 {
                     _arm_command.joints[jnt_idx].c_torque = 0;
-                    _arm_command.joints[jnt_idx].c_status = 3;
+                    // _arm_command.joints[jnt_idx].c_status = 3;
                     continue;
                 }
                 // dynamic PID reconfigure
                 updateParams(_pid_ctrl, jnt_idx);
 
                 // calculate torques (PID+FF)
+                
 
                 _error[jnt_idx] = set_vel[jnt_idx] - _arm_status.joints[jnt_idx].velocity;
                 // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
@@ -478,7 +482,7 @@ void FrictionCalibration::init()
 
                 _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
                 // _arm_command.joints[jnt_idx].c_torque = -15;
-                _arm_command.joints[jnt_idx].c_status = 3;
+                // _arm_command.joints[jnt_idx].c_status = 3;
                 // RCLCPP_INFO_STREAM(_node->get_logger(), "jnt: " << jnt_idx);
                 // RCLCPP_INFO_STREAM(_node->get_logger(), "pos: " << _arm_status.joints[jnt_idx].position);
 
@@ -541,10 +545,10 @@ void FrictionCalibration::init()
 
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
-            if (_arm_status.joints[jnt_idx].state == 420)
+            if (_arm_status.joints[jnt_idx].current_error == 21)
                 continue;
             _arm_command.joints[jnt_idx].c_torque = 0;
-            _arm_command.joints[jnt_idx].c_status = 2;
+            // _arm_command.joints[jnt_idx].c_status = 2;
 
             if (_measured_friction_comp[jnt_idx].size() == 0)
                 continue;

@@ -50,7 +50,7 @@ BaseController::~BaseController()
     {
         _arm_command.joints[jnt_idx].c_torque = 0;
         // TODO: change to stop (2)
-        _arm_command.joints[jnt_idx].c_status = 2;
+        // _arm_command.joints[jnt_idx].c_status = 2;
     }
     _arm_command.timestamp = std::chrono::steady_clock::now();
     setArmCommand();
@@ -237,7 +237,9 @@ void BaseController::updateParams(std::vector<PID> &pid, int joint_index)
     _node->get_parameter("Kd_gain_" + std::to_string(joint_index), _Kd[joint_index]);
     _node->get_parameter("FFv_gain_" + std::to_string(joint_index), _FFv[joint_index]);
     _node->get_parameter("FFa_gain_" + std::to_string(joint_index), _FFv[joint_index]);
-    pid[joint_index].update(_Kp[joint_index], _Ki[joint_index], _Kd[joint_index]);
+    _node->get_parameter("FFa_gain_" + std::to_string(joint_index), _FFv[joint_index]);
+    _node->get_parameter("avg_samples", _avg_samples_t);
+    pid[joint_index].update(_Kp[joint_index], _Ki[joint_index], _Kd[joint_index], _avg_samples_t * _trajectory_rate);
 }
 
 void BaseController::setTrajectoryCb(trajectory_msgs::msg::JointTrajectory::SharedPtr msg)
@@ -460,7 +462,7 @@ int BaseController::jointInit()
         all_joints_ready = true;
         for (size_t i = 0; i < _joints_number; i++)
         {
-            if (_arm_status.joints[i].state == FAULT || _arm_status.joints[i].state == NOT_CONNECTED)
+            if (_arm_status.joints[i].current_error && _arm_status.joints[i].current_error != 21)
             {
                 RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error: " << _arm_status.joints[i].current_error << ", previous joint error: " << _arm_status.joints[i].prev_error << " on joint " << i);
                 all_joints_ready = false;
@@ -480,29 +482,29 @@ int BaseController::jointPositionInit()
     // JOINT POSITION INIT
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        _arm_command.joints[jnt_idx].c_status = 0;
+        _arm_state_command.joints[jnt_idx].state = 0;
         _arm_command.joints[jnt_idx].c_torque = 0;
     }
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        while (_arm_status.joints[jnt_idx].state == INIT)
+        while (_arm_state_info.joints[jnt_idx].state == INIT)
         {
             getArmState();
             RCLCPP_INFO(_node->get_logger(), "Initializing joint: %i", jnt_idx);
 
             // send init command to a single joint
-            _arm_command.joints[jnt_idx].c_status = 2;
+            _arm_state_command.joints[jnt_idx].state = 2;
             _arm_command.timestamp = std::chrono::steady_clock::now();
             setArmCommand();
             std::this_thread::sleep_for(std::chrono::microseconds((int)(std::floor(1000000 / _trajectory_rate))));
         }
-        _arm_command.joints[jnt_idx].c_status = 3;
+        _arm_state_command.joints[jnt_idx].state = 3;
         _arm_command.timestamp = std::chrono::steady_clock::now();
         setArmCommand();
         std::this_thread::sleep_for(std::chrono::microseconds((int)(1000000)));
 
-        _arm_command.joints[jnt_idx].c_status = 2;
+        _arm_state_command.joints[jnt_idx].state = 2;
         _arm_command.timestamp = std::chrono::steady_clock::now();
         setArmCommand();
         std::this_thread::sleep_for(std::chrono::microseconds((int)(500000)));
@@ -538,12 +540,16 @@ int BaseController::paramInit()
     _node->declare_parameter<double>("communication_rate", 100.);
     _node->declare_parameter<double>("error_margin", 0.01);
     _node->declare_parameter<double>("cartesian_error_margin", 0.01);
+    _node->declare_parameter<double>("precision", 0.0006);
+
     _node->declare_parameter<std::string>("config_path", "");
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("loop_frequency", _trajectory_rate);
     _node->get_parameter("communication_rate", _communication_rate);
     _node->get_parameter("error_margin", _error_margin);
-    _node->get_parameter("_cartesian_error_margin", _cartesian_error_margin);
+    _node->get_parameter("cartesian_error_margin", _cartesian_error_margin);
+    _node->get_parameter("precision", _precision);
+
     _avg_samples = size_t(_avg_samples_t * _trajectory_rate);
     std::cout << "avg_samples: " << _avg_samples << std::endl;
 
@@ -729,7 +735,7 @@ int BaseController::handleControllerState(ControllerState controller_state)
     {
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
-            if (_arm_status.joints[jnt_idx].state == FAULT)
+            if (_arm_status.joints[jnt_idx].current_error && _arm_status.joints[jnt_idx].current_error!=21)
             {
                 RCLCPP_ERROR(_node->get_logger(), "Joint %i current error status: %i, previous error status: %i", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
                 stopArm();
@@ -742,7 +748,7 @@ int BaseController::handleControllerState(ControllerState controller_state)
         for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
         {
             _trajectory.points[0].positions[jnt_idx] = _arm_status.joints[jnt_idx].position;
-            if (_arm_status.joints[jnt_idx].state == FAULT)
+            if (_arm_status.joints[jnt_idx].current_error && _arm_status.joints[jnt_idx].current_error!=21)
             {
                 RCLCPP_ERROR(_node->get_logger(), "Joint %i current error status: %i, previous error status: %i", jnt_idx, _arm_status.joints[jnt_idx].current_error, _arm_status.joints[jnt_idx].prev_error);
                 stopArm();
@@ -765,7 +771,7 @@ int BaseController::calculateTorque()
         case EXECUTE:
             _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
             _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
-            if (std::abs(_error[jnt_idx]) < 0.002)
+            if (std::abs(_error[jnt_idx]) < _precision)
                 _error[jnt_idx] = 0;
             _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
             _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
@@ -773,14 +779,14 @@ int BaseController::calculateTorque()
         case RESUME:
             _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
             _set_vel = _trajectory.points[_trajectory_index].velocities[jnt_idx];
-            if (std::abs(_error[jnt_idx]) < 0.002)
+            if (std::abs(_error[jnt_idx]) < _precision)
                 _error[jnt_idx] = 0;
             _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
             _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val + compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
             break;
         case PAUSE:
             _error[jnt_idx] = _trajectory.points[_trajectory_index].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);
-            if (std::abs(_error[jnt_idx]) < 0.002)
+            if (std::abs(_error[jnt_idx]) < _precision)
                 _error[jnt_idx] = 0;
             _set_torque_pid_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
             _set_torque_val = _tau[jnt_idx] + _set_torque_pid_val;
@@ -818,7 +824,7 @@ int BaseController::calculateTorque()
         _acc_sign = ((_trajectory.points[_trajectory_index].accelerations[jnt_idx] > 0) - (_trajectory.points[_trajectory_index].accelerations[jnt_idx] < 0));
 
         // DEBUG
-        _arm_joint_errors_msg.velocity[jnt_idx] = compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
+        // _arm_joint_errors_msg.velocity[jnt_idx] = compensateFriction(_set_vel * _time_factor, 25., jnt_idx);
 
         // _set_torque_val = _tau[jnt_idx];
         _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
@@ -833,12 +839,12 @@ int BaseController::calculateTorque()
         if (_controller_state != STOP)
         {
             _arm_command.joints[jnt_idx].c_torque = _set_torque_val;
-            _arm_command.joints[jnt_idx].c_status = 3;
+            // _arm_command.joints[jnt_idx].c_status = 3;
         }
         else
         {
             _arm_command.joints[jnt_idx].c_torque = 0;
-            _arm_command.joints[jnt_idx].c_status = 2;
+            // _arm_command.joints[jnt_idx].c_status = 2;
         }
     }
     return 0;
@@ -938,7 +944,7 @@ void BaseController::controlLoop()
 
         for (size_t i = 0; i < _joints_number; i++)
         {
-            if (_arm_status.joints[i].state == 255)
+            if (_arm_status.joints[i].current_error && _arm_status.joints[i].current_error!=21)
             {
                 stopArm();
                 RCLCPP_ERROR_STREAM(_node->get_logger(), "Current joint error status: " << _arm_status.joints[i].current_error << ", previous joint error status: " << _arm_status.joints[i].prev_error << " on joint " << i);

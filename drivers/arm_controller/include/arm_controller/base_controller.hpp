@@ -48,7 +48,7 @@ enum ControllerState
     GRAV_COMP = 5
 };
 
-enum JointState
+enum eJointState
 {
     INIT = 1,
     READY_TO_OPERATE = 2,
@@ -303,7 +303,7 @@ protected:
 
     //PARAMETERS
     size_t _joints_number = 6;
-    double _error_margin, _cartesian_error_margin, _communication_rate, _trajectory_rate;
+    double _error_margin, _cartesian_error_margin, _communication_rate, _trajectory_rate, _precision;
     std::string _config_path;
     std::string _urdf;
 
@@ -336,10 +336,12 @@ protected:
 
     ArmStatus _arm_status;
     ArmCommand _arm_command;
+    ArmState _arm_state_command, _arm_state_info;
+    ArmConfig _arm_config;
 
     //MEASUREMENT
     size_t _avg_samples;
-    const double _avg_samples_t = 0.2;
+    double _avg_samples_t;
 
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
