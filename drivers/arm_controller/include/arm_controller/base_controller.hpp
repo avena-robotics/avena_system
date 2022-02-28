@@ -125,7 +125,7 @@ protected:
      * Retrieves latest arm state from the candriver.
      ****/
 
-    bool getArmState();
+    bool getArmStatus();
 
     /****
      * Writes an arm command to the candriver,
@@ -133,6 +133,20 @@ protected:
      ****/
 
     bool setArmCommand();
+
+    /****
+     * Writes an arm state to the candriver,
+     * which sends it to the specified interface during its following cycles.
+     ****/
+
+    bool setArmState();
+
+    /****
+     * Writes an arm config to the candriver,
+     * which sends it to the specified interface during its following cycles.
+     ****/
+
+    bool setArmConfig();
 
     /****
      * Loads joint friction charts from the specified location
@@ -333,6 +347,10 @@ protected:
 
     std::shared_ptr<ArmStatus> _shm_arm_status;
     std::shared_ptr<ArmCommand> _shm_arm_command;
+    std::shared_ptr<ArmState> _shm_arm_state_command;
+    std::shared_ptr<ArmState> _shm_arm_state_info;
+    std::shared_ptr<ArmConfig> _shm_arm_config;
+
 
     ArmStatus _arm_status;
     ArmCommand _arm_command;

@@ -17,7 +17,7 @@
 struct JointStatus
 {
     double position, velocity, torque, temperature;
-    int current_error, prev_error;
+    int current_error, prev_error, state;
 };
 
 struct JointState
@@ -34,6 +34,7 @@ struct JointConfig
 {
     int operation_mode;
     int working_area_enabled;
+    int absolute_position;
 };
 
 // struct GripperStatus
@@ -78,14 +79,13 @@ struct ArmState
     std::chrono::steady_clock::time_point timestamp;
 };
 
-
 class ArmInterface : public rclcpp::Node
 {
 
 public:
     /****
- * 
- ****/
+     *
+     ****/
 
     ArmInterface(std::string can_addr) : Node("candriver")
     {
@@ -93,7 +93,7 @@ public:
         boost::interprocess::shared_memory_object::remove("HWSharedMemory");
 
         size_t var_mem_size = 0;
-        var_mem_size = sizeof(ArmCommand) + sizeof(ArmStatus) + sizeof(ArmState) + sizeof(ArmConfig);
+        var_mem_size = sizeof(ArmCommand) + sizeof(ArmStatus) + 2 * sizeof(ArmState) + sizeof(ArmConfig);
 
         std::cout << "Allocating " << var_mem_size << " bytes" << std::endl;
 
@@ -103,22 +103,31 @@ public:
         std::cout << "Create shared memory variables" << std::endl;
         _arm_command = std::shared_ptr<ArmCommand>(_shared_memory_segment->construct<ArmCommand>("shmArmCommand")());
         _arm_status = std::shared_ptr<ArmStatus>(_shared_memory_segment->construct<ArmStatus>("shmArmStatus")());
+        _arm_state_command = std::shared_ptr<ArmState>(_shared_memory_segment->construct<ArmState>("shmArmStateCommand")());
+        _arm_state_info = std::shared_ptr<ArmState>(_shared_memory_segment->construct<ArmState>("shmArmStateInfo")());
+        _arm_config = std::shared_ptr<ArmConfig>(_shared_memory_segment->construct<ArmConfig>("shmArmConfig")());
+
         // _gripper_command = std::shared_ptr<GripperCommand>(_shared_memory_segment->construct<GripperCommand>("shmGripperCommand")());
         // _gripper_status = std::shared_ptr<GripperStatus>(_shared_memory_segment->construct<GripperStatus>("shmGripperStatus")());
         std::cout << "Done initializing shared memory" << std::endl;
         std::cout << _shared_memory_segment->get_free_memory() << std::endl;
 
-        //init vars
-        for (size_t i = 0; i < 1; i++)
+        // init vars
+        for (size_t i = 0; i < 6; i++)
         {
-            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> ac_lock(_arm_command->mutex);
-            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> as_lock(_arm_status->mutex);
+
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> acom_lock(_arm_command->mutex);
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> ast_lock(_arm_status->mutex);
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> asc_lock(_arm_state_command->mutex);
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> asi_lock(_arm_state_info->mutex);
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> aconf_lock(_arm_config->mutex);
+
             // boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> gc_lock(_gripper_command->mutex);
             // boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> gs_lock(_gripper_status->mutex);
 
-
             _arm_command->joints[i].c_torque = 0;
 
+            _arm_status->joints[i].state = 420.;
             _arm_status->joints[i].current_error = 21;
             _arm_status->joints[i].position = 0.;
             _arm_status->joints[i].prev_error = 37;
@@ -129,10 +138,8 @@ public:
             _arm_state_command->joints[i].state = 420;
             _arm_state_info->joints[i].state = 420;
 
-            _arm_config->joints[i].operation_mode= 420;
-            _arm_config->joints[i].working_area_enabled= 420;
-
-
+            _arm_config->joints[i].operation_mode = 420;
+            _arm_config->joints[i].working_area_enabled = 420;
 
             // _gripper_command->c_status = 0;
             // _gripper_command->c_val = 0.;
@@ -191,7 +198,6 @@ public:
         {
             _arm_command->joints[i].c_torque = 0;
             _arm_state_command->joints[i].state = 2;
-
         }
         sendArmCommand(_arm_command, std::chrono::microseconds(100));
         sendArmState(_arm_state_command, std::chrono::microseconds(100));
@@ -218,17 +224,21 @@ public:
 
 private:
     /****
- * Main communication loop.
- * Transmits and receives messages via CAN FD interface and updates ArmState.
- ****/
+     * Main communication loop.
+     * Transmits and receives messages via CAN FD interface and updates ArmState.
+     ****/
     void commsLoop()
     {
         if (rclcpp::ok())
         {
-           
-            sendArmCommand(_arm_command, _can_loop_t);
 
-            updateArmState();
+            if (!sendArmConfig(_arm_config, _can_loop_t))
+                if (!sendArmState(_arm_state_command, _can_loop_t)){
+                    sendArmCommand(_arm_command, _can_loop_t);
+                    updateArmState();
+                }
+
+            
         }
         else
         {
@@ -237,43 +247,42 @@ private:
     }
 
     /****
- * Transmits and receives an ArmCommand message via CAN FD interface.
- * @param arm_command command to be sent
- * @param read_time maximum time for all responses to arrive
- ****/
+     * Transmits and receives an ArmCommand message via CAN FD interface.
+     * @param arm_command command to be sent
+     * @param read_time maximum time for all responses to arrive
+     ****/
 
     bool sendArmCommand(std::shared_ptr<ArmCommand> arm_command, std::chrono::microseconds read_time)
     {
-
         std::stringstream can_msg_str;
 
-        can_msg_str << "000" << "##1";
+        can_msg_str << "000"
+                    << "##1";
         {
-            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_arm_command->mutex);
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(arm_command->mutex);
             for (size_t i = 0; i < 6; i++)
             {
                 can_msg_str << std::hex << std::setfill('0') << std::setw(4) << (int16_t)(arm_command->joints[i].c_torque / _torque_multiplier);
             }
         }
-        // for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
-        // {
-        //     can_msg_str << "0000";
-        // }
-        // can_msg_str << "00";
-        // for (size_t i = 0; i < arm_command.joints.size(); i++)
-        // {
-        //     can_msg_str << std::hex << (int)(arm_command.joints[i].c_status);
-        // }
-        // for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
-        // {
-        //     can_msg_str << "0";
-        // }
 
-        _can_interface.sendMessage(can_msg_str.str(), read_time - std::chrono::microseconds(400));
-
-        _last_msg = _can_interface.getResponse(_joints_number);
+        try
+        {
+            _can_interface.sendMessage(can_msg_str.str(), read_time - std::chrono::microseconds(400));
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << e.what() << std::endl;
+        }
+        try
+        {
+            _last_msg = _can_interface.getResponse(_joints_number);
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << e.what() << std::endl;
+        }
         _status_timestamp = _last_msg.response_timestamp;
-
         return 1;
     }
 
@@ -282,9 +291,12 @@ private:
 
         std::stringstream can_msg_str;
 
-        can_msg_str << "010" << "##1";
+        can_msg_str << "010"
+                    << "##1";
         {
-            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_arm_state_command->mutex);
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(arm_state->mutex);
+            if ((std::chrono::steady_clock::now() - arm_state->timestamp) > read_time)
+                return 0;
             for (size_t i = 0; i < 6; i++)
             {
                 can_msg_str << std::hex << std::setfill('0') << std::setw(2) << (int16_t)(arm_state->joints[i].state);
@@ -295,53 +307,37 @@ private:
 
         _last_msg = _can_interface.getResponse(_joints_number);
         _status_timestamp = _last_msg.response_timestamp;
-
         return 1;
     }
-
 
     bool sendArmConfig(std::shared_ptr<ArmConfig> arm_config, std::chrono::microseconds read_time)
     {
 
         std::stringstream can_msg_str;
 
-
-
-        can_msg_str << "0F0" << "##1";
+        can_msg_str << "0F0"
+                    << "##1";
         {
-            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(_arm_config->mutex);
+            boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(arm_config->mutex);
+            if ((std::chrono::steady_clock::now() - arm_config->timestamp) > read_time)
+                return 0;
             for (size_t i = 0; i < 6; i++)
             {
                 can_msg_str << std::hex << std::setfill('0') << std::setw(2) << (int16_t)(arm_config->joints[i].operation_mode);
+                can_msg_str << std::hex << std::setfill('0') << std::setw(2) << (int16_t)(arm_config->joints[i].working_area_enabled + (arm_config->joints[i].absolute_position << 1));
             }
         }
-        // for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
-        // {
-        //     can_msg_str << "0000";
-        // }
-        // can_msg_str << "00";
-        // for (size_t i = 0; i < arm_command.joints.size(); i++)
-        // {
-        //     can_msg_str << std::hex << (int)(arm_command.joints[i].c_status);
-        // }
-        // for (size_t i = 0; i < (6 - arm_command.joints.size()); i++)
-        // {
-        //     can_msg_str << "0";
-        // }
 
         _can_interface.sendMessage(can_msg_str.str(), read_time - std::chrono::microseconds(400));
 
         _last_msg = _can_interface.getResponse(_joints_number);
         _status_timestamp = _last_msg.response_timestamp;
-
         return 1;
     }
 
-
-
     /****
- * Writes current ArmState to shared memory.
- ****/
+     * Writes current ArmState to shared memory.
+     ****/
 
     bool updateArmState()
     {
@@ -351,9 +347,9 @@ private:
         for (size_t i = 0; i < _last_msg.rx_msgs.size(); i++)
 
         {
-            arm_id = (_last_msg.rx_msgs[i][0])%256;
+            arm_id = (_last_msg.rx_msgs[i][0]) % 256;
             // _arm_status->joints[arm_id].position = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][2] << 8) ^ (_last_msg.rx_msgs[i][3])) * _position_multiplier;
-            _arm_status->joints[arm_id].position = (double)(static_cast<int32_t>((_last_msg.rx_msgs[i][2] << 24) ^ (_last_msg.rx_msgs[i][3] <<16) ^ (_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5]))) * _position_multiplier;
+            _arm_status->joints[arm_id].position = (double)(static_cast<int32_t>((_last_msg.rx_msgs[i][2] << 24) ^ (_last_msg.rx_msgs[i][3] << 16) ^ (_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5]))) * _position_multiplier;
 
             _arm_status->joints[arm_id].velocity = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][6] << 8) ^ (_last_msg.rx_msgs[i][7])) / INT16_MAX * 2 * M_PI;
             _arm_status->joints[arm_id].torque = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][8] << 8) ^ (_last_msg.rx_msgs[i][9])) * _torque_multiplier;
@@ -361,11 +357,10 @@ private:
             _arm_status->joints[arm_id].current_error = 0;
             _arm_status->joints[arm_id].prev_error = 0;
 
-
-        //     _arm_status->joints[arm_id].temperature = _last_msg.rx_msgs[i][8];
-        //     _arm_status->joints[arm_id].state = _last_msg.rx_msgs[i][9];
-        //     _arm_status->joints[arm_id].current_error = _last_msg.rx_msgs[i][10];
-        //     _arm_status->joints[arm_id].prev_error = _last_msg.rx_msgs[i][11];
+            _arm_status->joints[arm_id].temperature = _last_msg.rx_msgs[i][10];
+            _arm_status->joints[arm_id].state = _last_msg.rx_msgs[i][11];
+            _arm_status->joints[arm_id].current_error = _last_msg.rx_msgs[i][12];
+            _arm_status->joints[arm_id].prev_error = _last_msg.rx_msgs[i][13];
         }
         // for (size_t i = 0; i < 6; i++)
         // {
@@ -380,7 +375,6 @@ private:
         // }
 
         _arm_status->timestamp = _status_timestamp;
-
         return 1;
     }
 
@@ -388,7 +382,7 @@ private:
 
     std::shared_ptr<ArmStatus> _arm_status;
     std::shared_ptr<ArmCommand> _arm_command;
-    std::shared_ptr<ArmState> _arm_state_command,_arm_state_info;
+    std::shared_ptr<ArmState> _arm_state_command, _arm_state_info;
     std::shared_ptr<ArmConfig> _arm_config;
 
     // std::shared_ptr<GripperCommand> _gripper_command;
@@ -401,7 +395,7 @@ private:
     std::chrono::microseconds _max_delay, _get_delay;
     std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> _exec;
 
-    //PHYSICAL PARAMS
+    // PHYSICAL PARAMS
     double _gear_ratio = 121.;
     double _gear_const = 84;
     double _torque_const = 0.1118;
@@ -410,7 +404,7 @@ private:
     std::chrono::microseconds _can_loop_t;
 
     // double _torque_multiplier = _torque_const * _gear_ratio * _motor_max_current / (double)INT16_MAX;
-    double _torque_multiplier = 256. / (double)INT16_MAX;
+    double _torque_multiplier = 360. / (double)INT16_MAX;
     // double _position_multiplier = 2 * M_PI / _gear_const / _gear_ratio;
     double _position_multiplier = M_PI / (double)INT32_MAX;
 };

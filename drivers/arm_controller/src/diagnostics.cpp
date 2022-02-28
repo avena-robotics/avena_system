@@ -148,7 +148,7 @@ void Diagnostics::controlLoop()
     }
 
     // GET JOINT STATES
-    getArmState();
+    getArmStatus();
 
     // if (std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::steady_clock::now() - _arm_status.timestamp)).count() > (1000000 / _trajectory_rate))
     // {
@@ -205,13 +205,13 @@ int Diagnostics::jointInit()
     _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     _exec->add_node(_node);
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
-    getArmState();
+    getArmStatus();
 
     // while (_arm_status.joints.size() < 6)
     // {
     //     RCLCPP_ERROR(_node->get_logger(), "Received invalid arm state. Waiting ...");
     //     std::this_thread::sleep_for(std::chrono::seconds(1));
-    //     getArmState();
+    //     getArmStatus();
     // }
 
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
@@ -223,7 +223,7 @@ int Diagnostics::jointInit()
     // }
     _joints_number = 6;
 
-    getArmState();
+    getArmStatus();
 
     for (size_t i = 0; i < _joints_number; i++)
     {
@@ -342,7 +342,7 @@ int Diagnostics::varInit(size_t joints_number)
     }
 
     // GET STARTING POSITION - HOLD TRAJECTORY
-    getArmState();
+    getArmStatus();
     _trajectory.points.resize(1);
     _trajectory.points[0].positions.resize(joints_number);
     _trajectory.points[0].velocities.resize(joints_number);

@@ -40,13 +40,13 @@ int SingleJointDebug::jointInit()
     _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     _exec->add_node(_node);
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
-    getArmState();
+    getArmStatus();
 
     // while (_arm_status.joints.size() < 6)
     // {
     //     RCLCPP_ERROR(_node->get_logger(), "Received invalid arm state. Waiting ...");
     //     std::this_thread::sleep_for(std::chrono::seconds(1));
-    //     getArmState();
+    //     getArmStatus();
     // }
 
     RCLCPP_INFO(_node->get_logger(), "Got arm state from CANDRIVER");
@@ -59,7 +59,7 @@ int SingleJointDebug::jointInit()
     // _joints_number = connected_joints;
     _joints_number = 1;
 
-    getArmState();
+    getArmStatus();
 
     for (size_t i = 0; i < _joints_number; i++)
     {
@@ -121,7 +121,7 @@ int SingleJointDebug::varInit(size_t joints_number)
     _frick_acu.resize(joints_number);
 
     // GET SINUSOIDAL TRAJECTORY
-    getArmState();
+    getArmStatus();
 
     time_steps = std::floor(_trajectory_period * _trajectory_rate);
     stop_time = std::floor(_trajectory_period / 8 * _trajectory_rate);
@@ -203,7 +203,7 @@ int SingleJointDebug::varInit(size_t joints_number)
     }
 
     _mass_x = 0.66;
-    _mass = (20.+1.7)*0.95;
+    _mass = 1.8+20.;
 
     // TIME INIT
     //  _loop_it = std::floor(std::asin(_arm_status.joints[6].position/_sin_amp));
@@ -235,7 +235,7 @@ int SingleJointDebug::paramInit()
     _node->declare_parameter<double>("trajectory_period", 24.);
     _node->declare_parameter<double>("sin_amp", 2.8);
     _node->declare_parameter<double>("set_vel", 0.1);
-    _node->declare_parameter<double>("avg_samples", 0.01);
+    _node->declare_parameter<double>("avg_samples", 0.005);
 
     _node->get_parameter("config_path", _config_path);
     _node->get_parameter("loop_frequency", _trajectory_rate);
@@ -300,12 +300,13 @@ int SingleJointDebug::communicate()
         _arm_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
         _set_joint_state_msg.position[jnt_idx] = _trajectory.points[_loop_it].positions[jnt_idx];
-        _set_joint_state_msg.velocity[jnt_idx] = _trajectory.points[_loop_it].velocities[jnt_idx];
+        _set_joint_state_msg.velocity[jnt_idx] = (_pid_ctrl[jnt_idx].getValue(_error[jnt_idx])*1.2/(std::abs(_arm_status.joints[jnt_idx].torque)+1.))*100.;
         _set_joint_state_msg.effort[jnt_idx] = _arm_command.joints[jnt_idx].c_torque;
         _set_joint_state_msg.header.stamp = rclcpp::Clock().now();
 
         _arm_joint_errors_msg.position[jnt_idx] = _error[jnt_idx];
-        _arm_joint_errors_msg.effort[jnt_idx] = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
+        _arm_joint_errors_msg.velocity[jnt_idx] = _mass_x * _mass * sin(_arm_status.joints[jnt_idx].position)*9.81 + compensateFriction_coeffs(_trajectory.points[_loop_it].velocities[jnt_idx], friction_coefficients[jnt_idx])*1.2;
+        _arm_joint_errors_msg.effort[jnt_idx] = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx])*1.2;
         _arm_joint_errors_msg.header.stamp = rclcpp::Clock().now();
     }
 
@@ -393,7 +394,7 @@ void SingleJointDebug::controlLoop()
     }
     double temp = _arm_status.joints[0].position;
     // GET JOINT STATES
-    getArmState();
+    getArmStatus();
 
     // handleControllerState(_controller_state);
 
@@ -509,14 +510,14 @@ void SingleJointDebug::controlLoop()
         }
 
         double grav_comp = _mass_x * _mass * sin(_arm_status.joints[jnt_idx].position)*9.81;
-        _arm_command.joints[jnt_idx].c_torque = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction_coeffs(_trajectory.points[_loop_it].velocities[jnt_idx], friction_coefficients[jnt_idx]) + grav_comp;
+        _arm_command.joints[jnt_idx].c_torque = (_pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction_coeffs(_trajectory.points[_loop_it].velocities[jnt_idx], friction_coefficients[jnt_idx]) + grav_comp)*1.2;
         //  _arm_command.joints[jnt_idx].c_torque = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]);
         //  _arm_command.joints[jnt_idx].c_torque =grav_comp;
 
-        if (_arm_command.joints[jnt_idx].c_torque > 200.)
-            _arm_command.joints[jnt_idx].c_torque = 200.;
-        if (_arm_command.joints[jnt_idx].c_torque < -200.)
-            _arm_command.joints[jnt_idx].c_torque = -200.;
+        if (_arm_command.joints[jnt_idx].c_torque > 300.)
+            _arm_command.joints[jnt_idx].c_torque = 300.;
+        if (_arm_command.joints[jnt_idx].c_torque < -300.)
+            _arm_command.joints[jnt_idx].c_torque = -300.;
 
         // _arm_command.joints[jnt_idx].c_status = 3;
         // _error[jnt_idx] = _trajectory.points[((_loop_it-int(0.01*_trajectory_rate))%_trajectory.points.size())].positions[jnt_idx] - (_arm_status.joints[jnt_idx].position);

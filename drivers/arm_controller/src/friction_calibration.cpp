@@ -14,7 +14,7 @@ void FrictionCalibration::init()
     _exec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     _exec->add_node(_node);
     RCLCPP_INFO(_node->get_logger(), "Getting arm state from CANDRIVER...");
-    getArmState();
+    getArmStatus();
 
     // int connected_joints=0;
     // for (size_t i = 0; i < _joints_number; i++){
@@ -162,7 +162,7 @@ void FrictionCalibration::init()
     // {
     //     while (_arm_status.joints[jnt_idx].state == 1)
     //     {
-    //         getArmState();
+    //         getArmStatus();
     //         RCLCPP_INFO(_node->get_logger(), "Joint number: %i", jnt_idx);
     //         std::cout << "Initializing joint " << jnt_idx << std::endl;
 
@@ -186,7 +186,7 @@ void FrictionCalibration::init()
     RCLCPP_INFO(_node->get_logger(), "Done initializing robot position.");
 
     // GET STARTING POSITION - HOLD TRAJECTORY
-    getArmState();
+    getArmStatus();
     _trajectory.points.resize(1);
     _trajectory.points[0].positions.resize(_joints_number);
     _trajectory.points[0].velocities.resize(_joints_number);
@@ -322,7 +322,7 @@ void FrictionCalibration::init()
         {
             // std::chrono::time_point<std::chrono::steady_clock> t_current = std::chrono::steady_clock::now();
 
-            getArmState();
+            getArmStatus();
             auto t_current = std::chrono::steady_clock::now();
             if (_controller_state == 3)
             {
