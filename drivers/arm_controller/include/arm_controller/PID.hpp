@@ -10,7 +10,7 @@ public:
     PID(double Kp, double Ki, double Kd, double dt, double i_clamp_low, double i_clamp_high, int d_n);
     ~PID();
     double getValue(double error);
-    void update(double Kp, double Ki, double Kd);
+    void update(double Kp, double Ki, double Kd, int d_n);
     std::array<double,3> getComponents();
 
 private:

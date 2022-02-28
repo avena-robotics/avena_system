@@ -48,14 +48,26 @@ PID::PID(double Kp, double Ki, double Kd, double dt, double i_clamp_low, double 
 
 PID::~PID() {}
 
-void PID::update(double Kp, double Ki, double Kd)
+void PID::update(double Kp, double Ki, double Kd, int d_n)
 {
     Kp_ = Kp;
     Ki_ = Ki;
     Kd_ = Kd;
+
+    if (d_n != _d_buffer.size())
+    {
+        _d_n=d_n;
+        _iter=0;
+        _d_buffer.resize(d_n);
+        for (size_t i = 0; i > d_n; i++)
+        {
+            _d_buffer[i] = 0.;
+        }
+    }
 }
-std::array<double,3> PID::getComponents(){
-    return std::array<double,3>{_error_p,_error_i,_error_d};
+std::array<double, 3> PID::getComponents()
+{
+    return std::array<double, 3>{_error_p, _error_i, _error_d};
 }
 
 double PID::getValue(double error)
@@ -77,15 +89,14 @@ double PID::getValue(double error)
 
     _error_i = i_val_ * Ki_;
 
-    //TODO: add inertia?
+    // TODO: add inertia?
 
-    _d_sum = 0;
-    for (int i = 0; i < _d_n; i++)
-    {
-        _d_sum += _d_buffer[i];
-    }
-    _error_d = (_d_sum - prev_error_) / (dt_ * _d_n) * Kd_;
-    prev_error_ = _d_sum;
+    // _d_sum = 0;
+    // for (int i = 0; i < _d_n; i++)
+    // {
+    //     _d_sum += _d_buffer[i];
+    // }
+    _error_d = (error - _d_buffer[(_iter+1)%_d_n]) / (dt_ * (_d_n-1)) * Kd_;
 
     double error_sum = _error_p + _error_i + _error_d;
 
