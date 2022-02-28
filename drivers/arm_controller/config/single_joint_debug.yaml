@@ -10,55 +10,67 @@
 
     loop_frequency: 1000.
     communication_rate: 100.
+    avg_samples: 0.005
 
     error_margin: 0.09
+    precision: 0.0001
 
+    # maly joint
+    # FFv_gain_0: 0.0
+    # FFa_gain_0: 0.
+    # Kd_gain_0: 60.0
+    # Ki_gain_0: 24000.0
+    # Kp_gain_0: 4000.0
+    # i_clamp_h_0: 40.
+    # i_clamp_l_0: -40.
+
+    # duzy joint
     FFv_gain_0: 0.0
     FFa_gain_0: 0.
-    Kd_gain_0: 15.0
-    Ki_gain_0: 150.0
-    Kp_gain_0: 600.0
-    i_clamp_h_0: 20.
-    i_clamp_l_0: -20.
+    Kd_gain_0: 80.0
+    Ki_gain_0: 14000.0
+    Kp_gain_0: 8000.0
+    i_clamp_h_0: 80.
+    i_clamp_l_0: -80.
 
     FFv_gain_1: 0.0
     FFa_gain_1: 0.
     Kd_gain_1: 30.0
-    Ki_gain_1: 4200.0
-    Kp_gain_1: 2000.0
-    i_clamp_h_1: 40.
-    i_clamp_l_1: -40.
+    Ki_gain_1: 600.0
+    Kp_gain_1: 350.0
+    i_clamp_h_1: 20.
+    i_clamp_l_1: -20.
 
     FFv_gain_2: 0.0
     FFa_gain_2: 0.
-    Kd_gain_2: 10.0
+    Kd_gain_2: 30.0
     Ki_gain_2: 600.0
-    Kp_gain_2: 800.0
-    i_clamp_h_2: 30.
-    i_clamp_l_2: -30.
+    Kp_gain_2: 350.0
+    i_clamp_h_2: 20.
+    i_clamp_l_2: -20.
 
     FFv_gain_3: 0.0
     FFa_gain_3: 0.
-    Kd_gain_3: 10.0
-    Ki_gain_3: 250.0
-    Kp_gain_3: 200.0
-    i_clamp_h_3: 15.
-    i_clamp_l_3: -15.
+    Kd_gain_3: 30.0
+    Ki_gain_3: 600.0
+    Kp_gain_3: 350.0
+    i_clamp_h_3: 20.
+    i_clamp_l_3: -20.
 
     FFv_gain_4: 0.0
     FFa_gain_4: 0.
-    Kd_gain_4: 10.0
-    Ki_gain_4: 100.0
+    Kd_gain_4: 30.0
+    Ki_gain_4: 600.0
     Kp_gain_4: 350.0
-    i_clamp_h_4: 15.
-    i_clamp_l_4: -15.
+    i_clamp_h_4: 20.
+    i_clamp_l_4: -20.
 
     FFv_gain_5: 0.0
     FFa_gain_5: 0.
-    Kd_gain_5: 10.0
-    Ki_gain_5: 200.0
+    Kd_gain_5: 30.0
+    Ki_gain_5: 600.0
     Kp_gain_5: 350.0
-    i_clamp_h_5: 15.
-    i_clamp_l_5: -15.
+    i_clamp_h_5: 20.
+    i_clamp_l_5: -20.
 
     use_sim_time: false
