@@ -50,6 +50,9 @@ PID::~PID() {}
 
 void PID::update(double Kp, double Ki, double Kd, int d_n)
 {
+
+    i_val_=i_val_/Ki*Ki_;
+
     Kp_ = Kp;
     Ki_ = Ki;
     Kd_ = Kd;
