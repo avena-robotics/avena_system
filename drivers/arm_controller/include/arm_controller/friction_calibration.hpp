@@ -19,4 +19,6 @@ private:
     // int idInit() override;
     int varInit(size_t joints_number) override;
     // void controlLoop() override;
+
+    double _command_multiplier = 2./360.;
 };

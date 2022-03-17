@@ -32,7 +32,7 @@ int FrictionCalibration::jointInit()
 
     for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
     {
-        _arm_config.joints[jnt_idx].operation_mode = 1;
+        _arm_config.joints[jnt_idx].operation_mode = 2;
         _arm_config.joints[jnt_idx].working_area_enabled = 0;
         _arm_config.joints[jnt_idx].absolute_position = 1;
     }
@@ -362,7 +362,9 @@ void FrictionCalibration::init()
                 _error[jnt_idx] = set_vel[jnt_idx] - _arm_status.joints[jnt_idx].velocity;
                 // std::cout << "err: " << _error[jnt_idx] << "\nval: " << _pid_ctrl[jnt_idx].getComponents()[0] << " " << _pid_ctrl[jnt_idx].getComponents()[1] << ' ' << _pid_ctrl[jnt_idx].getComponents()[2] << std::endl;
                 // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error);
-                _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction_coeffs(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, friction_coefficients[jnt_idx]);
+                // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction_coeffs(set_vel[jnt_idx], _arm_status.joints[jnt_idx].temperature, friction_coefficients[jnt_idx]);
+                _set_torque_val = set_vel[jnt_idx]/_command_multiplier;
+
                 // _set_torque_val = _pid_ctrl[jnt_idx].getValue(_error[jnt_idx]) + compensateFriction(set_vel[jnt_idx],30.,jnt_idx);
 
                 // TODO: params
@@ -424,12 +426,12 @@ void FrictionCalibration::init()
 
                 // RCLCPP_INFO_STREAM(node_->get_logger(), "tau: "<<tau_[jnt_idx]);
 
-                _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
-                // limit torque
-                {
-                    if (_set_torque_val * _torque_sign > 40)
-                        _set_torque_val = 40 * _torque_sign;
-                }
+                // _torque_sign = ((_set_torque_val > 0) - (_set_torque_val < 0));
+                // // limit torque
+                
+                //     if (_set_torque_val * _torque_sign > 40)
+                //         _set_torque_val = 40 * _torque_sign;
+                
 
                 // _set_torque_val = -14;
                 // if (_jitter_present[jnt_idx]){
@@ -452,7 +454,9 @@ void FrictionCalibration::init()
                 if (vel_achi[jnt_idx] && (std::chrono::steady_clock::now() - valid_vel_time[jnt_idx] > std::chrono::seconds(1)))
                 {
                     // *chart[jnt_idx] << p_avg_s[jnt_idx] << '\t' << v_avg[jnt_idx] << '\t' << temp_avg_s[jnt_idx] << '\t' << tau_avg_s[jnt_idx] << '\t' << set_vel << std::endl;
-                    tq_acc[jnt_idx] += _set_torque_val;
+                    // tq_acc[jnt_idx] += _set_torque_val;
+                    tq_acc[jnt_idx] += _arm_status.joints[jnt_idx].torque;
+
                     tq_inc[jnt_idx]++;
                     goal_v_avg_acc[jnt_idx] += _arm_status.joints[jnt_idx].velocity;
                 }
