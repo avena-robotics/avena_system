@@ -1,0 +1,67 @@
+<?xml version="1.0" ?>
+<robot name="avena">
+  <link name="left_avena_link_0" />
+  <link name="left_avena_link_1" />
+  <link name="left_avena_link_2" />
+  <link name="left_avena_link_3" />
+  <link name="left_avena_link_4" />
+  <link name="left_avena_link_5" />
+  <link name="left_avena_link_6" />
+  <link name="left_avena_gripper_connection" />
+
+    <!-- Joints -->
+    <joint name="left_avena_joint_1" type="revolute">
+      <origin xyz="0 0 0.063" rpy="0 0 0.001" /> <!-- Offset from position -->
+      <parent link="left_avena_link_0" />
+      <child link="left_avena_link_1" />
+      <axis xyz="0 0 1" />
+      <limit lower="-3.05" upper="3.05" effort="80" velocity="0" />
+    </joint>
+
+    <joint name="left_avena_joint_2" type="revolute">
+      <origin xyz="0.063 0 0.0763" rpy="0 1.5708 0" />
+      <parent link="left_avena_link_1" />
+      <child link="left_avena_link_2" />
+      <axis xyz="0 0 1" />
+      <limit lower="-1.57" upper="1.57" effort="180" velocity="0" />
+    </joint>
+
+    <joint name="left_avena_joint_3" type="revolute">
+      <origin xyz="-0.686 0 0" rpy="0 3.1416 0" />
+      <parent link="left_avena_link_2" />
+      <child link="left_avena_link_3" />
+      <axis xyz="0 0 1" />
+      <limit lower="-2.9" upper="2.9" effort="120" velocity="0" />
+    </joint>
+
+    <joint name="left_avena_joint_4" type="revolute">
+      <origin xyz="0.671 0 -0.005" rpy="3.1416 0 0" />
+      <parent link="left_avena_link_3" />
+      <child link="left_avena_link_4" />
+      <axis xyz="0 0 1" />
+      <limit lower="-3.05" upper="3.05" effort="60" velocity="0" />
+    </joint>
+
+    <joint name="left_avena_joint_5" type="revolute">
+      <origin xyz="0.0495 0 0.064" rpy="0 -1.5708 3.1416" />
+      <parent link="left_avena_link_4" />
+      <child link="left_avena_link_5" />
+      <axis xyz="0 0 1" />
+      <limit lower="-3.05" upper="3.05" effort="40" velocity="0" />
+    </joint>
+
+    <joint name="left_avena_joint_6" type="revolute">
+      <origin xyz="0.0495 0 0.064" rpy="0 1.5708 0" />
+      <parent link="left_avena_link_5" />
+      <child link="left_avena_link_6" />
+      <axis xyz="0 0 1" />
+      <limit lower="-3.05" upper="3.05" effort="40" velocity="0" />
+    </joint>
+
+    <joint name="left_avena_joint_7" type="fixed">
+      <origin xyz="0 0 0.0181" rpy="0 0 0"/>
+      <parent link="left_avena_link_6"/>
+      <child link="left_avena_gripper_connection"/>
+      <axis xyz="0 0 0" />
+    </joint>
+</robot>

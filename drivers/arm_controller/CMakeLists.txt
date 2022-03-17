@@ -6,13 +6,14 @@ if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
 
-# Default to C++14
+# Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
 
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic -lrt)
+  add_compile_options(-Wall -Wextra -Wpedantic -lrt -g)
 endif()
 
 # find dependencies
@@ -24,7 +25,7 @@ find_package(helpers_commons REQUIRED)
 find_package(candriver REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 find_package(pinocchio REQUIRED)
 find_package(Boost REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -81,6 +82,26 @@ ament_target_dependencies(hw_interface
   Boost
 )
 
+
+add_executable(trajectory_feeder
+    src/trajectory_feeder.cpp
+    )
+
+target_include_directories(trajectory_feeder  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+target_link_libraries(trajectory_feeder rt)
+
+
+ament_target_dependencies(trajectory_feeder 
+  pluginlib
+  rclcpp
+  std_msgs 
+  sensor_msgs
+  custom_interfaces
+  Boost
+)
 
 add_executable(diagnostics
     src/diagnostics.cpp
@@ -183,6 +204,7 @@ install(TARGETS
   friction_calibration
   hw_interface
   single_joint_debug
+  trajectory_feeder
   DESTINATION lib/${PROJECT_NAME})
 
 install(

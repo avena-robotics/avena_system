@@ -4,14 +4,13 @@
     
 /base_controller:
   ros__parameters:
-    error_margin: 0.005
 
     loop_frequency: 500.
     communication_rate: 100.
 
     #friction
 
-    Fv_gain_0: 0.
+    FFv_gain_0: 0.
     FFa_gain_0: 0.
     Kd_gain_0: 0.1
     Ki_gain_0: 5.
@@ -20,7 +19,7 @@
     i_clamp_h_0: 40.
     i_clamp_l_0: -40.
 
-    Fv_gain_1: 0.
+    FFv_gain_1: 0.
     FFa_gain_1: 0.
     Kd_gain_1: 0.1
     Ki_gain_1: 5.
@@ -30,7 +29,7 @@
     i_clamp_l_1: -40.
 
 
-    Fv_gain_2: 0.
+    FFv_gain_2: 0.
     FFa_gain_2: 0.
     Kd_gain_2: 0.1
     Ki_gain_2: 5.
@@ -39,7 +38,7 @@
     i_clamp_h_2: 40.
     i_clamp_l_2: -40.
 
-    Fv_gain_3: 0.
+    FFv_gain_3: 0.
     FFa_gain_3: 0.
     Kd_gain_3: 0.1
     Ki_gain_3: 5.
@@ -48,7 +47,7 @@
     i_clamp_h_3: 40.
     i_clamp_l_3: -40.
 
-    Fv_gain_4: 0.
+    FFv_gain_4: 0.
     FFa_gain_4: 0.
     Kd_gain_4: 0.1
     Ki_gain_4: 5.
@@ -57,7 +56,7 @@
     i_clamp_h_4: 40.
     i_clamp_l_4: -40.
 
-    Fv_gain_5: 0.
+    FFv_gain_5: 0.
     FFa_gain_5: 0.
     Kd_gain_5: 0.1
     Ki_gain_5: 5.
@@ -68,4 +67,4 @@
 
 
 
-
+    use_sim_time: false
