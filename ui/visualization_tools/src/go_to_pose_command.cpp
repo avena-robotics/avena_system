@@ -28,6 +28,13 @@ namespace visualization_tools
         _octomap_insert_client = create_client<OctomapInsert>("scene_insert");
         _motion_planning_info_markers_pub = create_publisher<visualization_msgs::msg::MarkerArray>("/motion_planning_info", 1);
         _sequence_poses_pub = create_publisher<geometry_msgs::msg::PoseArray>("/sequence_poses", 1);
+        _marker_pose_sub = create_subscription<geometry_msgs::msg::Pose>("/set_marker_pose", 1, std::bind(&GoToPoseCommand::setMarkerPose, this, std::placeholders::_1));
+    }
+
+    void GoToPoseCommand::setMarkerPose(geometry_msgs::msg::Pose::SharedPtr msg)
+    {
+        _interactive_markers_server->setPose("go_to_pose", *msg);
+        _request_go_to_pose = *msg;
     }
 
     void GoToPoseCommand::_markerFeedback(const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr &feedback)
@@ -80,8 +87,7 @@ namespace visualization_tools
                                 {
                                     RCLCPP_ERROR(get_logger(), "Error occured while sending generate trajectory request. Error: %s", e.what());
                                     return;
-                                }
-                            })
+                                } })
                     .detach();
             }
         }

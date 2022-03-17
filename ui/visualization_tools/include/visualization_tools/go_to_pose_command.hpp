@@ -77,6 +77,8 @@ namespace visualization_tools
     void _sendExecuteMoveGoal();
     void _resultCallback(const rclcpp_action::ResultCode &result_code, const std::string &message);
 
+    void setMarkerPose(geometry_msgs::msg::Pose::SharedPtr msg);
+
     std::shared_ptr<interactive_markers::InteractiveMarkerServer> _interactive_markers_server;
     interactive_markers::MenuHandler _menu_handler;
     std::map<interactive_markers::MenuHandler::EntryHandle, MenuEntries_e> _menu_entries;
@@ -88,6 +90,7 @@ namespace visualization_tools
     rclcpp::Client<OctomapInsert>::SharedPtr _octomap_insert_client;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr _motion_planning_info_markers_pub;
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr _sequence_poses_pub;
+    rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr _marker_pose_sub;
     size_t _marker_count;
     std::vector<EndEffectorPose> _sequence_to_execute;
 
