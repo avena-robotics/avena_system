@@ -13,9 +13,10 @@ public:
 private:
 
     //overrides
+    int jointInit() override;
     // int communicate() override;
-    // int paramInit() override;
+    int paramInit() override;
     // int idInit() override;
-    // int varInit() override;
+    int varInit(size_t joints_number) override;
     // void controlLoop() override;
 };

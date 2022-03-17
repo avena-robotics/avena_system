@@ -176,7 +176,7 @@ protected:
 
     double compensateFriction(double vel, double temp, int jnt_idx);
 
-    double compensateFriction_coeffs(double vel, std::array<double,4> coeffs);
+    double compensateFriction_coeffs(double vel, double t, std::array<double,6> coeffs);
 
     /****
      * Initializes inverse dynamic variables, such as robot model and data.
@@ -332,16 +332,16 @@ protected:
     std::vector<double> _i_clamp_l;
 
     std::vector<PID> _pid_ctrl;
-
+    double _pid_damping;
     //CONTROL
     double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _cartesian_error_norm, _c_friction_comp, _set_vel;
     std::vector<double> _error;
     int _torque_sign, _vel_sign, _time, _remaining_time, _acc_sign;
     size_t _trajectory_index;
     ControllerState _controller_state;
-    std::vector<int> _jitter_counter, _jitter_threshold;
-    std::vector<double> _jitter_multiplier;
-    std::vector<bool> _jitter_present;
+    // std::vector<int> _jitter_counter, _jitter_threshold;
+    // std::vector<double> _jitter_multiplier;
+    // std::vector<bool> _jitter_present;
 
     std::shared_ptr<boost::interprocess::managed_shared_memory> _shared_memory_segment;
 
@@ -369,7 +369,7 @@ protected:
     //FRICTION
     std::vector<std::vector<std::vector<friction_comp>>> _friction_chart;
     std::vector<std::vector<friction_comp>> _measured_friction_comp;
-    std::vector<std::array<double,4>> friction_coefficients;
+    std::vector<std::array<double,6>> friction_coefficients;
 
     //KINEMATICS
 

@@ -5,3 +5,4 @@ install
 build
 log
 core/avena_bringup/urdf/avena_arm_id.urdf
+movement/ik_fast/asdf.cpp

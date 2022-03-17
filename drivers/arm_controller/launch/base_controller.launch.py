@@ -22,15 +22,21 @@ def launch_setup(context, *args, **kwargs):
             package='arm_controller',
             executable='hw_interface',
             output='both',
-            parameters=[params]
+            parameters=[params],
             # prefix=['valgrind --leak-check=yes --track-origins=yes']
+            # prefix=['xterm -e gdb -ex run --args']
+            # prefix = ['gdbserver localhost:3000']
+
         ),
         Node(
             package='arm_controller',
             executable='base_controller',
             output='both',
-            parameters=[params, {'config_path':config}]
+            parameters=[params, {'config_path':config}],
             # prefix=['valgrind --leak-check=yes --track-origins=yes']
+            # prefix=['xterm -e gdb -ex run --args']
+            # prefix = ['gdbserver localhost:3000']
+
         )
     ]
 
