@@ -25,7 +25,7 @@ find_package(candriver REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
-find_package(pinocchio REQUIRED)
+#find_package(pinocchio REQUIRED)
 find_package(Boost REQUIRED)
 find_package(OpenMP REQUIRED)
 
@@ -52,7 +52,7 @@ ament_target_dependencies(base_controller
   custom_interfaces
   helpers_commons
   candriver
-  pinocchio
+  #pinocchio
   Boost
   OpenMP
 )
@@ -77,7 +77,7 @@ ament_target_dependencies(hw_interface
   custom_interfaces
   helpers_commons
   candriver
-  pinocchio
+  #pinocchio
   Boost
 )
 
@@ -100,32 +100,10 @@ ament_target_dependencies(diagnostics
   custom_interfaces
   helpers_commons
   candriver
-  pinocchio
+  #pinocchio
   Boost
 )
 
-
-# add_executable(single_joint_debug
-#     src/single_joint_debug.cpp
-#     src/PID.cpp
-#     )
-
-# target_include_directories(single_joint_debug  PUBLIC
-#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#     $<INSTALL_INTERFACE:include>)
-  
-#  target_link_libraries(single_joint_debug  base_controller_lib Eigen3::Eigen)
-  
-#  ament_target_dependencies(single_joint_debug 
-#     pluginlib
-#     rclcpp
-#     std_msgs 
-#     sensor_msgs
-#     custom_interfaces
-#     helpers_commons
-#     candriver
-#     pinocchio
-#   )
 
 add_executable(friction_calibration
     src/friction_calibration.cpp
@@ -146,7 +124,29 @@ ament_target_dependencies(friction_calibration
   candriver
   custom_interfaces
   sensor_msgs
-  pinocchio
+  #pinocchio
+  Boost
+)
+
+add_executable(single_joint_debug
+    src/single_joint_debug.cpp)
+
+target_include_directories(single_joint_debug  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+target_link_libraries(single_joint_debug  base_controller_lib Eigen3::Eigen)
+
+
+ament_target_dependencies(single_joint_debug 
+  pluginlib
+  rclcpp
+  std_msgs 
+  helpers_commons
+  candriver
+  custom_interfaces
+  sensor_msgs
+  #pinocchio
   Boost
 )
 
@@ -173,7 +173,7 @@ ament_target_dependencies(base_controller_lib
   custom_interfaces
   helpers_commons
   candriver
-  pinocchio
+  #pinocchio
   Boost
   OpenMP
 )
@@ -183,7 +183,6 @@ install(TARGETS
   diagnostics
   friction_calibration
   hw_interface
-  # single_joint_debug
   DESTINATION lib/${PROJECT_NAME})
 
 install(

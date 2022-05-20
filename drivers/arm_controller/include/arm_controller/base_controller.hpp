@@ -32,11 +32,11 @@
 #include "hw_interface.hpp"
 #include "helpers_commons/helpers_commons.hpp"
 
-#include "pinocchio/parsers/urdf.hpp"
-#include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/algorithm/rnea.hpp"
-// #include "pinocchio/algorithm/parallel/rnea.hpp"
-#include "pinocchio/algorithm/kinematics.hpp"
+// #include "pinocchio/parsers/urdf.hpp"
+// #include "pinocchio/algorithm/joint-configuration.hpp"
+// #include "pinocchio/algorithm/rnea.hpp"
+// // #include "pinocchio/algorithm/parallel/rnea.hpp"
+// #include "pinocchio/algorithm/kinematics.hpp"
 
 enum ControllerState
 {
@@ -46,6 +46,23 @@ enum ControllerState
     PAUSE = 3,
     EXECUTE = 4,
     GRAV_COMP = 5
+};
+
+enum eJointState
+{
+    INIT = 1,
+    READY_TO_OPERATE = 2,
+    OPERATION_ENABLED = 3,
+    FAULT = 255,
+    NOT_CONNECTED = 420
+};
+
+enum JointWarn
+{
+    POSITION_ACCURATE = 0,
+    POSITION_APPROXIMATED = 1,
+    UNDER_WORKING_AREA = 2,
+    OVER_WORKING_AREA = 3
 };
 
 /****
@@ -108,7 +125,7 @@ protected:
      * Retrieves latest arm state from the candriver.
      ****/
 
-    bool getArmState();
+    bool getArmStatus();
 
     /****
      * Writes an arm command to the candriver,
@@ -118,11 +135,26 @@ protected:
     bool setArmCommand();
 
     /****
+     * Writes an arm state to the candriver,
+     * which sends it to the specified interface during its following cycles.
+     ****/
+
+    bool setArmState();
+
+    /****
+     * Writes an arm config to the candriver,
+     * which sends it to the specified interface during its following cycles.
+     ****/
+
+    bool setArmConfig();
+    /****
      * Loads joint friction charts from the specified location
      * @param path global path to a folder containing friction charts
      ****/
 
     void loadFrictionChart(std::string path);
+
+    void loadFrictionCoeffs(std::string path);
 
     /****
      * Reads PID parameters from this ROS2 node and updates PIDs used for controlling the arm.
@@ -142,16 +174,23 @@ protected:
 
     double compensateFriction(double vel, double temp, int jnt_idx);
 
+    double compensateFriction_coeffs(double vel, double t, std::array<double, 6> coeffs);
+
     /****
      * Initializes inverse dynamic variables, such as robot model and data.
      * Requires a robot urdf published on /robot_description topic.
      ****/
 
-    virtual int idInit();
-
     /****
-     * Initializes node parameters and reads them from the config file.
+     * Initializes inverse dynamic variables, such as robot model and data.
+     * Requires a robot urdf published on /robot_description topic.
      ****/
+
+    // virtual int idInit();
+
+    // /****
+    //  * Initializes node parameters and reads them from the config file.
+    //  ****/
 
     virtual int paramInit();
 
@@ -206,13 +245,13 @@ protected:
      * Calculates current end-effector pose according to forward kinematics.
      ****/
 
-    virtual int calculateFK();
+    // virtual int calculateFK();
     /****
      * Calculates joint torques using inverse dynamics.
      * Also calculates forward kinematics to validate end-effector position.
      ****/
 
-    virtual int calculateID();
+    // virtual int calculateID();
 
     /****
      * Publishes controller data on ROS2 topics.
@@ -242,7 +281,6 @@ protected:
      ****/
 
     int resumeArm();
-
 
     /****
      * Go into gravity compensation mode.
@@ -281,7 +319,7 @@ protected:
 
     //PARAMETERS
     size_t _joints_number = 6;
-    double _error_margin, _cartesian_error_margin, _communication_rate, _trajectory_rate;
+    double _error_margin, _cartesian_error_margin, _communication_rate, _trajectory_rate, _precision;
     std::string _config_path;
     std::string _urdf;
 
@@ -296,6 +334,7 @@ protected:
     std::vector<double> _i_clamp_l;
 
     std::vector<PID> _pid_ctrl;
+    double _pid_damping;
 
     //CONTROL
     double _set_torque_val, _set_torque_ff_val, _set_torque_pid_val, _cartesian_error_norm, _c_friction_comp, _set_vel;
@@ -311,12 +350,19 @@ protected:
 
     std::shared_ptr<ArmStatus> _shm_arm_status;
     std::shared_ptr<ArmCommand> _shm_arm_command;
+    std::shared_ptr<ArmState> _shm_arm_state_command;
+    std::shared_ptr<ArmState> _shm_arm_state_info;
+    std::shared_ptr<ArmConfig> _shm_arm_config;
 
     ArmStatus _arm_status;
     ArmCommand _arm_command;
+    ArmState _arm_state_command, _arm_state_info;
+    ArmConfig _arm_config;
 
     //MEASUREMENT
-    const size_t _avg_samples = 200;
+    size_t _avg_samples;
+    double _avg_samples_t;
+
     std::vector<double> _avg_temp, _avg_vel, _avg_acc, _avg_tau, _avg_pos, _prev_pos;
     //buffers
     std::vector<std::vector<double>> _avg_temp_b, _avg_vel_b, _avg_acc_b, _avg_tau_b, _avg_pos_b;
@@ -325,13 +371,12 @@ protected:
     //FRICTION
     std::vector<std::vector<std::vector<friction_comp>>> _friction_chart;
     std::vector<std::vector<friction_comp>> _measured_friction_comp;
+    std::vector<std::array<double, 4>> friction_coefficients;
 
-    //KINEMATICS
-
-    //ID
-    Eigen::VectorXd _q, _qd, _qdd, _tau, _q_traj;
-    pinocchio::Model _model;
-    std::shared_ptr<pinocchio::Data> _data, _traj_data;
+    // //ID
+    // Eigen::VectorXd _q, _qd, _qdd, _tau, _q_traj;
+    // pinocchio::Model _model;
+    // std::shared_ptr<pinocchio::Data> _data, _traj_data;
 
     //TIME
     rclcpp::TimerBase::SharedPtr _timer;
@@ -357,7 +402,6 @@ protected:
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _arm_joint_pid_errors_pub;
 
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr _cartesian_error_norm_pub;
-
 
     rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr _controller_state_pub;
 

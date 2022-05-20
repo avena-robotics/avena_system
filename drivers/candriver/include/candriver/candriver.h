@@ -42,7 +42,7 @@ public:
  * @param can_id socket interface
  ****/
 
-    CanInterface(std::string can_id = "can1");
+    CanInterface(std::string can_id = "can0");
     ~CanInterface();
 
 /****

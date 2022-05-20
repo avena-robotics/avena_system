@@ -16,8 +16,9 @@ def launch_setup(context, *args, **kwargs):
     pkg_share = FindPackageShare('arm_controller').find('arm_controller')
     config = os.path.join(pkg_share,'config')
     params = os.path.join(config,'base_controller_friction.yaml')
-
-    return [
+    serial_arg = DeclareLaunchArgument('serial_number', default_value='NA')
+    
+    return [serial_arg,
         Node(
             package='arm_controller',
             executable='hw_interface',
@@ -29,7 +30,7 @@ def launch_setup(context, *args, **kwargs):
             package='arm_controller',
             executable='friction_calibration',
             output='both',
-            parameters=[params, {'config_path':config}],
+            parameters=[params, {'config_path':config, 'serial_number': LaunchConfiguration('serial_number')}],
             # remappings=[('arm_joint_states','asdf')]
         )
     ]
