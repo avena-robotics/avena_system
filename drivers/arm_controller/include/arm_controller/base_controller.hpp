@@ -371,7 +371,7 @@ protected:
     //FRICTION
     std::vector<std::vector<std::vector<friction_comp>>> _friction_chart;
     std::vector<std::vector<friction_comp>> _measured_friction_comp;
-    std::vector<std::array<double, 4>> friction_coefficients;
+    std::vector<std::array<double, 6>> friction_coefficients;
 
     // //ID
     // Eigen::VectorXd _q, _qd, _qdd, _tau, _q_traj;

@@ -1094,34 +1094,6 @@ void BaseController::controlLoop()
         rclcpp::shutdown();
     }
 }
-double BaseController::compensateFriction_coeffs(double vel, std::array<double, 4> coeffs)
-{
-    return coeffs[0] * ((vel > 0) - (vel < 0)) + coeffs[1] * vel + coeffs[2] * pow(vel, 2) * ((vel > 0) - (vel < 0)) + coeffs[3] * pow(vel, 3);
-}
-
-void BaseController::loadFrictionCoeffs(std::string path)
-{
-    for (size_t jnt_idx = 0; jnt_idx < _joints_number; jnt_idx++)
-    {
-        std::string temp_s;
-        RCLCPP_INFO_STREAM(_node->get_logger(), "Loading friction coeffs: " << path + std::to_string(jnt_idx) + std::string(".txt"));
-        std::ifstream fs(path + std::to_string(jnt_idx) + std::string(".txt"));
-        std::array<double, 4> temp = {0., 0., 0., 0.};
-        if (fs.good())
-        {
-            for (size_t i = 0; i < 4; i++)
-            {
-                fs >> temp[i];
-            }
-            fs.close();
-        }
-        else
-        {
-            RCLCPP_INFO(_node->get_logger(), "Could not find friction coefficients for joint number %i", jnt_idx);
-        }
-        friction_coefficients.push_back(temp);
-    }
-}
 
 //initialize movement functionalities, start controller
 void BaseController::init()
