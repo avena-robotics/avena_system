@@ -218,5 +218,5 @@
       <child link="${arm_id}_gripper_connection"/>
       <axis xyz="0 0 0" />
     </joint>
- </xacro:macro>
+  </xacro:macro>
 </robot>

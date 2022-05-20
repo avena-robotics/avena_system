@@ -385,7 +385,7 @@ private:
             // _arm_status->joints[arm_id].position = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][2] << 8) ^ (_last_msg.rx_msgs[i][3])) * _position_multiplier;
             _arm_status->joints[arm_id].position = (double)(static_cast<int32_t>((_last_msg.rx_msgs[i][2] << 24) ^ (_last_msg.rx_msgs[i][3] << 16) ^ (_last_msg.rx_msgs[i][4] << 8) ^ (_last_msg.rx_msgs[i][5]))) * _position_multiplier;
 
-            _arm_status->joints[arm_id].velocity = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][6] << 8) ^ (_last_msg.rx_msgs[i][7])) / INT16_MAX * 2 * M_PI;
+            _arm_status->joints[arm_id].velocity = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][6] << 8) ^ (_last_msg.rx_msgs[i][7])) / INT16_MAX * 2;
             _arm_status->joints[arm_id].torque = (double)(static_cast<int16_t>(_last_msg.rx_msgs[i][8] << 8) ^ (_last_msg.rx_msgs[i][9])) * _torque_multiplier;
             _arm_status->joints[arm_id].ma_val = (_last_msg.rx_msgs[i][16] << 8) ^ (_last_msg.rx_msgs[i][17]); // DEBUG
             // _arm_status->joints[arm_id].state = 3;

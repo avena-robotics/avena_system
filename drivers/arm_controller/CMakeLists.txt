@@ -13,8 +13,13 @@ endif()
 
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic -lrt -g)
+  add_compile_options(-Wall -Wextra -Wpedantic -lrt -lboost_system -g)
 endif()
+
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+
+# include_directories(/usr/local/include)
+# link_directories(/usr/local/inc)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -42,7 +47,7 @@ target_include_directories(base_controller  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(base_controller  Eigen3::Eigen OpenMP::OpenMP_CXX rt)
+target_link_libraries(base_controller Eigen3::Eigen OpenMP::OpenMP_CXX rt boost_system)
 
 
 ament_target_dependencies(base_controller 
@@ -54,7 +59,7 @@ ament_target_dependencies(base_controller
   helpers_commons
   candriver
   pinocchio
-  Boost
+  # Boost
   OpenMP
 )
 
@@ -67,7 +72,7 @@ target_include_directories(hw_interface  PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(hw_interface rt)
+target_link_libraries(hw_interface boost_system rt)
 
 
 ament_target_dependencies(hw_interface 
@@ -79,7 +84,7 @@ ament_target_dependencies(hw_interface
   helpers_commons
   candriver
   pinocchio
-  Boost
+  # Boost
 )
 
 
